@@ -3,6 +3,11 @@ import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
 
+// Importação das Rotas
+import rotaClientes from "./routes/RouteCliente.js";
+import rotaAgendamento from "./routes/RouteAgendamento.js";
+import rotaBarbeiro from "./routes/routeBarbeiro.js";
+
 // Carrega as variáveis do .env que está na raiz
 dotenv.config();
 
@@ -12,6 +17,13 @@ const PORT = process.env.PORT || 3000;
 // Middlewares
 app.use(cors());
 app.use(express.json());
+
+// Configuração das Rotas no Express
+// Nota: Se dentro dos arquivos de rota você já definiu caminhos como "/clientes", "/barbeiros", etc., 
+// usamos o prefixo "/" aqui para que eles funcionem corretamente.
+app.use("/", rotaClientes);
+app.use("/", rotaBarbeiro);
+app.use("/", rotaAgendamento);
 
 // Conexão com o banco
 const connectDB = async () => {
