@@ -2,8 +2,13 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 
+// Importando as imagens da sua pasta assets
+import imgCabelo from '../../assets/corte_cabelo.jpg';
+import imgBarba from '../../assets/corte_barba.jpg';
+import imgCombo from '../../assets/combo_barbearia.jpg';
+
 export default function NovoAgendamento() {
-  const { id } = useParams(); // id do cliente vindo da url
+  const { id } = useParams();
   const navigate = useNavigate();
   
   const [step, setStep] = useState(1);
@@ -11,9 +16,24 @@ export default function NovoAgendamento() {
   const [form, setForm] = useState({ tipoCorte: '', fk_barbeiro: '', data: '', hora: '' });
 
   const tiposCorte = [
-    { id: 'C', nome: 'cabelo', preco: 30 },
-    { id: 'B', nome: 'barba', preco: 20 },
-    { id: 'CB', nome: 'cabelo + barba', preco: 40 },
+    { 
+      id: 'C', 
+      nome: 'cabelo', 
+      preco: 30, 
+      img: imgCabelo 
+    },
+    { 
+      id: 'B', 
+      nome: 'barba', 
+      preco: 20, 
+      img: imgBarba 
+    },
+    { 
+      id: 'CB', 
+      nome: 'cabelo + barba', 
+      preco: 40, 
+      img: imgCombo 
+    },
   ];
 
   const horarios = [
@@ -59,8 +79,6 @@ export default function NovoAgendamento() {
       };
 
       await api.post('/agendamentos', payload);
-      
-      // redireciona de volta para o dashboard do cliente após sucesso
       navigate(`/cliente/${id}`);
     } catch (err) {
       alert("erro ao salvar agendamento");
@@ -71,115 +89,153 @@ export default function NovoAgendamento() {
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-6 font-sans">
       <div className="max-w-md mx-auto">
         <header className="mb-8">
-          <button onClick={() => navigate(-1)} className="text-xs text-gray-500 uppercase font-bold mb-4">← voltar</button>
-          <h1 className="text-xl font-black italic lowercase tracking-tighter">novo.agendamento</h1>
-          <div className="flex gap-1 mt-4">
+          <button onClick={() => navigate(-1)} className="text-xs text-gray-500 uppercase font-black mb-4 tracking-widest hover:text-white transition-colors">← voltar</button>
+          <h1 className="text-2xl font-black italic lowercase tracking-tighter">novo.agendamento</h1>
+          <div className="flex gap-1.5 mt-6">
             {[1, 2, 3, 4].map(s => (
-              <div key={s} className={`h-1 flex-1 rounded-full ${step >= s ? 'bg-[#e6b32a]' : 'bg-white/10'}`} />
+              <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#e6b32a] shadow-[0_0_8px_#e6b32a]' : 'bg-white/5'}`} />
             ))}
           </div>
         </header>
 
-        <main className="bg-[#111] p-6 rounded-[2.5rem] border border-white/5 shadow-2xl">
-          
-          {/* etapa 1: corte */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-[#e6b32a]">selecione o serviço</h2>
-              <div className="grid gap-3">
-                {tiposCorte.map(t => (
-                  <div 
-                    key={t.id} 
-                    onClick={() => setForm({...form, tipoCorte: t.id})}
-                    className={`p-5 rounded-2xl border transition-all cursor-pointer ${form.tipoCorte === t.id ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/5 bg-black'}`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold lowercase text-sm">{t.nome}</span>
-                      <span className="text-xs text-gray-400">r$ {t.preco}</span>
+        <main className="bg-[#111] p-1 rounded-[3rem] border border-white/5 shadow-2xl overflow-hidden">
+          <div className="p-6">
+            
+            {step === 1 && (
+              <div className="space-y-6">
+                <div className="pl-2">
+                  <h2 className="text-[10px] font-black uppercase tracking-[4px] text-[#e6b32a]">passo 01</h2>
+                  <p className="text-lg font-bold lowercase">escolha o serviço</p>
+                </div>
+
+                <div className="grid gap-4">
+                  {tiposCorte.map(t => (
+                    <div 
+                      key={t.id} 
+                      onClick={() => setForm({...form, tipoCorte: t.id})}
+                      className={`group relative overflow-hidden rounded-[2rem] border transition-all duration-300 cursor-pointer ${
+                        form.tipoCorte === t.id 
+                        ? 'border-[#e6b32a] bg-[#e6b32a]/5 ring-1 ring-[#e6b32a]' 
+                        : 'border-white/5 bg-black hover:border-white/20'
+                      }`}
+                    >
+                      <div className="flex items-center p-3">
+                        <div className="relative w-20 h-20 overflow-hidden rounded-2xl flex-shrink-0">
+                          <img 
+                            src={t.img} 
+                            alt={t.nome} 
+                            className={`w-full h-full object-cover transition-transform duration-700 ${form.tipoCorte === t.id ? 'scale-110' : 'opacity-40 grayscale group-hover:grayscale-0'}`} 
+                          />
+                        </div>
+
+                        <div className="flex flex-col flex-1 px-4">
+                          <span className={`text-lg font-black lowercase leading-tight ${form.tipoCorte === t.id ? 'text-white' : 'text-gray-400'}`}>
+                            {t.nome}
+                          </span>
+                          <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest mt-1">pro experience</span>
+                        </div>
+
+                        <div className={`px-4 py-2 rounded-2xl font-black text-sm transition-all ${
+                          form.tipoCorte === t.id ? 'bg-[#e6b32a] text-black scale-110' : 'bg-white/5 text-[#e6b32a]'
+                        }`}>
+                          R${t.preco}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
+                <button 
+                  disabled={!form.tipoCorte} 
+                  onClick={() => setStep(2)}
+                  className="w-full py-5 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-[2rem] disabled:opacity-20 mt-4 shadow-xl shadow-[#e6b32a]/10 active:scale-95 transition-all"
+                >próximo passo</button>
               </div>
-              <button 
-                disabled={!form.tipoCorte} 
-                onClick={() => setStep(2)}
-                className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl disabled:opacity-20 mt-4"
-              >próximo</button>
-            </div>
-          )}
+            )}
 
-          {/* etapa 2: barbeiro */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-[#e6b32a]">quem vai atender?</h2>
-              <div className="grid gap-3">
-                {barbeiros.map(b => (
-                  <div 
-                    key={b._id} 
-                    onClick={() => setForm({...form, fk_barbeiro: b._id})}
-                    className={`p-5 rounded-2xl border transition-all cursor-pointer ${form.fk_barbeiro === b._id ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/5 bg-black'}`}
-                  >
-                    <span className="font-bold lowercase text-sm">{b.nome}</span>
-                  </div>
-                ))}
+            {step === 2 && (
+              <div className="space-y-6">
+                <div className="pl-2">
+                  <h2 className="text-[10px] font-black uppercase tracking-[4px] text-[#e6b32a]">passo 02</h2>
+                  <p className="text-lg font-bold lowercase">quem vai atender?</p>
+                </div>
+                <div className="grid gap-3">
+                  {barbeiros.map(b => (
+                    <div 
+                      key={b._id} 
+                      onClick={() => setForm({...form, fk_barbeiro: b._id})}
+                      className={`p-6 rounded-[2rem] border transition-all cursor-pointer flex justify-between items-center ${
+                        form.fk_barbeiro === b._id ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/5 bg-black'
+                      }`}
+                    >
+                      <span className={`font-black lowercase ${form.fk_barbeiro === b._id ? 'text-[#e6b32a]' : 'text-white'}`}>{b.nome}</span>
+                      {form.fk_barbeiro === b._id && <div className="w-2 h-2 rounded-full bg-[#e6b32a] animate-pulse" />}
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  disabled={!form.fk_barbeiro} 
+                  onClick={() => setStep(3)}
+                  className="w-full py-5 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-[2rem] disabled:opacity-20 mt-4 active:scale-95 transition-all"
+                >confirmar barbeiro</button>
               </div>
-              <button 
-                disabled={!form.fk_barbeiro} 
-                onClick={() => setStep(3)}
-                className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl disabled:opacity-20 mt-4"
-              >próximo</button>
-            </div>
-          )}
+            )}
 
-          {/* etapa 3: data */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-[#e6b32a]">escolha o dia</h2>
-              <div className="grid grid-cols-2 gap-3">
-                {datasSemana.map(d => (
-                  <label key={d} className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between ${form.data === d ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/5 bg-black'}`}>
-                    <span className="text-[11px] font-bold">
-                      {new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })}
-                    </span>
-                    <input 
-                      type="checkbox" 
-                      className="accent-[#e6b32a] h-4 w-4" 
-                      checked={form.data === d} 
-                      onChange={() => setForm({...form, data: d})} 
-                    />
-                  </label>
-                ))}
+            {step === 3 && (
+              <div className="space-y-6">
+                <div className="pl-2">
+                  <h2 className="text-[10px] font-black uppercase tracking-[4px] text-[#e6b32a]">passo 03</h2>
+                  <p className="text-lg font-bold lowercase">escolha o dia</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {datasSemana.map(d => (
+                    <label key={d} className={`p-5 rounded-[2rem] border cursor-pointer flex flex-col items-center gap-2 transition-all ${
+                      form.data === d ? 'border-[#e6b32a] bg-[#e6b32a]/10 ring-1 ring-[#e6b32a]' : 'border-white/5 bg-black'
+                    }`}>
+                      <span className={`text-[10px] uppercase font-black tracking-tighter ${form.data === d ? 'text-[#e6b32a]' : 'text-gray-500'}`}>
+                        {new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long' })}
+                      </span>
+                      <span className="text-lg font-black">
+                        {new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                      </span>
+                      <input type="checkbox" className="hidden" checked={form.data === d} onChange={() => setForm({...form, data: d})} />
+                    </label>
+                  ))}
+                </div>
+                <button 
+                  disabled={!form.data} 
+                  onClick={() => setStep(4)}
+                  className="w-full py-5 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-[2rem] disabled:opacity-20 mt-4 active:scale-95 transition-all"
+                >próximo</button>
               </div>
-              <button 
-                disabled={!form.data} 
-                onClick={() => setStep(4)}
-                className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl disabled:opacity-20 mt-4"
-              >próximo</button>
-            </div>
-          )}
+            )}
 
-          {/* etapa 4: horário */}
-          {step === 4 && (
-            <div className="space-y-4">
-              <h2 className="text-[10px] font-bold uppercase tracking-widest text-[#e6b32a]">horários disponíveis</h2>
-              <div className="grid grid-cols-3 gap-2 h-72 overflow-y-auto pr-2">
-                {horarios.map(h => (
-                  <div 
-                    key={h} 
-                    onClick={() => setForm({...form, hora: h})}
-                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${form.hora === h ? 'border-[#e6b32a] bg-[#e6b32a] text-black' : 'border-white/5 bg-black text-gray-400'}`}
-                  >
-                    <span className="text-[10px] font-bold">{h}</span>
-                  </div>
-                ))}
+            {step === 4 && (
+              <div className="space-y-6">
+                <div className="pl-2">
+                  <h2 className="text-[10px] font-black uppercase tracking-[4px] text-[#e6b32a]">passo 04</h2>
+                  <p className="text-lg font-bold lowercase">horários disponíveis</p>
+                </div>
+                <div className="grid grid-cols-3 gap-3 h-80 overflow-y-auto pr-2 custom-scrollbar">
+                  {horarios.map(h => (
+                    <div 
+                      key={h} 
+                      onClick={() => setForm({...form, hora: h})}
+                      className={`p-4 rounded-2xl border text-center cursor-pointer transition-all duration-300 ${
+                        form.hora === h ? 'border-[#e6b32a] bg-[#e6b32a] text-black font-black scale-95 shadow-lg shadow-[#e6b32a]/20' : 'border-white/5 bg-black text-gray-500 hover:border-white/20'
+                      }`}
+                    >
+                      <span className="text-xs font-bold">{h}</span>
+                    </div>
+                  ))}
+                </div>
+                <button 
+                  disabled={!form.hora} 
+                  onClick={handleFinalizar}
+                  className="w-full py-5 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-[2rem] disabled:opacity-20 mt-4 shadow-2xl shadow-[#e6b32a]/20 active:scale-95 transition-all"
+                >finalizar agendamento</button>
               </div>
-              <button 
-                disabled={!form.hora} 
-                onClick={handleFinalizar}
-                className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl disabled:opacity-20 mt-4"
-              >finalizar agendamento</button>
-            </div>
-          )}
+            )}
+          </div>
         </main>
       </div>
     </div>
