@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
-import ModalConfirmacao from '../../components/modais/ModalConfirmacao'; // ajuste o caminho se necessário
+import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 
 export default function BarbeiroDashboard() {
   const { id } = useParams();
@@ -10,17 +10,16 @@ export default function BarbeiroDashboard() {
   const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  const prevAgendamentosCount = useRef(0);
-
-  // Estados para Edição
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedAgendamento, setSelectedAgendamento] = useState(null);
   const [editValor, setEditValor] = useState('');
   const [editTipo, setEditTipo] = useState('');
-
-  // Estados para Confirmação de Status
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [statusTarget, setStatusTarget] = useState({ agendamento: null, novoStatus: '' });
+
+  const menuRef = useRef();
+  const prevAgendamentosCount = useRef(0);
 
   const getSafeId = () => id || localStorage.getItem('barbeiroId');
 
@@ -55,8 +54,19 @@ export default function BarbeiroDashboard() {
       return;
     }
     fetchData(barbeiroId);
+
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    
     const interval = setInterval(() => fetchData(barbeiroId, true), 10000);
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, [id, navigate]);
 
   const getNomeCliente = (fk) => {
@@ -64,7 +74,6 @@ export default function BarbeiroDashboard() {
     return clientes.find(c => String(c._id) === String(clienteId))?.nome || 'cliente desconhecido';
   };
 
-  // Abre o modal de confirmação em vez de executar direto
   const confirmUpdateStatus = (agendamento, novoStatus) => {
     setStatusTarget({ agendamento, novoStatus });
     setIsConfirmModalOpen(true);
@@ -109,13 +118,17 @@ export default function BarbeiroDashboard() {
   const lucroHoje = finalizadosHoje.reduce((acc, curr) => acc + (curr.valor || 0), 0);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-4 font-sans selection:bg-[#e6b32a] selection:text-black">
+    <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-4 pb-24 font-sans selection:bg-[#e6b32a] selection:text-black">
       <div className="max-w-2xl mx-auto space-y-8">
         
-        <header className="flex justify-between items-center border-b border-white/5 pb-6 pt-4">
-          <h1 className="text-xl font-black italic lowercase tracking-tighter text-white">
-            barber.flow <span className="text-[#e6b32a] not-italic text-xs ml-2">dashboard</span>
-          </h1>
+        <header className="flex justify-between items-center border-b border-white/5 pb-6 pt-4 relative">
+          <div>
+            <h1 className="text-xl font-black italic lowercase tracking-tighter leading-none text-white">
+              barber.flow
+            </h1>
+            <p className="text-[9px] text-[#e6b32a] uppercase font-bold tracking-[3px] mt-1">barbeiro</p>
+          </div>
+
           <div className="flex gap-4 items-center">
             <button 
               onClick={() => navigate(`/barbeiro/historico/${getSafeId()}`)} 
@@ -123,7 +136,38 @@ export default function BarbeiroDashboard() {
             >
               histórico
             </button>
-            <button onClick={() => { localStorage.clear(); navigate('/barbeiro/login'); }} className="text-[10px] font-bold text-red-500/80 uppercase tracking-widest">sair</button>
+
+            <div className="relative" ref={menuRef}>
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className={`w-10 h-10 rounded-full border flex items-center justify-center transition-all ${isProfileOpen ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/10 bg-white/5'}`}
+              >
+                <svg className={`w-5 h-5 transition-colors ${isProfileOpen ? 'text-[#e6b32a]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </button>
+
+              {isProfileOpen && (
+                <div className="absolute right-0 mt-3 w-48 bg-[#111] border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                  <button 
+                    onClick={() => { 
+                      setIsProfileOpen(false); 
+                      navigate(`/barbeiro/configuracoes/${getSafeId()}`);
+                    }}
+                    className="w-full px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#e6b32a] hover:bg-white/5 transition-all"
+                  >
+                    ⚙ configurações
+                  </button>
+                  <div className="h-[1px] bg-white/5 mx-2 my-1" />
+                  <button 
+                    onClick={() => { localStorage.clear(); navigate('/barbeiro/login'); }}
+                    className="w-full px-4 py-4 text-left text-[10px] font-black uppercase tracking-widest text-red-500/80 hover:bg-red-500/5 transition-all"
+                  >
+                    ✕ sair da conta
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -159,21 +203,22 @@ export default function BarbeiroDashboard() {
             pendentesHoje.map(a => (
               <div key={a._id} className="p-6 rounded-[2.5rem] bg-[#111] border border-white/5 shadow-2xl space-y-6">
                 <div className="flex justify-between items-start">
-                  <div>
+                  <div className="flex-1">
                     <p className="text-[11px] text-[#e6b32a] font-black uppercase tracking-[3px] mb-1">
                       {new Date(a.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                     </p>
                     <h3 className="text-2xl font-black text-white lowercase tracking-tighter">
                       {getNomeCliente(a.fk_cliente)}
                     </h3>
+                    {/* Botão de Editar mais robusto para Mobile */}
                     <button 
                       onClick={() => openEditModal(a)}
-                      className="mt-3 flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1.5 rounded-full text-[9px] text-gray-400 font-black uppercase tracking-widest active:bg-white/10 transition-colors"
+                      className="mt-4 flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2.5 rounded-2xl text-[10px] text-[#e6b32a] font-black uppercase tracking-widest active:scale-95 active:bg-white/10 transition-all"
                     >
                       <span>✎ {a.tipoCorte === 'C' ? 'cabelo' : a.tipoCorte === 'B' ? 'barba' : 'cabelo+barba'}</span>
                     </button>
                   </div>
-                  <div className="bg-black border border-white/10 px-4 py-3 rounded-2xl min-w-[100px] text-center">
+                  <div className="bg-black border border-white/10 px-4 py-3 rounded-2xl min-w-[100px] text-center ml-4">
                     <span className="text-[10px] text-[#e6b32a] font-black block leading-none mb-1 uppercase">r$</span>
                     <span className="text-xl font-black text-white tracking-tighter font-mono">
                       {a.valor?.toFixed(2).replace('.', ',')}
@@ -184,7 +229,7 @@ export default function BarbeiroDashboard() {
                 <div className="flex flex-col gap-3">
                   <button 
                     onClick={() => confirmUpdateStatus(a, 'F')} 
-                    className="group relative overflow-hidden py-4 bg-[#e6b32a] text-black font-black uppercase text-[11px] rounded-[1.5rem] shadow-xl active:scale-95 transition-all"
+                    className="group relative overflow-hidden py-5 bg-[#e6b32a] text-black font-black uppercase text-[11px] rounded-[1.5rem] shadow-xl active:scale-95 transition-all"
                   >
                     <span className="relative z-10">finalizar atendimento</span>
                     <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -192,7 +237,7 @@ export default function BarbeiroDashboard() {
                   <div className="pt-2 border-t border-white/5">
                     <button 
                       onClick={() => confirmUpdateStatus(a, 'C')} 
-                      className="w-full py-3 flex items-center justify-center gap-2 bg-red-500/5 hover:bg-red-500/10 text-red-500/40 hover:text-red-500 rounded-xl text-[9px] font-black uppercase tracking-[2px] transition-all"
+                      className="w-full py-4 flex items-center justify-center gap-2 bg-red-500/5 hover:bg-red-500/10 text-red-500/40 hover:text-red-500 rounded-xl text-[9px] font-black uppercase tracking-[2px] transition-all"
                     >
                       ✕ cancelar horário
                     </button>
@@ -217,7 +262,14 @@ export default function BarbeiroDashboard() {
                 <h2 className="text-xl font-black text-white lowercase tracking-tight">ajustar corte</h2>
                 <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mt-1">altere os detalhes abaixo</p>
               </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="text-gray-500 text-xl font-light">×</button>
+              {/* X de fechamento maior e com área de clique expandida */}
+              <button 
+                onClick={() => setIsEditModalOpen(false)} 
+                className="w-12 h-12 -mt-4 -mr-4 flex items-center justify-center text-gray-500 hover:text-white transition-colors"
+                aria-label="Fechar"
+              >
+                <span className="text-3xl font-light">×</span>
+              </button>
             </div>
             
             <div className="space-y-6">
@@ -228,7 +280,7 @@ export default function BarbeiroDashboard() {
                     <button
                       key={tipo}
                       onClick={() => setEditTipo(tipo)}
-                      className={`py-3 rounded-xl text-[10px] font-black uppercase transition-all border ${
+                      className={`py-4 rounded-xl text-[10px] font-black uppercase transition-all border ${
                         editTipo === tipo 
                         ? 'bg-[#e6b32a] text-black border-[#e6b32a]' 
                         : 'bg-black text-gray-500 border-white/10'
@@ -246,17 +298,17 @@ export default function BarbeiroDashboard() {
                   type="number"
                   min="1"
                   inputMode="decimal"
-                  className="w-full bg-black border border-white/10 rounded-2xl p-4 text-2xl font-mono text-white outline-none focus:border-[#e6b32a] transition-colors"
+                  className="w-full bg-black border border-white/10 rounded-2xl p-5 text-3xl font-mono text-white outline-none focus:border-[#e6b32a] transition-colors"
                   value={editValor}
                   onChange={(e) => setEditValor(e.target.value)}
                 />
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 pb-4 md:pb-0">
+            <div className="flex flex-col gap-3 pb-8 md:pb-0">
               <button 
                 onClick={saveEdits} 
-                className="w-full py-5 bg-[#e6b32a] text-black rounded-2xl text-[11px] font-black uppercase shadow-lg active:scale-[0.98] transition-all"
+                className="w-full py-5 bg-[#e6b32a] text-black rounded-2xl text-[11px] font-black uppercase shadow-lg active:scale-95 transition-all"
               >
                 salvar alterações
               </button>
@@ -265,17 +317,15 @@ export default function BarbeiroDashboard() {
         </div>
       )}
 
-      {/* MODAL DE CONFIRMAÇÃO PARA STATUS */}
       <ModalConfirmacao 
-  isOpen={isConfirmModalOpen}
-  onClose={() => setIsConfirmModalOpen(false)}
-  onConfirm={handleUpdateStatus}
-  // Se o status for 'C', o tipo será 'cancelar' (ativando o vermelho)
-  tipo={statusTarget.novoStatus === 'C' ? 'cancelar' : 'sucesso'}
-  mensagem={statusTarget.novoStatus === 'F' 
-    ? "deseja finalizar este atendimento e contabilizar o lucro?" 
-    : "tem certeza que deseja cancelar este horário?"}
-/>
+        isOpen={isConfirmModalOpen}
+        onClose={() => setIsConfirmModalOpen(false)}
+        onConfirm={handleUpdateStatus}
+        tipo={statusTarget.novoStatus === 'C' ? 'cancelar' : 'sucesso'}
+        mensagem={statusTarget.novoStatus === 'F' 
+          ? "deseja finalizar este atendimento e contabilizar o lucro?" 
+          : "tem certeza que deseja cancelar este horário?"}
+      />
     </div>
   );
 }

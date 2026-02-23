@@ -41,7 +41,6 @@ export default function NovoAgendamento() {
     fetchBarbeiros();
   }, []);
 
-  // Busca agendamentos do barbeiro quando um for selecionado
   useEffect(() => {
     if (form.fk_barbeiro) {
       const fetchOcupados = async () => {
@@ -49,7 +48,6 @@ export default function NovoAgendamento() {
         try {
           const res = await api.get(`/agendamentos?fk_barbeiro=${form.fk_barbeiro}`);
           const dados = res.data || res;
-          // Filtramos apenas os agendamentos ativos (A)
           setAgendamentosOcupados(Array.isArray(dados) ? dados.filter(a => a.status === 'A') : []);
         } catch (err) {
           console.error("erro ao buscar horários ocupados");
@@ -73,16 +71,20 @@ export default function NovoAgendamento() {
 
   const datasSemana = getDatasSemana();
 
-  // Verifica se o horário específico está ocupado no dia selecionado
   const isHorarioOcupado = (data, hora) => {
     const dataHoraBusca = `${data}T${hora}:00`;
     return agendamentosOcupados.some(a => a.datahora.startsWith(dataHoraBusca));
   };
 
-  // Verifica se o dia inteiro está lotado para este barbeiro
+  const isHorarioPassado = (data, hora) => {
+    const agora = new Date();
+    const horarioComparacao = new Date(`${data}T${hora}:00`);
+    return horarioComparacao < agora;
+  };
+
   const isDiaLotado = (data) => {
-    const ocupadosNoDia = agendamentosOcupados.filter(a => a.datahora.startsWith(data));
-    return ocupadosNoDia.length >= horariosBase.length;
+    const disponiveisNoDia = horariosBase.filter(h => !isHorarioOcupado(data, h) && !isHorarioPassado(data, h));
+    return disponiveisNoDia.length === 0;
   };
 
   const handleFinalizar = async () => {
@@ -108,9 +110,20 @@ export default function NovoAgendamento() {
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-6 font-sans">
       <div className="max-w-md mx-auto">
         <header className="mb-8">
-          <button onClick={() => navigate(-1)} className="text-xs text-gray-500 uppercase font-black mb-4 tracking-widest hover:text-white transition-colors">← voltar</button>
-          <h1 className="text-2xl font-black italic lowercase tracking-tighter">novo.agendamento</h1>
-          <div className="flex gap-1.5 mt-6">
+          <div className="flex items-center gap-4 mb-6">
+            <button 
+              onClick={() => navigate(-1)}
+              className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-gray-400 hover:border-[#e6b32a] hover:text-[#e6b32a] transition-all"
+            >
+              ←
+            </button>
+            <div>
+              <h1 className="text-2xl font-black italic lowercase tracking-tighter leading-none">novo.agendamento</h1>
+              <p className="text-[9px] text-[#e6b32a] uppercase font-black tracking-[3px] mt-1">reserva</p>
+            </div>
+          </div>
+          
+          <div className="flex gap-1.5">
             {[1, 2, 3, 4].map(s => (
               <div key={s} className={`h-1 flex-1 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#e6b32a] shadow-[0_0_8px_#e6b32a]' : 'bg-white/5'}`} />
             ))}
@@ -225,7 +238,7 @@ export default function NovoAgendamento() {
                         <span className="text-lg font-black">
                           {new Date(d + 'T00:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
                         </span>
-                        {lotado && <span className="text-[8px] font-black uppercase text-red-500">lotado</span>}
+                        {lotado && <span className="text-[8px] font-black uppercase text-red-500">indisponível</span>}
                       </button>
                     );
                   })}
@@ -250,21 +263,28 @@ export default function NovoAgendamento() {
                   ) : (
                     horariosBase.map(h => {
                       const ocupado = isHorarioOcupado(form.data, h);
+                      const passado = isHorarioPassado(form.data, h);
+                      const bloqueado = ocupado || passado;
+
                       return (
                         <button 
                           key={h} 
-                          disabled={ocupado}
+                          disabled={bloqueado}
                           onClick={() => setForm({...form, hora: h})}
                           className={`p-4 rounded-2xl border text-center transition-all duration-300 ${
                             form.hora === h 
                               ? 'border-[#e6b32a] bg-[#e6b32a] text-black font-black scale-95' 
-                              : ocupado 
+                              : bloqueado 
                                 ? 'border-transparent bg-red-500/10 text-red-500/20 cursor-not-allowed' 
                                 : 'border-white/5 bg-black text-gray-500 hover:border-white/20'
                           }`}
                         >
                           <span className="text-xs font-bold">{h}</span>
-                          {ocupado && <span className="block text-[7px] uppercase font-black">indisp.</span>}
+                          {bloqueado && (
+                            <span className="block text-[7px] uppercase font-black">
+                              {passado ? 'passou' : 'indisp.'}
+                            </span>
+                          )}
                         </button>
                       );
                     })

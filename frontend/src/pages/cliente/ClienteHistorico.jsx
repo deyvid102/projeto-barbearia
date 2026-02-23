@@ -45,16 +45,20 @@ export default function ClienteHistorico() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-6 font-sans">
       <div className="max-w-md mx-auto space-y-8">
-        <header className="flex justify-between items-center border-b border-white/5 pb-6">
+        
+        <header className="flex items-center gap-4 pt-4 border-b border-white/5 pb-6">
           <button 
-            onClick={() => navigate(-1)} 
-            className="text-[10px] font-black text-[#e6b32a] uppercase tracking-widest"
+            onClick={() => navigate(-1)}
+            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-gray-400 hover:border-[#e6b32a] hover:text-[#e6b32a] transition-all"
           >
-            ← voltar
+            ←
           </button>
-          <h1 className="text-xl font-black italic lowercase tracking-tighter text-white">
-            meus.cortes <span className="text-gray-500 not-italic text-xs ml-2">histórico</span>
-          </h1>
+          <div>
+            <h1 className="text-xl font-black italic lowercase tracking-tighter text-white leading-none">
+              meus.cortes
+            </h1>
+            <p className="text-[9px] text-[#e6b32a] uppercase font-black tracking-[3px] mt-1">histórico</p>
+          </div>
         </header>
 
         <div className="space-y-4">
@@ -62,7 +66,7 @@ export default function ClienteHistorico() {
             <p className="text-center text-[10px] text-gray-600 uppercase font-black animate-pulse py-10">carregando histórico...</p>
           ) : historico.length > 0 ? (
             historico.map(a => (
-              <div key={a._id} className="p-6 rounded-[2.5rem] bg-[#111] border border-white/5 flex justify-between items-center">
+              <div key={a._id} className="p-6 rounded-[2.5rem] bg-[#111] border border-white/5 flex justify-between items-center shadow-2xl">
                 <div className="space-y-1">
                   <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest">
                     {new Date(a.datahora).toLocaleDateString('pt-BR')}
@@ -79,8 +83,8 @@ export default function ClienteHistorico() {
                 </div>
 
                 <div className="bg-white/5 border border-white/10 px-4 py-2 rounded-2xl">
-                  <span className="text-[10px] text-[#e6b32a] font-black block text-right leading-none mb-1">R$</span>
-                  <span className="text-lg font-black text-white tracking-tighter">
+                  <span className="text-[10px] text-[#e6b32a] font-black block text-right leading-none mb-1">r$</span>
+                  <span className="text-lg font-black text-white tracking-tighter font-mono">
                     {a.valor?.toFixed(2).replace('.', ',')}
                   </span>
                 </div>

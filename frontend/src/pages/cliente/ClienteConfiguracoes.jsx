@@ -2,24 +2,33 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
+import CustomAlert from '../../components/CustomAlert';
+
+// Importação correta usando react-icons
+import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function ClienteConfiguracoes() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // inicializamos sempre com string vazia para evitar o erro de "controlled to uncontrolled"
   const [nome, setNome] = useState('');
   const [telefone, setTelefone] = useState('');
   
-  // estados para o fluxo de senha no modal
   const [isSenhaModalOpen, setIsSenhaModalOpen] = useState(false);
   const [etapaSenha, setEtapaSenha] = useState(1); 
   const [senhaAtual, setSenhaAtual] = useState('');
   const [novaSenha, setNovaSenha] = useState('');
   const [confirmarNovaSenha, setConfirmarNovaSenha] = useState('');
+
+  const [showSenhaAtual, setShowSenhaAtual] = useState(false);
+  const [showNovaSenha, setShowNovaSenha] = useState(false);
+  const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
   
   const [loading, setLoading] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+
+  // Estado para o CustomAlert
+  const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: 'success' });
 
   useEffect(() => {
     if (!id) return navigate('/cliente/login');
@@ -28,7 +37,6 @@ export default function ClienteConfiguracoes() {
       try {
         const res = await api.get(`/clientes/${id}`);
         const cliente = res.data || res;
-        // o uso do || '' garante que o input nunca receba undefined
         setNome(cliente.nome || '');
         setTelefone(cliente.telefone || '');
       } catch (error) {
@@ -38,22 +46,30 @@ export default function ClienteConfiguracoes() {
     loadCliente();
   }, [id, navigate]);
 
+  const showAlert = (message, type = 'success') => {
+    setAlertConfig({ show: true, message, type });
+  };
+
   const abrirModalSenha = () => {
     setEtapaSenha(1);
     setSenhaAtual('');
     setNovaSenha('');
     setConfirmarNovaSenha('');
+    setShowSenhaAtual(false);
+    setShowNovaSenha(false);
+    setShowConfirmarSenha(false);
     setIsSenhaModalOpen(true);
   };
 
   const handleProximaEtapa = () => {
     if (etapaSenha === 1) {
-      if (!senhaAtual) return alert("digite sua senha atual");
+      if (!senhaAtual) return showAlert("digite sua senha atual", "error");
       setEtapaSenha(2);
     } else {
-      if (novaSenha !== confirmarNovaSenha) return alert("as senhas não coincidem");
-      if (novaSenha.length < 4) return alert("a nova senha é muito curta");
+      if (novaSenha !== confirmarNovaSenha) return showAlert("as senhas não coincidem", "error");
+      if (novaSenha.length < 4) return showAlert("a nova senha é muito curta", "error");
       setIsSenhaModalOpen(false);
+      showAlert("nova senha definida!", "info");
     }
   };
 
@@ -67,7 +83,6 @@ export default function ClienteConfiguracoes() {
     setLoading(true);
     
     try {
-      // payload para a rota localhost:3000/clientes/_id
       const payload = {
         nome,
         telefone
@@ -78,10 +93,14 @@ export default function ClienteConfiguracoes() {
 
       await api.put(`/clientes/${id}`, payload);
       
-      alert("perfil atualizado com sucesso!");
-      navigate(`/cliente/${id}`);
+      showAlert("perfil atualizado com sucesso!");
+      
+      setTimeout(() => {
+        navigate(`/cliente/${id}`);
+      }, 2000);
+
     } catch (error) {
-      alert(error.response?.data?.message || "erro ao atualizar perfil.");
+      showAlert(error.response?.data?.message || "erro ao atualizar perfil.", "error");
     } finally {
       setLoading(false);
     }
@@ -89,18 +108,27 @@ export default function ClienteConfiguracoes() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-gray-100 p-6 font-sans">
+      
+      {alertConfig.show && (
+        <CustomAlert 
+          message={alertConfig.message} 
+          type={alertConfig.type} 
+          onClose={() => setAlertConfig({ ...alertConfig, show: false })} 
+        />
+      )}
+
       <div className="max-w-md mx-auto space-y-10">
         
-        <header className="flex items-center gap-4 pt-4">
+        <header className="flex items-center gap-4 pt-4 border-b border-white/5 pb-6">
           <button 
             onClick={() => navigate(-1)}
-            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-gray-400"
+            className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center border border-white/10 text-gray-400 hover:border-[#e6b32a] hover:text-[#e6b32a] transition-all"
           >
             ←
           </button>
           <div>
-            <h1 className="text-xl font-black text-white lowercase tracking-tighter">configurações</h1>
-            <p className="text-[9px] text-gray-500 uppercase font-black tracking-[3px]">minha conta</p>
+            <h1 className="text-xl font-black text-white lowercase tracking-tighter leading-none">configurações</h1>
+            <p className="text-[9px] text-[#e6b32a] uppercase font-black tracking-[3px] mt-1">minha conta</p>
           </div>
         </header>
 
@@ -123,7 +151,6 @@ export default function ClienteConfiguracoes() {
                 <label className="text-[9px] text-gray-500 uppercase font-black tracking-widest pl-1">telefone</label>
                 <input 
                   type="text"
-                  required
                   className="w-full bg-black border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[#e6b32a] transition-colors font-mono"
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
@@ -163,7 +190,6 @@ export default function ClienteConfiguracoes() {
         </form>
       </div>
 
-      {/* MODAL DE ALTERAR SENHA (ETAPAS) */}
       {isSenhaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-xs bg-[#111] border border-white/10 rounded-[2.5rem] p-8 space-y-6">
@@ -181,34 +207,61 @@ export default function ClienteConfiguracoes() {
               {etapaSenha === 1 ? (
                 <div className="space-y-2">
                   <label className="text-[9px] text-gray-500 uppercase font-black tracking-widest">digite a senha atual</label>
-                  <input 
-                    type="password"
-                    autoFocus
-                    className="w-full bg-black border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[#e6b32a]"
-                    value={senhaAtual}
-                    onChange={(e) => setSenhaAtual(e.target.value)}
-                  />
+                  <div className="relative">
+                    <input 
+                      type={showSenhaAtual ? "text" : "password"}
+                      autoFocus
+                      className="w-full bg-black border border-white/10 rounded-2xl p-4 pr-12 text-sm text-white outline-none focus:border-[#e6b32a]"
+                      value={senhaAtual}
+                      onChange={(e) => setSenhaAtual(e.target.value)}
+                    />
+                    <button 
+                      type="button"
+                      onClick={() => setShowSenhaAtual(!showSenhaAtual)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#e6b32a] transition-colors p-1"
+                    >
+                      {showSenhaAtual ? <FaEyeSlash /> : <FaEye />}
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
                   <div className="space-y-2">
                     <label className="text-[9px] text-gray-500 uppercase font-black tracking-widest">nova senha</label>
-                    <input 
-                      type="password"
-                      autoFocus
-                      className="w-full bg-black border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[#e6b32a]"
-                      value={novaSenha}
-                      onChange={(e) => setNovaSenha(e.target.value)}
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showNovaSenha ? "text" : "password"}
+                        autoFocus
+                        className="w-full bg-black border border-white/10 rounded-2xl p-4 pr-12 text-sm text-white outline-none focus:border-[#e6b32a]"
+                        value={novaSenha}
+                        onChange={(e) => setNovaSenha(e.target.value)}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowNovaSenha(!showNovaSenha)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#e6b32a] transition-colors p-1"
+                      >
+                        {showNovaSenha ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[9px] text-gray-500 uppercase font-black tracking-widest">confirmar nova senha</label>
-                    <input 
-                      type="password"
-                      className="w-full bg-black border border-white/10 rounded-2xl p-4 text-sm text-white outline-none focus:border-[#e6b32a]"
-                      value={confirmarNovaSenha}
-                      onChange={(e) => setConfirmarNovaSenha(e.target.value)}
-                    />
+                    <div className="relative">
+                      <input 
+                        type={showConfirmarSenha ? "text" : "password"}
+                        className="w-full bg-black border border-white/10 rounded-2xl p-4 pr-12 text-sm text-white outline-none focus:border-[#e6b32a]"
+                        value={confirmarNovaSenha}
+                        onChange={(e) => setConfirmarNovaSenha(e.target.value)}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowConfirmarSenha(!showConfirmarSenha)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#e6b32a] transition-colors p-1"
+                      >
+                        {showConfirmarSenha ? <FaEyeSlash /> : <FaEye />}
+                      </button>
+                    </div>
                   </div>
                 </>
               )}
