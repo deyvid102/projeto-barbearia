@@ -1,57 +1,48 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { api } from '../../services/Api.js';
+import { useTheme } from '../../components/ThemeContext';
 
 export default function LoginBarbeiro() {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Busca a lista de barbeiros
-      const response = await api.get('/barbeiros');
-      
-      // 2. Garante que estamos acessando .data e que seja um array
-      const listaBarbeiros = response.data || response || [];
-      
-      // 3. Procura o usuário (MongoDB usa _id)
-      const user = listaBarbeiros.find(b => b.email === email && b.senha === senha);
-
-      if (user) {
-        // CORREÇÃO CRÍTICA: MongoDB usa _id (com underline)
-        const idReal = user._id;
-
-        if (idReal) {
-          localStorage.setItem('barbeiroId', idReal);
-          console.log("Login bem-sucedido, ID:", idReal);
-          navigate(`/barbeiro/${idReal}`);
-        } else {
-          alert('Erro: ID do usuário não encontrado no banco.');
-        }
+      const user = await api.post('/barbeiros/login', { email, senha });
+      if (user.mensagem || user.error) {
+        alert(user.mensagem || user.error);
+        setLoading(false);
+        return;
+      }
+      if (user && user._id) {
+        localStorage.setItem('barbeiroId', user._id);
+        navigate(`/barbeiro/${user._id}`);
       } else {
-        alert('E-mail ou senha inválidos.');
+        alert('erro: dados de usuário não recebidos corretamente.');
       }
     } catch (error) {
-      console.error("Erro na autenticação:", error);
-      alert('Erro ao conectar com o servidor.');
+      console.error("erro na autenticação:", error);
+      alert('erro ao conectar com o servidor.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0a0a0a] p-6">
+    <div className="flex min-h-screen items-center justify-center bg-white dark:bg-[#0a0a0a] p-6 transition-colors duration-300">
       <form 
         onSubmit={handleLogin} 
-        className="w-full max-w-sm p-8 space-y-6 bg-[#111] rounded-[2.5rem] border border-white/5 shadow-2xl"
+        className="w-full max-w-sm p-8 space-y-6 bg-slate-50 dark:bg-[#111] rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-2xl"
       >
         <div className="text-center space-y-2">
-          <h2 className="text-xl font-black italic text-white tracking-tighter lowercase">barber.flow</h2>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">acesso profissional</p>
+          <h2 className="text-xl font-black italic text-slate-900 dark:text-white tracking-tighter lowercase">barber.flow</h2>
+          <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">acesso profissional</p>
         </div>
 
         <div className="space-y-3">
@@ -59,7 +50,7 @@ export default function LoginBarbeiro() {
             type="email" 
             placeholder="e-mail" 
             required 
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl text-sm text-white outline-none focus:border-[#e6b32a] transition-all"
+            className="w-full p-4 bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl text-sm text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-[#e6b32a] transition-all"
             value={email} 
             onChange={(e) => setEmail(e.target.value)} 
           />
@@ -67,7 +58,7 @@ export default function LoginBarbeiro() {
             type="password" 
             placeholder="senha" 
             required 
-            className="w-full p-4 bg-black border border-white/10 rounded-2xl text-sm text-white outline-none focus:border-[#e6b32a] transition-all"
+            className="w-full p-4 bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl text-sm text-slate-900 dark:text-white outline-none focus:border-slate-900 dark:focus:border-[#e6b32a] transition-all"
             value={senha} 
             onChange={(e) => setSenha(e.target.value)} 
           />
@@ -76,13 +67,13 @@ export default function LoginBarbeiro() {
         <button 
           type="submit" 
           disabled={loading}
-          className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl active:scale-95 transition-all disabled:opacity-50"
+          className="w-full py-4 bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black font-black uppercase text-xs rounded-2xl active:scale-95 transition-all disabled:opacity-50 shadow-lg"
         >
           {loading ? 'autenticando...' : 'entrar no painel'}
         </button>
 
-        <p className="text-[10px] text-center text-gray-500 uppercase font-bold tracking-tighter">
-          não tem conta? <Link to="/barbeiro/register" className="text-[#e6b32a] hover:underline">registre-se aqui</Link>
+        <p className="text-[10px] text-center text-slate-400 uppercase font-bold tracking-tighter">
+          não tem conta? <Link to="/barbeiro/register" className="text-slate-900 dark:text-[#e6b32a] font-black hover:underline">registre-se aqui</Link>
         </p>
       </form>
     </div>

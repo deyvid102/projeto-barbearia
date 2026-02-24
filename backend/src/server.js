@@ -7,6 +7,7 @@ import cors from "cors";
 import rotaClientes from "./routes/RouteCliente.js";
 import rotaAgendamento from "./routes/RouteAgendamento.js";
 import rotaBarbeiro from "./routes/routeBarbeiro.js";
+import RouteBarbearia from "./routes/RouteBarbearia.js"; // Nova rota adicionada
 
 // Carrega as variáveis do .env que está na raiz
 dotenv.config();
@@ -19,33 +20,32 @@ app.use(cors());
 app.use(express.json());
 
 // Configuração das Rotas no Express
-// Nota: Se dentro dos arquivos de rota você já definiu caminhos como "/clientes", "/barbeiros", etc., 
-// usamos o prefixo "/" aqui para que eles funcionem corretamente.
 app.use("/", rotaClientes);
 app.use("/", rotaBarbeiro);
 app.use("/", rotaAgendamento);
+app.use("/", RouteBarbearia); // Configuração da nova rota
 
 // Conexão com o banco
 const connectDB = async () => {
     try {
         const uri = process.env.MONGO_URI;
         if (!uri) {
-            console.error("❌ ERRO: MONGO_URI não encontrada no arquivo .env");
+            console.error("❌ erro: MONGO_URI não encontrada no arquivo .env");
             return;
         }
         await mongoose.connect(uri);
-        console.log('✅ Conectado ao mongoDB com sucesso!');
+        console.log('✅ conectado ao mongoDB com sucesso!');
     } catch (error) {
-        console.error('❌ ERRO ao conectar com mongoDB:', error.message);
+        console.error('❌ erro ao conectar com mongoDB:', error.message);
     }
 };
 
 connectDB();
 
 app.get("/", (req, res) => {
-    res.send("Servidor da Barbearia rodando corretamente via pasta src!");
+    res.send("servidor da barbearia rodando corretamente via pasta src!");
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor rodando em: http://localhost:${PORT}`);
+    console.log(`🚀 servidor rodando em: http://localhost:${PORT}`);
 });

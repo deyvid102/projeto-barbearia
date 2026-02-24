@@ -8,6 +8,7 @@ export default function ClienteDashboard() {
   const navigate = useNavigate();
   const [agendamentos, setAgendamentos] = useState([]);
   const [barbeiros, setBarbeiros] = useState([]);
+  const [cliente, setCliente] = useState(null); // Estado para guardar os dados do cliente
   const [loading, setLoading] = useState(true);
 
   // Estados dos Modais e Menus
@@ -37,10 +38,17 @@ export default function ClienteDashboard() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [resAgendados, resBarbeiros] = await Promise.all([
+      // Buscamos agendamentos, lista de barbeiros e os dados do próprio cliente
+      const [resAgendados, resBarbeiros, resClientes] = await Promise.all([
         api.get(`/agendamentos?fk_cliente=${id}`),
-        api.get('/barbeiros')
+        api.get('/barbeiros'),
+        api.get('/clientes') // Buscamos a lista para achar o nome do cliente logado
       ]);
+
+      const listaClientes = resClientes.data || resClientes || [];
+      const dadosCliente = listaClientes.find(c => String(c._id) === String(id));
+      
+      setCliente(dadosCliente);
       setBarbeiros(resBarbeiros.data || resBarbeiros || []);
       setAgendamentos(resAgendados.data || resAgendados || []);
     } catch (error) {
@@ -80,7 +88,9 @@ export default function ClienteDashboard() {
         
         <header className="flex justify-between items-center border-b border-white/5 pb-6 pt-4 relative">
           <div>
-            <h1 className="text-xl font-black italic lowercase tracking-tighter leading-none text-white">meus.cortes</h1>
+            <h1 className="text-xl font-black italic lowercase tracking-tighter leading-none text-white">
+              {cliente ? cliente.nome.toLowerCase() : 'carregando...'}
+            </h1>
             <p className="text-[9px] text-gray-500 uppercase font-bold tracking-[3px] mt-1">cliente</p>
           </div>
 
@@ -105,25 +115,25 @@ export default function ClienteDashboard() {
 
               {/* MENU SUSPENSO */}
               {isProfileOpen && (
-  <div className="absolute right-0 mt-3 w-48 bg-[#111] border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
-    <button 
-      onClick={() => { 
-        setIsProfileOpen(false); 
-        navigate(`/cliente/configuracoes/${id}`); // Rota conectada
-      }}
-      className="w-full px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#e6b32a] hover:bg-white/5 transition-all"
-    >
-      ⚙ configurações
-    </button>
-    <div className="h-[1px] bg-white/5 mx-2 my-1" />
-    <button 
-      onClick={() => { localStorage.clear(); navigate('/cliente/login'); }}
-      className="w-full px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-red-500/80 hover:bg-red-500/5 transition-all"
-    >
-      ✕ sair da conta
-    </button>
-  </div>
-)}
+                <div className="absolute right-0 mt-3 w-48 bg-[#111] border border-white/10 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-200">
+                  <button 
+                    onClick={() => { 
+                      setIsProfileOpen(false); 
+                      navigate(`/cliente/configuracoes/${id}`);
+                    }}
+                    className="w-full px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-gray-400 hover:text-[#e6b32a] hover:bg-white/5 transition-all"
+                  >
+                    ⚙ configurações
+                  </button>
+                  <div className="h-[1px] bg-white/5 mx-2 my-1" />
+                  <button 
+                    onClick={() => { localStorage.clear(); navigate('/cliente/login'); }}
+                    className="w-full px-4 py-3 text-left text-[10px] font-black uppercase tracking-widest text-red-500/80 hover:bg-red-500/5 transition-all"
+                  >
+                    ✕ sair da conta
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </header>

@@ -4,8 +4,7 @@ import mongoose from "mongoose";
 const ModelAgendamento = new mongoose.Schema({
     tipoCorte: {
         type: String,
-        enum: ['C', 'B', 'CB'],
-        required: true
+        required:true
     },
     datahora: {
         type: Date,
@@ -30,6 +29,11 @@ const ModelAgendamento = new mongoose.Schema({
     fk_barbeiro: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "barbeiro",
+        required: true
+    },
+    fk_barbearia: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'barbearia',
         required: true
     }
     
