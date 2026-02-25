@@ -19,6 +19,11 @@ const ModelBarbeiro = new mongoose.Schema({
         type: Boolean,
         default: false,
     },
+    status: {
+        type: String,
+        enum: ['A', 'S', 'C'],
+        default: 'A',
+    },
     fk_barbearia: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'barbearia',

@@ -4,7 +4,6 @@ import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { useTheme } from '../../components/ThemeContext';
 
-// ícones atualizados para uma estética mais moderna
 import { 
   IoPersonCircleOutline, 
   IoSettingsOutline, 
@@ -12,11 +11,12 @@ import {
   IoShieldCheckmarkOutline,
   IoCalendarOutline,
   IoTimeOutline,
-  IoStatsChartOutline,
   IoWalletOutline,
   IoCloseCircleOutline,
   IoCheckmarkDoneOutline,
-  IoFileTrayFullOutline // Ícone para o Histórico
+  IoFileTrayFullOutline,
+  IoFlashOutline,
+  IoStatsChartOutline
 } from 'react-icons/io5';
 
 export default function BarbeiroDashboard() {
@@ -78,84 +78,79 @@ export default function BarbeiroDashboard() {
 
   const getNomeCliente = (fk) => {
     const clienteId = fk?._id || fk;
-    return clientes.find(c => String(c._id) === String(clienteId))?.nome || 'cliente desconhecido';
+    return clientes.find(c => String(c._id) === String(clienteId))?.nome || 'desconhecido';
   };
 
   const handleUpdateStatus = async () => {
     const { agendamento, novoStatus } = statusTarget;
     if (!agendamento?._id) return;
-
     try {
-      // Alterado para PUT conforme o sucesso observado no componente Calendário
       await api.put(`/agendamentos/${agendamento._id}`, { status: novoStatus });
       setIsConfirmModalOpen(false);
       fetchData(getSafeId(), true);
     } catch (error) {
-      console.error("erro ao atualizar status:", error);
-      alert("erro ao atualizar status no servidor");
+      console.error("erro:", error);
     }
   };
 
   const hojeStr = new Date().toISOString().split('T')[0];
-  const pendentesHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr) && a.status === 'A');
+  const pendentesHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr) && a.status === 'A')
+    .sort((a, b) => new Date(a.datahora) - new Date(b.datahora));
+  
   const lucroHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr) && a.status === 'F').reduce((acc, curr) => acc + (curr.valor || 0), 0);
   const totalFuturo = agendamentos.filter(a => a.status === 'A').length;
+  const proximoCliente = pendentesHoje[0];
+
+  if (loading && !barbeiroData) return (
+    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+      <div className="w-8 h-8 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#070707] text-gray-100' : 'bg-gray-50 text-slate-900'}`}>
-      <div className="max-w-[1400px] mx-auto p-4 md:p-8 pb-24">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-20 font-sans transition-colors duration-300`}>
+      <div className="max-w-5xl mx-auto space-y-8">
         
-        <header className={`flex justify-between items-center border-b pb-8 pt-4 ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
-          <div className="animate-in slide-in-from-left duration-500">
-            <h1 className={`text-2xl md:text-4xl font-black italic lowercase tracking-tighter leading-none ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-              {barbeiroData?.nome || 'barbeiro'}<span className="text-[#e6b32a]">.</span>
+        {/* Header - Estático como no Admin */}
+        <header className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-8">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
+              {barbeiroData?.nome?.split(' ')[0] || 'barbeiro'}.<span className="text-[#e6b32a]">dash</span>
             </h1>
-            <p className={`text-[10px] uppercase font-black tracking-[4px] mt-2 ${isDarkMode ? 'text-[#e6b32a]' : 'text-slate-400'}`}>painel profissional</p>
+            <p className="text-[9px] text-gray-500 uppercase font-black tracking-[4px] mt-1">painel profissional</p>
           </div>
 
-          <div className="flex gap-2 md:gap-3 items-center">
-            {/* ÍCONE DE HISTÓRICO */}
+          <div className="flex items-center gap-3">
             <button 
-              onClick={() => navigate(`/barbeiro/historico/${getSafeId()}`)} 
-              className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${
-                isDarkMode ? 'bg-white/5 text-gray-400 hover:text-[#e6b32a]' : 'bg-white text-slate-400 shadow-sm border border-black/5 hover:text-[#e6b32a]'
+              onClick={() => navigate(`/barbeiro/historico/${getSafeId()}`)}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
+                isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-white border-slate-200 hover:border-black'
               }`}
-              title="Histórico de Atendimentos"
             >
-              <IoFileTrayFullOutline size={24} />
+              <IoFileTrayFullOutline size={20} />
             </button>
 
-            {/* BOTÃO USER COM HOVER REMODELADO */}
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl border flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95 group ${
-                  isProfileOpen 
-                  ? 'border-[#e6b32a] bg-[#e6b32a] text-black shadow-[0_0_20px_rgba(230,179,42,0.3)]' 
-                  : (isDarkMode 
-                      ? 'border-white/10 bg-white/5 text-gray-400 hover:border-[#e6b32a]/50 hover:bg-[#e6b32a]/5 hover:text-[#e6b32a]' 
-                      : 'border-black/10 bg-white text-slate-400 shadow-sm hover:border-[#e6b32a] hover:text-[#e6b32a]')
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
+                  isProfileOpen ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'
                 }`}
               >
-                <IoPersonCircleOutline size={28} className="transition-transform group-hover:rotate-12" />
+                <IoPersonCircleOutline size={24} />
               </button>
-
               {isProfileOpen && (
-                <div className={`absolute right-0 mt-3 w-64 border rounded-[2rem] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 ${
-                  isDarkMode ? 'bg-[#0d0d0d] border-white/10' : 'bg-white border-black/5'
-                }`}>
-                  <button onClick={() => navigate(`/barbeiro/configuracoes/${getSafeId()}`)} className={`w-full px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest flex items-center gap-3 hover:bg-[#e6b32a]/10 hover:text-[#e6b32a] transition-colors ${isDarkMode ? 'text-gray-300' : 'text-slate-600'}`}>
-                    <IoSettingsOutline size={18} /> configurações
+                <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-[#111] border dark:border-white/10 rounded-[2rem] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
+                  <button onClick={() => navigate(`/barbeiro/configuracoes/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors">
+                    <IoSettingsOutline size={16} /> configurações
                   </button>
-                  
                   {barbeiroData?.admin && (
-                    <button onClick={() => navigate(`/admin/dashboard/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-[#e6b32a] flex items-center gap-3 border-t border-white/5 hover:bg-[#e6b32a]/5">
-                      <IoShieldCheckmarkOutline size={18} /> painel admin
+                    <button onClick={() => navigate(`/admin/dashboard/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase text-[#e6b32a] flex items-center gap-3 border-t dark:border-white/5 hover:bg-[#e6b32a]/5">
+                      <IoShieldCheckmarkOutline size={16} /> painel admin
                     </button>
                   )}
-                  
-                  <button onClick={() => { localStorage.clear(); navigate('/barbeiro/login'); }} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase tracking-widest text-red-500 flex items-center gap-3 border-t border-white/5 hover:bg-red-500/5">
-                    <IoLogOutOutline size={18} /> sair do sistema
+                  <button onClick={() => { localStorage.clear(); navigate('/barbeiro/login'); }} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase text-red-500 flex items-center gap-3 border-t dark:border-white/5 hover:bg-red-500/5">
+                    <IoLogOutOutline size={16} /> encerrar sessão
                   </button>
                 </div>
               )}
@@ -163,107 +158,94 @@ export default function BarbeiroDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mt-8">
-          <div className="lg:col-span-1 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4">
-              <button onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)} className={`p-8 rounded-[2.5rem] border text-left hover:scale-[1.02] transition-all group ${
-                isDarkMode ? 'bg-[#0d0d0d] border-white/5 shadow-none' : 'bg-white border-black/5 shadow-xl shadow-black/5'
-              }`}>
-                <div className="flex justify-between items-start mb-4">
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">faturamento hoje</p>
-                  <IoWalletOutline size={20} className="text-green-500" />
-                </div>
-                <h2 className="text-3xl md:text-4xl font-black text-green-500 font-mono tracking-tighter">
-                  R$ {lucroHoje.toFixed(2)}
-                </h2>
-              </button>
-              
-              <button onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)} className={`p-8 rounded-[2.5rem] border text-left hover:scale-[1.02] transition-all group ${
-                isDarkMode ? 'bg-[#0d0d0d] border-white/5 shadow-none' : 'bg-white border-black/5 shadow-xl shadow-black/5'
-              }`}>
-                <div className="flex justify-between items-start mb-4">
-                  <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest">agenda pendente</p>
-                  <IoStatsChartOutline size={20} className="text-[#e6b32a]" />
-                </div>
-                <h2 className={`text-3xl md:text-4xl font-black font-mono tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {totalFuturo} <span className="text-[10px] text-slate-400 uppercase ml-1">cortes</span>
-                </h2>
-              </button>
+        {/* Métricas Padronizadas */}
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <NavCard 
+            label="estatísticas"
+            value={`r$ ${lucroHoje.toFixed(0)}`}
+            icon={<IoStatsChartOutline />}
+            textColor="text-emerald-500"
+            isDarkMode={isDarkMode}
+            onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)}
+          />
+
+          <NavCard 
+            label="agenda total"
+            value={totalFuturo}
+            icon={<IoCalendarOutline />}
+            isDarkMode={isDarkMode}
+            onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)}
+          />
+
+          <div className="col-span-2 lg:col-span-1 bg-[#e6b32a] p-6 rounded-[2.5rem] flex flex-col justify-between text-black relative overflow-hidden transition-all hover:scale-[1.03] active:scale-95 group shadow-lg shadow-[#e6b32a]/10">
+            <div className="relative z-10">
+              <p className="text-[10px] font-black uppercase opacity-60 mb-1">próximo cliente</p>
+              <h2 className="text-2xl font-black truncate tracking-tighter lowercase">
+                {proximoCliente ? getNomeCliente(proximoCliente.fk_cliente).split(' ')[0] : 'nenhum'}
+              </h2>
             </div>
+            <div className="mt-4 relative z-10">
+               {proximoCliente && (
+                 <span className="bg-black text-[#e6b32a] px-3 py-1 rounded-xl text-[11px] font-black font-mono">
+                  {new Date(proximoCliente.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h
+                 </span>
+               )}
+            </div>
+            <IoFlashOutline size={100} className="absolute -right-6 -bottom-6 opacity-10 transition-transform group-hover:rotate-12 group-hover:scale-110" />
           </div>
+        </div>
 
-          <div className="lg:col-span-2 space-y-6">
-            <div className="flex justify-between items-center px-4">
-              <div className="flex items-center gap-3">
-                <IoCalendarOutline className="text-[#e6b32a]" size={18} />
-                <h2 className={`text-[11px] font-black uppercase tracking-[0.4em] ${isDarkMode ? 'text-[#e6b32a]' : 'text-slate-500'}`}>próximos hoje</h2>
-              </div>
-              <span className="text-[10px] bg-[#e6b32a] text-black px-3 py-1 rounded-full font-black shadow-lg shadow-[#e6b32a]/20">
-                {pendentesHoje.length}
-              </span>
+        {/* Seção de Agendamentos */}
+        <div className="space-y-6">
+          <div className="flex justify-between items-end px-2">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-500">agendamentos de hoje</h3>
+              <div className="h-1 w-8 bg-[#e6b32a] mt-1 rounded-full" />
             </div>
-            
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              {loading ? (
-                <div className="col-span-full py-20 text-center text-[10px] uppercase font-black animate-pulse text-gray-500">
-                  sincronizando agenda...
-                </div>
-              ) : pendentesHoje.length > 0 ? (
-                pendentesHoje.map(a => (
-                  <div key={a._id} className={`p-7 rounded-[2.5rem] border transition-all flex flex-col justify-between h-full group ${
-                    isDarkMode 
-                    ? 'bg-[#0d0d0d] border-white/5 hover:border-[#e6b32a]/40' 
-                    : 'bg-white border-black/5 shadow-lg shadow-black/5 hover:border-[#e6b32a]/30'
-                  }`}>
-                    <div className="flex justify-between items-start mb-8">
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${
-                        isDarkMode ? 'bg-black border border-white/10 text-[#e6b32a]' : 'bg-gray-50 border border-black/5 text-[#e6b32a]'
-                      }`}>
-                        <IoTimeOutline size={24} />
-                      </div>
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'C', mensagem: 'remover da agenda de hoje?', tipo: 'cancelar' }); setIsConfirmModalOpen(true); }}
-                          className="w-11 h-11 rounded-xl border border-red-500/20 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                          title="cancelar"
-                        >
-                          <IoCloseCircleOutline size={20} />
-                        </button>
-                        <div className={`px-4 py-2 rounded-xl border text-right ${
-                          isDarkMode ? 'bg-black border-white/10' : 'bg-gray-50 border-black/5'
-                        }`}>
-                          <p className="text-[8px] text-slate-400 font-black uppercase">valor</p>
-                          <p className={`font-mono font-black text-sm ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>r$ {a.valor?.toFixed(2)}</p>
-                        </div>
-                      </div>
+            <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{pendentesHoje.length} pendentes</span>
+          </div>
+          
+          <div className="flex flex-col gap-3">
+            {pendentesHoje.length > 0 ? (
+              pendentesHoje.map(a => (
+                <div key={a._id} className={`p-5 rounded-[2rem] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:scale-[1.01] group ${
+                  isDarkMode ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/30' : 'bg-white border-slate-100 hover:border-black/10'
+                }`}>
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center transition-transform group-hover:rotate-12">
+                      <IoTimeOutline size={24} />
                     </div>
-
-                    <div className="mb-8">
-                      <p className="text-xs font-black text-[#e6b32a] uppercase tracking-widest mb-1">
+                    <div>
+                      <span className="text-[10px] font-black text-[#e6b32a] font-mono uppercase">
                         {new Date(a.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h
-                      </p>
-                      <h3 className={`text-2xl font-black lowercase tracking-tighter truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                      </span>
+                      <h3 className="text-xl font-black lowercase tracking-tighter leading-none mt-0.5">
                         {getNomeCliente(a.fk_cliente)}
                       </h3>
                     </div>
+                  </div>
 
+                  <div className="flex items-center gap-2">
                     <button 
-                      onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'F', mensagem: 'confirmar finalização do corte?', tipo: 'confirmar' }); setIsConfirmModalOpen(true); }}
-                      className="w-full py-5 bg-[#e6b32a] text-black font-black uppercase text-[10px] tracking-widest rounded-2xl hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-[#e6b32a]/20 flex items-center justify-center gap-2"
+                      onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'C', mensagem: 'remover agendamento?', tipo: 'cancelar' }); setIsConfirmModalOpen(true); }}
+                      className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95"
                     >
-                      <IoCheckmarkDoneOutline size={16} strokeWidth={40} />
-                      finalizar atendimento
+                      cancelar
+                    </button>
+                    <button 
+                      onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'F', mensagem: 'finalizar atendimento?', tipo: 'confirmar' }); setIsConfirmModalOpen(true); }}
+                      className="flex-[2] md:flex-none px-8 py-3 bg-[#e6b32a] text-black text-[9px] font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 shadow-lg shadow-[#e6b32a]/10"
+                    >
+                      <IoCheckmarkDoneOutline size={16} /> concluir
                     </button>
                   </div>
-                ))
-              ) : (
-                <div className={`col-span-full text-center py-20 border-2 border-dashed rounded-[3rem] ${
-                  isDarkMode ? 'border-white/5' : 'border-slate-200'
-                }`}>
-                  <p className="text-slate-400 text-[10px] uppercase font-black tracking-widest">nenhum agendamento pendente</p>
                 </div>
-              )}
-            </div>
+              ))
+            ) : (
+              <div className={`py-20 border-2 border-dashed rounded-[3rem] text-center ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                <p className="text-gray-400 text-[10px] uppercase font-black tracking-[4px]">agenda de hoje concluída</p>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -276,5 +258,25 @@ export default function BarbeiroDashboard() {
         tipo={statusTarget.tipo}
       />
     </div>
+  );
+}
+
+function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, isDarkMode }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`p-6 rounded-[2.5rem] border hover:scale-[1.03] active:scale-95 transition-all duration-300 text-left group flex flex-col justify-between ${
+        isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-slate-100 hover:border-black/10 shadow-sm'
+      }`}
+    >
+      <div className="flex justify-between items-center mb-6 text-gray-500 group-hover:text-[#e6b32a] transition-colors">
+        <div className="text-2xl">{icon}</div>
+        <span className="text-[8px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded-lg uppercase tracking-widest">detalhes</span>
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase text-gray-400 mb-1">{label}</p>
+        <h2 className={`text-2xl font-black tracking-tighter ${textColor}`}>{value}</h2>
+      </div>
+    </button>
   );
 }

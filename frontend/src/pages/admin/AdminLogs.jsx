@@ -2,110 +2,179 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
-import { FaHistory, FaCheckCircle, FaTimesCircle, FaArrowLeft } from 'react-icons/fa';
+import { 
+  FaCheckCircle, FaTimesCircle, FaArrowLeft, 
+  FaCalendarAlt, FaHistory 
+} from 'react-icons/fa';
+import { IoFilter } from 'react-icons/io5';
+
+import Pagination from '../../components/Pagination';
+import SidebarFiltros from '../../components/SideBarFiltros.jsx';
+import SelectPersonalizado from '../../components/SelectPersonalizado';
 
 export default function AdminLogs() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
+  
   const [logs, setLogs] = useState([]);
+  const [barbeiros, setBarbeiros] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Estados dos Filtros
+  const [filtroStatus, setFiltroStatus] = useState('TODOS');
+  const [filtroBarbeiro, setFiltroBarbeiro] = useState('todos');
+  const [filtroData, setFiltroData] = useState('');
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
 
   useEffect(() => {
-    fetchLogs();
+    fetchInitialData();
   }, []);
 
-  const fetchLogs = async () => {
+  const fetchInitialData = async () => {
     try {
       setLoading(true);
-      // Buscamos todos os agendamentos para filtrar o histórico
-      const res = await api.get('/agendamentos');
-      const dados = res.data || res || [];
-      
-      // Filtramos apenas o que não está mais em aberto ('A') e ordenamos pelos mais recentes
-      const historico = dados
-        .filter(a => a.status !== 'A')
-        .sort((a, b) => new Date(b.updatedAt || b.datahora) - new Date(a.updatedAt || a.datahora));
-      
-      setLogs(historico);
-    } catch (error) {
-      console.error("erro ao buscar logs:", error);
-    } finally {
-      setLoading(false);
-    }
+      const [resL, resB] = await Promise.all([api.get('/agendamentos'), api.get('/barbeiros')]);
+      setLogs((resL.data || resL || []).filter(a => a.status !== 'A'));
+      setBarbeiros(resB.data || resB || []);
+    } catch (error) { console.error(error); } finally { setLoading(false); }
   };
 
-  if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  const logsFiltrados = logs.filter(log => {
+    const matchStatus = filtroStatus === 'TODOS' ? true : log.status === filtroStatus;
+    const bId = log.fk_barbeiro?._id || log.fk_barbeiro;
+    const matchBarbeiro = filtroBarbeiro === 'todos' ? true : bId?.toString() === filtroBarbeiro;
+    const matchData = filtroData ? new Date(log.datahora).toISOString().split('T')[0] === filtroData : true;
+    return matchStatus && matchBarbeiro && matchData;
+  }).sort((a, b) => new Date(b.updatedAt || b.datahora) - new Date(a.updatedAt || a.datahora));
+
+  const currentLogs = logsFiltrados.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300">
-      <div className="max-w-[1000px] mx-auto p-4 md:p-8 pb-20">
-        
-        <header className="flex items-center gap-6 border-b border-slate-100 dark:border-white/5 pb-8 mb-12">
-          <button 
-            onClick={() => navigate(-1)} 
-            className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-[#e6b32a] transition-all"
-          >
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 p-4 md:p-8 font-sans transition-colors">
+      
+      <header className="max-w-6xl mx-auto flex justify-between items-center mb-12">
+        <div className="flex items-center gap-4">
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center hover:text-[#e6b32a] transition-all">
             <FaArrowLeft size={16} />
           </button>
           <div>
-            <h1 className="text-3xl font-black lowercase tracking-tighter">agendamentos.<span className="text-[#e6b32a]">logs</span></h1>
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-[4px] mt-2">histórico de movimentações</p>
+            <h1 className="text-xl font-black italic lowercase tracking-tighter text-gray-900 dark:text-white">
+              agendamentos.<span className="text-[#e6b32a]">logs</span>
+            </h1>
+            <p className="text-[8px] text-gray-500 uppercase font-black tracking-[3px]">histórico de movimentações</p>
           </div>
-        </header>
+        </div>
 
-        {logs.length === 0 ? (
-          <div className="text-center py-20 bg-slate-50 dark:bg-[#111] rounded-[3rem] border border-dashed border-slate-200 dark:border-white/10">
-            <p className="text-slate-400 uppercase font-black text-[10px] tracking-widest">nenhum registro encontrado</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {logs.map((log) => (
-              <div 
-                key={log._id}
-                className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-slate-100 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:shadow-lg transition-all"
-              >
-                <div className="flex items-center gap-5">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                    log.status === 'F' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
-                  }`}>
-                    {log.status === 'F' ? <FaCheckCircle size={20} /> : <FaTimesCircle size={20} />}
-                  </div>
-                  
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-black text-lg lowercase tracking-tight">
-                        {log.fk_cliente?.nome || 'cliente final'}
-                      </h4>
-                      <span className="text-[8px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 dark:bg-white/5 text-slate-400">
-                        {log.tipoCorte}
-                      </span>
+        <button 
+          onClick={() => setIsFilterOpen(true)}
+          className="w-10 h-10 flex items-center justify-center bg-[#e6b32a] text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#e6b32a]/20"
+        >
+          <IoFilter size={20} />
+        </button>
+      </header>
+
+      <main className="max-w-4xl mx-auto">
+        <div className="space-y-4">
+          {currentLogs.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-[#111] rounded-[2rem] border border-dashed border-black/10 dark:border-white/10">
+              <FaHistory className="mx-auto mb-4 opacity-10" size={40} />
+              <p className="text-gray-400 uppercase font-black text-[10px] tracking-widest">nenhum registro encontrado</p>
+            </div>
+          ) : (
+            <>
+              {currentLogs.map((log) => (
+                <div key={log._id} className="bg-white dark:bg-[#111] p-6 rounded-[2.5rem] border border-black/5 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-xl transition-all group">
+                  <div className="flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                      log.status === 'F' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
+                    }`}>
+                      {log.status === 'F' ? <FaCheckCircle size={24} /> : <FaTimesCircle size={24} />}
                     </div>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
-                      atendido por: <span className="text-[#e6b32a]">{log.fk_barbeiro?.nome || 'barbeiro'}</span>
+                    <div>
+                      <h4 className="font-black text-lg lowercase tracking-tight mb-1">{log.fk_cliente?.nome || 'cliente'}</h4>
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                        {log.tipoCorte} • <span className="text-[#e6b32a]">{log.fk_barbeiro?.nome}</span>
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5">
+                    <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                      <FaCalendarAlt className="text-[#e6b32a]" size={10} /> data agendada
+                    </p>
+                    <p className="text-xs font-bold font-mono">
+                      {new Date(log.datahora).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
-                </div>
 
-                <div className="flex flex-row md:flex-col items-center md:items-end justify-between border-t md:border-t-0 border-slate-50 dark:border-white/5 pt-4 md:pt-0">
-                  <span className="font-mono font-black text-lg">
-                    R$ {(log.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
-                  <p className="text-[9px] font-black text-slate-400 uppercase">
-                    {new Date(log.updatedAt || log.datahora).toLocaleString('pt-BR', {
-                      day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
-                    })}
-                  </p>
+                  <div className="text-right">
+                    <span className={`font-mono font-black text-xl ${log.status === 'F' ? 'text-emerald-500' : 'text-gray-400'}`}>
+                      R$ {(log.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                    <p className="text-[8px] font-black text-gray-400 uppercase mt-1">{log.status === 'F' ? 'Finalizado' : 'Cancelado'}</p>
+                  </div>
                 </div>
-              </div>
+              ))}
+              <Pagination currentPage={currentPage} totalPages={Math.ceil(logsFiltrados.length / itemsPerPage)} onPageChange={setCurrentPage} totalItems={logsFiltrados.length} />
+            </>
+          )}
+        </div>
+      </main>
+
+      {/* SIDEBAR DE FILTROS REUTILIZÁVEL */}
+      <SidebarFiltros 
+        isOpen={isFilterOpen} 
+        onClose={() => setIsFilterOpen(false)} 
+        title="filtros.logs"
+      >
+        <SelectPersonalizado 
+          label="profissional"
+          value={filtroBarbeiro}
+          onChange={(val) => { setFiltroBarbeiro(val); setCurrentPage(1); }}
+          options={[
+            { value: 'todos', label: 'Todos os Profissionais' },
+            ...barbeiros.map(b => ({ value: b._id, label: b.nome }))
+          ]}
+        />
+
+        <section>
+          <label className="text-[8px] font-black uppercase text-gray-500 block mb-3 tracking-[3px] ml-1">status</label>
+          <div className="grid grid-cols-1 gap-2">
+            {['TODOS', 'F', 'C'].map(s => (
+              <button 
+                key={s} 
+                onClick={() => { setFiltroStatus(s); setCurrentPage(1); }} 
+                className={`py-3 rounded-xl text-[8px] font-black uppercase border transition-all ${filtroStatus === s ? 'bg-[#e6b32a] border-[#e6b32a] text-black' : 'bg-transparent border-black/10 dark:border-white/10 text-gray-500'}`}
+              >
+                {s === 'TODOS' ? 'Todos' : s === 'F' ? 'Finalizados' : 'Cancelados'}
+              </button>
             ))}
           </div>
-        )}
-      </div>
+        </section>
+
+        <section>
+          <label className="text-[8px] font-black uppercase text-gray-500 block mb-3 tracking-[3px] ml-1">data específica</label>
+          <input 
+            type="date" 
+            value={filtroData} 
+            onChange={(e) => { setFiltroData(e.target.value); setCurrentPage(1); }} 
+            className="w-full bg-black/5 dark:bg-white/5 border border-black/10 dark:border-white/10 rounded-xl py-3 px-4 text-[10px] font-black text-gray-900 dark:text-white outline-none focus:border-[#e6b32a]" 
+          />
+        </section>
+
+        <button 
+          onClick={() => { setFiltroStatus('TODOS'); setFiltroBarbeiro('todos'); setFiltroData(''); setCurrentPage(1); }}
+          className="w-full text-[8px] font-black uppercase text-rose-500 tracking-widest opacity-60 hover:opacity-100"
+        >
+          limpar filtros
+        </button>
+      </SidebarFiltros>
     </div>
   );
 }

@@ -41,10 +41,10 @@ export default function BarbeiroGerenciamento() {
         const adminLogado = data.find(b => String(b._id) === String(id));
         
         if (adminLogado) {
-          const bId = adminLogado.fk_barbearia || adminLogado.barbearia_id;
+          const bId = adminLogado.fk_barbearia?._id || adminLogado.fk_barbearia || adminLogado.barbearia_id;
           setBarbeariaId(bId);
 
-          const filtrados = data.filter(b => String(b.fk_barbearia || b.barbearia_id) === String(bId));
+          const filtrados = data.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia || b.barbearia_id) === String(bId));
           const ordenados = filtrados.sort((a, b) => {
             if (String(a._id) === String(id)) return -1;
             if (String(b._id) === String(id)) return 1;

@@ -4,12 +4,17 @@ class ControlBarbearia {
     // Criar nova barbearia
     async criar(req, res) {
         try {
-            const { nome, servicos } = req.body;
+            const { nome, servicos, horarios, agenda_detalhada } = req.body;
             if (!nome) {
                 return res.status(400).json({ mensagem: "o nome da barbearia é obrigatório." });
             }
-            // Agora permite criar já com serviços se quiser
-            const novaBarbearia = await ModelBarbearia.create({ nome, servicos });
+            
+            const novaBarbearia = await ModelBarbearia.create({ 
+                nome, 
+                servicos, 
+                horarios, 
+                agenda_detalhada // Adicionado aqui para permitir criação já com agenda
+            });
             return res.status(201).json(novaBarbearia);
         } catch (error) {
             return res.status(500).json({ mensagem: "erro ao criar barbearia", erro: error.message });
@@ -26,7 +31,7 @@ class ControlBarbearia {
         }
     }
 
-    // Buscar uma barbearia específica por ID (Necessário para a tela de preços)
+    // Buscar por ID
     async listarPorId(req, res) {
         try {
             const { id } = req.params;
@@ -42,15 +47,17 @@ class ControlBarbearia {
         }
     }
 
-    // Atualizar barbearia (Nome ou Lista de Serviços)
+    // Atualizar barbearia (Melhorado para suportar agenda_detalhada)
     async atualizar(req, res) {
         try {
             const { id } = req.params;
-            const dadosAtualizados = req.body; // Pega tudo que vier (nome, servicos, etc)
+            const dadosAtualizados = req.body; 
 
+            // Usamos o $set explicitamente para garantir que o MongoDB 
+            // substitua o objeto da agenda em vez de tentar mesclar errado
             const barbearia = await ModelBarbearia.findByIdAndUpdate(
                 id, 
-                dadosAtualizados, 
+                { $set: dadosAtualizados }, 
                 { new: true, runValidators: true }
             );
 

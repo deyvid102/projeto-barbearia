@@ -3,7 +3,12 @@ const BASE_URL = 'http://localhost:3000';
 export const api = {
   get: async (endpoint) => {
     const res = await fetch(`${BASE_URL}${endpoint}`);
-    if (!res.ok) throw new Error(`erro ${res.status}`);
+    if (!res.ok) {
+      // Criamos um erro customizado que carrega o status (ex: 404)
+      const error = new Error(`erro ${res.status}`);
+      error.status = res.status; 
+      throw error;
+    }
     return res.json();
   },
   post: async (endpoint, data) => {
@@ -12,7 +17,11 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    if (!res.ok) throw new Error(`erro ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(`erro ${res.status}`);
+      error.status = res.status;
+      throw error;
+    }
     return res.json();
   },
   patch: async (endpoint, data) => {
@@ -23,7 +32,9 @@ export const api = {
     });
     if (!res.ok) {
       const txt = await res.text();
-      throw new Error(txt);
+      const error = new Error(txt);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   },
@@ -35,7 +46,9 @@ export const api = {
     });
     if (!res.ok) {
       const txt = await res.text();
-      throw new Error(txt);
+      const error = new Error(txt);
+      error.status = res.status;
+      throw error;
     }
     return res.json();
   },
@@ -43,7 +56,11 @@ export const api = {
     const res = await fetch(`${BASE_URL}${endpoint}`, {
       method: 'DELETE',
     });
-    if (!res.ok) throw new Error(`erro ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(`erro ${res.status}`);
+      error.status = res.status;
+      throw error;
+    }
     return res.json();
   }
 };

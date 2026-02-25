@@ -1,54 +1,64 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
+import { useTheme } from '../../components/ThemeContext';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell 
 } from 'recharts';
-import { IoArrowBack, IoTrendingUp, IoPeople, IoCalendar, IoPricetag, IoStatsChart } from 'react-icons/io5';
+import { 
+  IoArrowBack, IoPeople, IoCalendar, 
+  IoDocumentText, IoStatsChart, IoAnalytics, IoCut 
+} from 'react-icons/io5';
 
 export default function AdministradorDashboard() {
-  const { id } = useParams();
+  const { id } = useParams(); 
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme(); // Agora consumindo o tema corretamente
+  
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Paleta Premium Multicor
-  const COLORS = ['#e6b32a', '#8b5cf6', '#06b6d4', '#10b981', '#f43f5e'];
+  const COLORS = ['#e6b32a', '#3b82f6', '#10b981', '#8b5cf6', '#f43f5e'];
 
   useEffect(() => {
-    fetchGlobalData();
-  }, []);
+    if (id) fetchGlobalData();
+  }, [id]);
 
   const fetchGlobalData = async () => {
     try {
       setLoading(true);
-      const [resBarbeiros, resAgendamentos] = await Promise.all([
+      const resAdmin = await api.get(`/barbeiros/${id}`);
+      const adminData = resAdmin.data || resAdmin;
+      const targetId = (adminData.fk_barbearia?._id || adminData.fk_barbearia)?.toString();
+
+      const [resB, resA] = await Promise.all([
         api.get('/barbeiros'),
         api.get('/agendamentos')
       ]);
       
-      const bData = resBarbeiros.data || resBarbeiros || [];
-      const aData = resAgendamentos.data || resAgendamentos || [];
-      
-      setBarbeiros(bData);
-      setAgendamentos(aData);
+      const todosB = Array.isArray(resB.data) ? resB.data : (Array.isArray(resB) ? resB : []);
+      const todosA = Array.isArray(resA.data) ? resA.data : (Array.isArray(resA) ? resA : []);
+
+      const filtradosB = todosB.filter(b => (b.fk_barbearia?._id || b.fk_barbearia)?.toString() === targetId);
+      const filtradosA = todosA.filter(a => (a.fk_barbearia?._id || a.fk_barbearia)?.toString() === targetId);
+
+      setBarbeiros(filtradosB);
+      setAgendamentos(filtradosA);
     } catch (error) {
-      console.error("erro ao buscar dados administrativos:", error);
+      console.error("erro dashboard:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const statsPorBarbeiro = barbeiros.map((b, index) => {
-    const atendimentos = agendamentos.filter(a => 
-      (a.fk_barbeiro?._id || a.fk_barbeiro) === b._id && a.status === 'F'
-    );
-    const lucro = atendimentos.reduce((acc, curr) => acc + (curr.valor || 0), 0);
+    const atendimentos = agendamentos.filter(a => (a.fk_barbeiro?._id || a.fk_barbeiro)?.toString() === b._id?.toString() && a.status === 'F');
+    const lucro = atendimentos.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
     return { 
-      name: b.nome.split(' ')[0], 
-      fullName: b.nome,
+      name: b.nome ? b.nome.split(' ')[0] : 'prof.', 
+      fullName: b.nome || 'profissional',
       lucro, 
       qtd: atendimentos.length,
       color: COLORS[index % COLORS.length]
@@ -56,45 +66,27 @@ export default function AdministradorDashboard() {
   });
 
   const lucroTotal = statsPorBarbeiro.reduce((acc, curr) => acc + curr.lucro, 0);
-  const qtdAtendimentosTotal = agendamentos.filter(a => a.status === 'F').length;
-  const qtdHorariosAgendados = agendamentos.filter(a => a.status !== 'F' && a.status !== 'C').length;
-  const ticketMedio = lucroTotal / (qtdAtendimentosTotal || 1);
-
-  // Tooltip Customizado com Z-Index corrigido
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="bg-white dark:bg-[#0d0d0d] p-4 rounded-2xl border border-black/10 dark:border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.4)] backdrop-blur-xl z-[9999] pointer-events-none min-w-[150px]">
-          <p className="text-[10px] font-black uppercase tracking-widest text-[#e6b32a] mb-1">{data.fullName}</p>
-          <div className="space-y-0.5">
-            <p className="text-xl font-black font-mono dark:text-white text-black">R$ {data.lucro.toLocaleString()}</p>
-            <p className="text-[9px] text-gray-500 uppercase font-bold">{data.qtd} atendimentos</p>
-          </div>
-        </div>
-      );
-    }
-    return null;
-  };
+  const totalLogs = agendamentos.length;
+  const totalAgenda = agendamentos.filter(a => a.status !== 'F' && a.status !== 'C').length;
+  const totalServicos = agendamentos.filter(a => a.status === 'F').length;
 
   if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center transition-colors">
-      <div className="flex flex-col items-center gap-4">
-        <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
-        <p className="text-[#e6b32a] text-[10px] font-black uppercase tracking-[5px]">sincronizando central...</p>
-      </div>
+    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+      <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 p-4 md:p-8 font-sans pb-24 transition-colors">
-      <div className="max-w-6xl mx-auto space-y-6 md:space-y-10">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-24 font-sans transition-colors duration-300`}>
+      <div className="max-w-6xl mx-auto space-y-8">
         
         <header className="flex flex-col md:flex-row md:justify-between md:items-center border-b border-black/5 dark:border-white/5 pb-8 gap-6">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => navigate(`/barbeiro/${id}`)}
-              className="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 flex items-center justify-center border border-black/5 dark:border-white/10 text-gray-400 hover:text-[#e6b32a] transition-all shadow-sm"
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
+                isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-white border-slate-200 hover:border-black'
+              }`}
             >
               <IoArrowBack size={20} />
             </button>
@@ -102,169 +94,169 @@ export default function AdministradorDashboard() {
               <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
                 admin.<span className="text-[#e6b32a]">panel</span>
               </h1>
-              <p className="text-[9px] text-gray-400 uppercase font-black tracking-[4px] mt-1">central de inteligência</p>
+              <p className="text-[9px] text-gray-500 uppercase font-black tracking-[4px] mt-1">unidade ativa</p>
             </div>
           </div>
           
-          <div className="text-right">
-            <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest">faturamento global</p>
-            <p className="text-3xl font-black text-[#e6b32a] font-mono">
+          <div className="md:text-right">
+            <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">faturamento total</p>
+            <p className="text-4xl font-black text-[#e6b32a] font-mono tracking-tighter">
               R$ {lucroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
             </p>
           </div>
         </header>
 
-        {/* Cards de métricas com ROTAS e HOVERS restaurados */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Cards de Navegação com Mobile Optimization */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <button 
+            onClick={() => navigate(`/admin/analytics/${id}`)}
+            className="col-span-2 lg:col-span-1 bg-[#e6b32a] p-6 rounded-[2rem] text-left hover:scale-[1.03] active:scale-95 transition-all relative overflow-hidden group shadow-lg shadow-[#e6b32a]/10"
+          >
+            <IoAnalytics size={24} className="mb-4 text-black" />
+            <h2 className="text-xl font-black tracking-tighter text-black uppercase">analytics</h2>
+            <IoStatsChart size={90} className="absolute -right-4 -bottom-4 text-black/10 group-hover:rotate-12 transition-transform" />
+          </button>
+
+          <NavCard 
             onClick={() => navigate(`/admin/barbeiros/${id}`)}
-            className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 text-left hover:scale-[1.02] transition-all group shadow-sm hover:shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-4 text-gray-400 group-hover:text-[#e6b32a]">
-              <IoPeople size={20} />
-              <span className="text-[8px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded-lg uppercase tracking-widest">time</span>
-            </div>
-            <h2 className="text-4xl font-black tracking-tighter">{barbeiros.length}</h2>
-            <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">profissionais</p>
-          </button>
-
-          <button 
+            icon={<IoPeople/>} 
+            label="barbeiros" 
+            value={barbeiros.length} 
+            isDarkMode={isDarkMode}
+          />
+          
+          <NavCard 
             onClick={() => navigate(`/admin/logs/${id}`)}
-            className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 text-left hover:scale-[1.02] transition-all group shadow-sm hover:shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-4 text-gray-400 group-hover:text-[#10b981]">
-              <IoTrendingUp size={20} />
-              <span className="text-[8px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded-lg uppercase tracking-widest">logs</span>
-            </div>
-            <h2 className="text-4xl font-black tracking-tighter">{qtdAtendimentosTotal}</h2>
-            <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">finalizados</p>
-          </button>
+            icon={<IoDocumentText/>} 
+            label="logs" 
+            value={totalLogs} 
+            textColor="text-blue-400" 
+            isDarkMode={isDarkMode}
+          />
 
-          <button 
-            onClick={() => navigate(`/admin/horarios/${id}`)}
-            className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 text-left hover:scale-[1.02] transition-all group shadow-sm hover:shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-4 text-gray-400 group-hover:text-[#8b5cf6]">
-              <IoCalendar size={20} />
-              <span className="text-[8px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded-lg uppercase tracking-widest">agenda</span>
-            </div>
-            <h2 className="text-4xl font-black tracking-tighter">{qtdHorariosAgendados}</h2>
-            <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">pendentes</p>
-          </button>
+          <NavCard 
+            onClick={() => navigate(`/admin/agenda/${id}`)}
+            icon={<IoCalendar/>} 
+            label="agenda" 
+            value={totalAgenda} 
+            textColor="text-purple-400" 
+            isDarkMode={isDarkMode}
+          />
 
-          <button 
+          <NavCard 
             onClick={() => navigate(`/admin/valores/${id}`)}
-            className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 text-left hover:scale-[1.02] transition-all group shadow-sm hover:shadow-xl"
-          >
-            <div className="flex justify-between items-center mb-4 text-gray-400 group-hover:text-[#06b6d4]">
-              <IoPricetag size={20} />
-              <span className="text-[8px] font-black bg-black/5 dark:bg-white/5 px-2 py-1 rounded-lg uppercase tracking-widest">serviços</span>
-            </div>
-            <h2 className="text-4xl font-black tracking-tighter">R${ticketMedio.toFixed(0)}</h2>
-            <p className="text-[9px] text-gray-500 font-bold uppercase mt-1">ticket por corte</p>
-          </button>
+            icon={<IoCut/>} 
+            label="serviços" 
+            value={totalServicos} 
+            textColor="text-emerald-400" 
+            isDarkMode={isDarkMode}
+          />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Gráfico 1: Receita */}
-          <div className="bg-white dark:bg-[#111] p-8 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-xl relative overflow-visible">
-            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 flex items-center gap-2">
-                <IoStatsChart className="text-[#e6b32a]" /> receita por barbeiro
-              </h3>
-            </div>
-            <div className="h-72 overflow-visible">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={statsPorBarbeiro} margin={{ top: 20, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
-                  <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888', fontWeight: 'bold'}} />
-                  <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                  <Tooltip 
-                    cursor={{fill: 'rgba(255,255,255,0.05)'}} 
-                    content={<CustomTooltip />} 
-                    wrapperStyle={{ zIndex: 1000 }} 
-                    allowEscapeViewBox={{ x: true, y: true }}
-                  />
-                  <Bar dataKey="lucro" radius={[12, 12, 12, 12]} barSize={40}>
-                    {statsPorBarbeiro.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} fillOpacity={0.8} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
-          {/* Gráfico 2: Pizza */}
-          <div className="bg-white dark:bg-[#111] p-8 rounded-[2.5rem] border border-black/5 dark:border-white/5 shadow-xl relative overflow-visible">
-            <h3 className="text-[10px] font-black uppercase tracking-widest mb-8 text-gray-400 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" /> volume de atendimentos
+        {/* Gráficos Adaptados */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col h-[400px] ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-[#e6b32a]" /> faturamento/prof
             </h3>
-            <div className="h-72 relative overflow-visible">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statsPorBarbeiro}
-                    dataKey="qtd"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={70}
-                    outerRadius={100}
-                    paddingAngle={8}
-                    stroke="none"
-                  >
-                    {statsPorBarbeiro.map((entry, index) => (
-                      <Cell 
-                        key={`cell-${index}`} 
-                        fill={entry.color} 
-                        style={{ outline: 'none', filter: `drop-shadow(0px 4px 10px ${entry.color}44)` }}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 1000 }} allowEscapeViewBox={{ x: true, y: true }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">total</p>
-                <p className="text-3xl font-black tracking-tighter">{qtdAtendimentosTotal}</p>
-              </div>
+            <div className="flex-1 w-full min-h-0">
+              {statsPorBarbeiro.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={statsPorBarbeiro}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.03} />
+                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
+                    <Tooltip 
+                      cursor={{fill: 'rgba(150,150,150,0.1)'}} 
+                      content={<CustomTooltip isDarkMode={isDarkMode} />} 
+                    />
+                    <Bar dataKey="lucro" radius={[10, 10, 10, 10]} barSize={35}>
+                      {statsPorBarbeiro.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : <NoData />}
             </div>
           </div>
-        </div>
 
-        {/* Ranking de Performance */}
-        <div className="space-y-4">
-          <h3 className="text-[10px] font-black uppercase tracking-[4px] text-[#e6b32a] px-2">ranking de performance</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {statsPorBarbeiro.sort((a, b) => b.lucro - a.lucro).map((b, idx) => (
-              <div key={idx} className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 flex items-center justify-between group transition-all hover:bg-white dark:hover:bg-[#161616]">
-                <div className="flex items-center gap-4">
-                  <div 
-                    className="w-12 h-12 rounded-2xl flex items-center justify-center text-xl font-black italic shadow-inner"
-                    style={{ backgroundColor: `${b.color}15`, color: b.color }}
-                  >
-                    {idx + 1}
-                  </div>
-                  <div>
-                    <h4 className="font-black text-lg lowercase leading-none">{b.name}</h4>
-                    <p className="text-[9px] text-gray-400 uppercase font-black mt-1.5 tracking-wider">{b.qtd} serviços</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-xl font-black font-mono tracking-tighter">R$ {b.lucro.toLocaleString()}</p>
-                  <div className="w-16 h-1 bg-gray-100 dark:bg-white/5 rounded-full mt-2 overflow-hidden">
-                    <div 
-                      className="h-full rounded-full" 
-                      style={{ backgroundColor: b.color, width: `${(b.lucro / (lucroTotal || 1) * 100)}%` }} 
-                    />
-                  </div>
-                </div>
+          <div className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col h-[400px] relative ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
+            <h3 className="text-[10px] font-black uppercase tracking-widest mb-8 text-gray-500 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> volume total
+            </h3>
+            <div className="flex-1 w-full min-h-0 relative">
+              {statsPorBarbeiro.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={statsPorBarbeiro}
+                      dataKey="qtd"
+                      nameKey="name"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={70}
+                      outerRadius={95}
+                      paddingAngle={8}
+                      stroke="none"
+                    >
+                      {statsPorBarbeiro.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : <NoData />}
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">atendimentos</p>
+                <p className={`text-4xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{totalServicos}</p>
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, isDarkMode }) {
+  return (
+    <button 
+      onClick={onClick}
+      className={`p-5 rounded-[2rem] border hover:scale-[1.03] active:scale-95 transition-all duration-300 text-left group flex flex-col justify-between ${
+        isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-slate-100 hover:border-black/10 shadow-sm'
+      }`}
+    >
+      <div className="flex justify-between items-center mb-4 text-gray-500 group-hover:text-[#e6b32a] transition-colors">
+        <div className="text-xl">{icon}</div>
+      </div>
+      <div>
+        <p className="text-[9px] font-black uppercase text-gray-400 mb-1">{label}</p>
+        <h2 className={`text-2xl font-black tracking-tighter ${textColor}`}>{value}</h2>
+      </div>
+    </button>
+  );
+}
+
+function NoData() {
+  return (
+    <div className="h-full flex flex-col items-center justify-center opacity-10">
+      <IoAnalytics size={40} />
+      <p className="text-[10px] font-black uppercase mt-2">sem dados</p>
+    </div>
+  );
+}
+
+const CustomTooltip = ({ active, payload, isDarkMode }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    return (
+      <div className={`p-4 rounded-2xl border shadow-2xl relative z-50 ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-200'}`}>
+        <p className="text-[10px] font-black uppercase text-gray-500 mb-1">{data.fullName}</p>
+        <p className={`text-xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>R$ {data.lucro.toLocaleString('pt-BR')}</p>
+        <p className="text-[9px] text-[#e6b32a] uppercase font-bold mt-1">{data.qtd} serviços</p>
+      </div>
+    );
+  }
+  return null;
+};

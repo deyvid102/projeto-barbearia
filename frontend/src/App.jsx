@@ -23,9 +23,10 @@ import BarbeiroCalendario from './pages/barbeiro/BarbeiroCalendario';
 import AdministradorDashboard from './pages/admin/AdministradorDashboard';
 import BarbeiroGerenciamento from './pages/admin/BarbeiroGerenciamento';
 import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
-import AdminLogs from './pages/admin/AdminLogs'; // Novo Import
+import AdminLogs from './pages/admin/AdminLogs';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import BarbeariaAgenda from './pages/admin/BarbeariaAgenda'; // NOVO IMPORT
 
-// componente para proteger o registro
 const ProtectedRegisterRoute = ({ children }) => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
@@ -73,7 +74,9 @@ export default function App() {
           <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
           <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
-          <Route path="/admin/logs/:id" element={<AdminLogs />} /> {/* Nova Rota Ajustada */}
+          <Route path="/admin/logs/:id" element={<AdminLogs />} />
+          <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
+          <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} /> {/* ROTA DE AGENDA CONFIGURADA */}
         </Routes>
       </Router>
     </ThemeProvider>
