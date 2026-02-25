@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { useTheme } from '../../components/ThemeContext';
+import { FaWhatsapp, FaTrashAlt, FaCheck } from 'react-icons/fa';
 
 export default function BarbeiroCalendario() {
   const { id } = useParams();
@@ -12,42 +13,73 @@ export default function BarbeiroCalendario() {
   const [loading, setLoading] = useState(true);
   const [agendamentoSelecionado, setAgendamentoSelecionado] = useState(null);
   const [showModal, setShowModal] = useState(false);
-  const [itemParaFinalizar, setItemParaFinalizar] = useState(null);
+  const [acaoTarget, setAcaoTarget] = useState({ id_ag: null, status: '', mensagem: '' });
 
-  useEffect(() => { fetchAgendamentos(); }, [id]);
+  useEffect(() => { 
+    if (id) fetchAgendamentos(); 
+  }, [id]);
 
   const fetchAgendamentos = async () => {
     try {
       setLoading(true);
       const res = await api.get(`/agendamentos?fk_barbeiro=${id}&status=A`);
       const dados = res.data || res;
+      
       const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0); 
+      
       const agrupado = {};
 
-      (Array.isArray(dados) ? dados : []).forEach(ag => {
+      const agendamentosFiltrados = (Array.isArray(dados) ? dados : []).filter(ag => {
         const dataAg = new Date(ag.datahora);
-        if (dataAg >= hoje) {
-          const mes = dataAg.toLocaleDateString('pt-BR', { month: 'long' });
-          const dia = dataAg.toLocaleDateString('pt-BR', { day: '2-digit', weekday: 'short' });
-          if (!agrupado[mes]) agrupado[mes] = {};
-          if (!agrupado[mes][dia]) agrupado[mes][dia] = [];
-          agrupado[mes][dia].push({ ...ag, horaFormatada: dataAg.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) });
-        }
+        return ag.status === 'A' && dataAg >= hoje;
       });
+
+      agendamentosFiltrados.forEach(ag => {
+        const dataAg = new Date(ag.datahora);
+        const mes = dataAg.toLocaleDateString('pt-BR', { month: 'long' });
+        const dia = dataAg.toLocaleDateString('pt-BR', { day: '2-digit', weekday: 'short' });
+        
+        if (!agrupado[mes]) agrupado[mes] = {};
+        if (!agrupado[mes][dia]) agrupado[mes][dia] = [];
+        
+        agrupado[mes][dia].push({ 
+          ...ag, 
+          horaFormatada: dataAg.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) 
+        });
+      });
+      
       setAgenda(agrupado);
-    } catch (error) { console.error(error); } finally { setLoading(false); }
+    } catch (error) { 
+      console.error("erro ao carregar agenda:", error); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
-  const handleFinalizarAgendamento = async () => {
+  const handleProcessarStatus = async () => {
+    if (!acaoTarget.id_ag) return;
+
     try {
-      await api.patch(`/agendamentos/${itemParaFinalizar._id}`, { status: 'F' });
-      fetchAgendamentos();
+      // alterado para PUT para testar se a rota está registrada desta forma no servidor
+      await api.put(`/agendamentos/${acaoTarget.id_ag}`, { status: acaoTarget.status });
+      
       setShowModal(false);
       setAgendamentoSelecionado(null);
-    } catch (error) { alert("erro ao finalizar"); }
+      setAcaoTarget({ id_ag: null, status: '', mensagem: '' });
+      
+      await fetchAgendamentos();
+    } catch (error) { 
+      console.error("erro ao atualizar:", error);
+      alert("erro: a rota de atualização não foi encontrada (404). verifique o método no backend."); 
+    }
   };
 
-  if (loading) return <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center"><p className="text-[#e6b32a] font-black uppercase tracking-[5px] animate-pulse">sincronizando agenda...</p></div>;
+  if (loading) return (
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
+      <p className="text-[#e6b32a] font-black uppercase tracking-[5px] animate-pulse">sincronizando agenda...</p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300">
@@ -57,7 +89,7 @@ export default function BarbeiroCalendario() {
           <button onClick={() => navigate(-1)} className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-black dark:hover:border-[#e6b32a] transition-all">←</button>
           <div>
             <h1 className="text-3xl font-black lowercase tracking-tighter">minha.agenda</h1>
-            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-2">próximos 90 dias</p>
+            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-2">próximos dias</p>
           </div>
         </header>
 
@@ -71,7 +103,6 @@ export default function BarbeiroCalendario() {
               <section key={mes} className="space-y-8">
                 <h2 className="text-[#e6b32a] font-black uppercase text-xs tracking-[8px] border-l-4 border-[#e6b32a] pl-4">{mes}</h2>
                 
-                {/* Grid para os dias: No PC os dias podem ficar lado a lado */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                   {Object.entries(dias).map(([dia, lista]) => (
                     <div key={dia} className="space-y-4">
@@ -93,9 +124,40 @@ export default function BarbeiroCalendario() {
                                 <div className="mt-6 pt-6 border-t border-white/10 dark:border-black/10 animate-in fade-in slide-in-from-top-4">
                                   <p className="text-[10px] uppercase font-black mb-1 opacity-50">cliente</p>
                                   <p className="font-black text-2xl lowercase tracking-tighter mb-6">{item.fk_cliente?.nome || 'não identificado'}</p>
-                                  <div className="flex gap-3">
-                                    <button onClick={(e) => { e.stopPropagation(); setItemParaFinalizar(item); setShowModal(true); }} className="flex-1 py-4 bg-white dark:bg-black text-black dark:text-white text-[10px] font-black uppercase rounded-2xl active:scale-95 transition-all shadow-xl">finalizar corte</button>
-                                    <button onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/${item.fk_cliente?.telefone?.replace(/\D/g, '')}`, '_blank'); }} className="px-6 py-4 bg-white/10 dark:bg-black/10 text-[10px] font-black uppercase rounded-2xl">contato</button>
+                                  
+                                  <div className="flex flex-wrap gap-3">
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setAcaoTarget({ id_ag: item._id, status: 'F', mensagem: 'confirmar finalização do atendimento?' }); 
+                                        setShowModal(true); 
+                                      }} 
+                                      className="flex-1 min-w-[140px] py-4 bg-white dark:bg-black text-black dark:text-white text-[10px] font-black uppercase rounded-2xl active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
+                                    >
+                                      <FaCheck size={12} /> finalizar
+                                    </button>
+                                    
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        setAcaoTarget({ id_ag: item._id, status: 'C', mensagem: 'deseja cancelar este agendamento?' }); 
+                                        setShowModal(true); 
+                                      }} 
+                                      className="px-6 py-4 border border-red-500/30 text-red-500 text-[10px] font-black uppercase rounded-2xl hover:bg-red-500/10 transition-all flex items-center justify-center"
+                                    >
+                                      <FaTrashAlt size={12} />
+                                    </button>
+
+                                    <button 
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        const fone = item.fk_cliente?.telefone?.replace(/\D/g, '');
+                                        window.open(`https://wa.me/55${fone}`, '_blank'); 
+                                      }} 
+                                      className="px-6 py-4 bg-white/10 dark:bg-black/10 text-[10px] font-black uppercase rounded-2xl flex items-center justify-center"
+                                    >
+                                      <FaWhatsapp size={14} />
+                                    </button>
                                   </div>
                                 </div>
                               )}
@@ -112,7 +174,12 @@ export default function BarbeiroCalendario() {
         )}
       </div>
 
-      <ModalConfirmacao isOpen={showModal} onClose={() => setShowModal(false)} onConfirm={handleFinalizarAgendamento} mensagem={`confirmar finalização do atendimento?`} />
+      <ModalConfirmacao 
+        isOpen={showModal} 
+        onClose={() => setShowModal(false)} 
+        onConfirm={handleProcessarStatus} 
+        mensagem={acaoTarget.mensagem} 
+      />
     </div>
   );
 }

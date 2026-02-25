@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
-import { ThemeProvider } from './components/ThemeContext'; // Importe o Provedor
+import { ThemeProvider } from './components/ThemeContext';
 import SelectProfile from './pages/SelectProfile';
 
 // imports cliente
@@ -23,6 +23,7 @@ import BarbeiroCalendario from './pages/barbeiro/BarbeiroCalendario';
 import AdministradorDashboard from './pages/admin/AdministradorDashboard';
 import BarbeiroGerenciamento from './pages/admin/BarbeiroGerenciamento';
 import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
+import AdminLogs from './pages/admin/AdminLogs'; // Novo Import
 
 // componente para proteger o registro
 const ProtectedRegisterRoute = ({ children }) => {
@@ -39,7 +40,6 @@ const ProtectedRegisterRoute = ({ children }) => {
 
 export default function App() {
   return (
-    /* O ThemeProvider deve envolver tudo para que o contexto funcione */
     <ThemeProvider>
       <Router>
         <Routes>
@@ -73,6 +73,7 @@ export default function App() {
           <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
           <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
+          <Route path="/admin/logs/:id" element={<AdminLogs />} /> {/* Nova Rota Ajustada */}
         </Routes>
       </Router>
     </ThemeProvider>

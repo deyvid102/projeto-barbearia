@@ -7,7 +7,8 @@ import cors from "cors";
 import rotaClientes from "./routes/RouteCliente.js";
 import rotaAgendamento from "./routes/RouteAgendamento.js";
 import rotaBarbeiro from "./routes/routeBarbeiro.js";
-import RouteBarbearia from "./routes/RouteBarbearia.js"; // Nova rota adicionada
+import RouteBarbearia from "./routes/RouteBarbearia.js";
+import RouteLogs from "./routes/RouteLogs.js"; // Importação da nova rota de logs
 
 // Carrega as variáveis do .env que está na raiz
 dotenv.config();
@@ -23,7 +24,8 @@ app.use(express.json());
 app.use("/", rotaClientes);
 app.use("/", rotaBarbeiro);
 app.use("/", rotaAgendamento);
-app.use("/", RouteBarbearia); // Configuração da nova rota
+app.use("/", RouteBarbearia);
+app.use("/", RouteLogs); // Registro da rota de auditoria/logs
 
 // Conexão com o banco
 const connectDB = async () => {

@@ -54,7 +54,7 @@ export default function BarbeiroHistorico() {
             ←
           </button>
           <div>
-            <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter leading-none">meus.cortes</h1>
+            <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter leading-none">historico</h1>
             <p className="text-[10px] text-slate-400 dark:text-[#e6b32a] uppercase font-black tracking-[4px] mt-2">histórico completo</p>
           </div>
         </header>
