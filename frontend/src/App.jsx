@@ -12,7 +12,7 @@ import ClienteConfiguracoes from './pages/cliente/ClienteConfiguracoes';
 
 // imports barbeiro
 import LoginBarbeiro from './pages/barbeiro/LoginBarbeiro';
-import RegisterBarbeiro from './pages/barbeiro/RegisterBarbeiro';
+// RegisterBarbeiro removido conforme solicitado
 import BarbeiroDashboard from './pages/barbeiro/BarbeiroDashboard';
 import BarbeiroHistorico from './pages/barbeiro/BarbeiroHistorico';
 import BarbeiroEstatisticas from './pages/barbeiro/BarbeiroEstatisticas';
@@ -25,7 +25,7 @@ import BarbeiroGerenciamento from './pages/admin/BarbeiroGerenciamento';
 import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
-import BarbeariaAgenda from './pages/admin/BarbeariaAgenda'; // NOVO IMPORT
+import BarbeariaAgenda from './pages/admin/BarbeariaAgenda';
 
 const ProtectedRegisterRoute = ({ children }) => {
   const location = useLocation();
@@ -63,7 +63,7 @@ export default function App() {
           
           {/* rotas de barbeiro */}
           <Route path="/barbeiro/login" element={<LoginBarbeiro />} />
-          <Route path="/barbeiro/register" element={<RegisterBarbeiro />} />
+          {/* Rota de registro do barbeiro removida para segurança do fluxo */}
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
           <Route path="/barbeiro/historico/:id" element={<BarbeiroHistorico />} />
           <Route path="/barbeiro/estatisticas/:id" element={<BarbeiroEstatisticas />} />
@@ -76,7 +76,7 @@ export default function App() {
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
           <Route path="/admin/logs/:id" element={<AdminLogs />} />
           <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
-          <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} /> {/* ROTA DE AGENDA CONFIGURADA */}
+          <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
         </Routes>
       </Router>
     </ThemeProvider>

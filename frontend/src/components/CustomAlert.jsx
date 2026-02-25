@@ -1,8 +1,8 @@
 import React, { useEffect } from 'react';
-import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import { FaCheckCircle, FaTimesCircle, FaInfoCircle, FaTimes } from 'react-icons/fa';
 import { useTheme } from './ThemeContext';
 
-export default function CustomAlert({ message, type = 'success', onClose, duration = 3000 }) {
+export default function CustomAlert({ titulo, message, type = 'success', onClose, duration = 3000 }) {
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
@@ -20,7 +20,8 @@ export default function CustomAlert({ message, type = 'success', onClose, durati
       bg: isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
     },
     error: {
-      icon: <FaExclamationCircle className="text-red-500" />,
+      // Alterado para FaTimesCircle para exibir o "X" de erro
+      icon: <FaTimesCircle className="text-red-500" />,
       border: isDarkMode ? 'border-red-500/50' : 'border-red-500/40',
       bg: isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
     },
@@ -34,8 +35,6 @@ export default function CustomAlert({ message, type = 'success', onClose, durati
   const { icon, border, bg } = config[type] || config.success;
 
   return (
-    // Removido max-w-xs e adicionado md:max-w-md para PC. 
-    // w-max garante que ele não fique "esticado" se a mensagem for curta.
     <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] w-[92%] sm:w-max md:max-w-md animate-in fade-in slide-in-from-top-4 duration-300">
       <div className={`${bg} ${border} border rounded-[1.8rem] p-4 pr-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-4 transition-all duration-300 backdrop-blur-xl`}>
         
@@ -44,6 +43,11 @@ export default function CustomAlert({ message, type = 'success', onClose, durati
         </div>
 
         <div className="flex-1 min-w-0">
+          {titulo && (
+            <h4 className={`text-[10px] font-black uppercase tracking-[2px] mb-1 ${type === 'error' ? 'text-red-500' : 'text-[#e6b32a]'}`}>
+              {titulo}
+            </h4>
+          )}
           <p className={`text-[10px] md:text-[11px] font-black uppercase tracking-[2px] md:tracking-[3px] leading-snug whitespace-normal break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
             {message}
           </p>
