@@ -13,7 +13,8 @@ import {
   IoFileTrayFullOutline,
   IoAddCircleOutline,
   IoCalendarClearOutline,
-  IoChevronDownOutline
+  IoChevronDownOutline,
+  IoCloseOutline
 } from 'react-icons/io5';
 
 export default function ClienteDashboard() {
@@ -84,10 +85,10 @@ export default function ClienteDashboard() {
       const agendamentoOriginal = agendamentos.find(a => a._id === selectedId);
       await api.put(`/agendamentos/${selectedId}`, { ...agendamentoOriginal, status: 'C' });
       setIsModalOpen(false);
-      setAlertConfig({ show: true, titulo: 'cancelado', mensagem: 'seu agendamento foi removido.', tipo: 'success' });
+      setAlertConfig({ show: true, titulo: 'Sucesso', mensagem: 'Seu agendamento foi cancelado.', tipo: 'success' });
       fetchData(getSafeId());
     } catch (err) {
-      setAlertConfig({ show: true, titulo: 'erro', mensagem: 'não foi possível cancelar.', tipo: 'error' });
+      setAlertConfig({ show: true, titulo: 'Erro', mensagem: 'Não foi possível cancelar.', tipo: 'error' });
     }
   };
 
@@ -108,68 +109,54 @@ export default function ClienteDashboard() {
   );
 
   return (
-    <div className={`min-h-screen p-4 md:p-8 lg:p-12 pb-24 font-sans transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'}`}>
-      <div className="max-w-6xl mx-auto space-y-10">
+    <div className={`min-h-screen p-4 md:p-6 pb-24 font-sans transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'}`}>
+      <div className="max-w-[1200px] mx-auto space-y-6">
         
-        <header className={`flex flex-row justify-between items-center border-b pb-8 pt-4 ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
+        {/* TOP BAR UNIFICADA */}
+        <header className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-4">
           <div>
-            <h1 className="text-2xl md:text-4xl font-black italic lowercase tracking-tighter leading-none">
+            <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
               {cliente?.nome?.split(' ')[0] || 'cliente'}.<span className="text-[#e6b32a]">me</span>
             </h1>
-            <p className="text-[8px] md:text-[10px] text-gray-500 uppercase font-black tracking-[3px] md:tracking-[5px] mt-2">meu painel pessoal</p>
+            <p className="hidden md:block text-[8px] text-gray-500 uppercase font-black tracking-[3px] mt-1">meu painel pessoal</p>
           </div>
 
           <div className="flex items-center gap-2 md:gap-4">
-            <button 
-              onClick={() => navigate(`/cliente/historico/${getSafeId()}`)}
-              className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                isDarkMode 
-                  ? 'bg-white/5 border-white/10 hover:border-[#e6b32a] hover:bg-white/10' 
-                  : 'bg-white border-slate-200 hover:border-black hover:bg-slate-50 shadow-sm'
-              }`}
-            >
-              <IoFileTrayFullOutline className="text-lg md:text-2xl" />
-            </button>
+            <div className="flex items-center gap-1.5 md:gap-2 border-r border-black/5 dark:border-white/5 pr-3 md:pr-4 mr-1 md:mr-2">
+              <button 
+                title="Histórico"
+                onClick={() => navigate(`/cliente/historico/${getSafeId()}`)} 
+                className={`w-9 h-9 md:w-10 md:h-10 rounded-xl flex items-center justify-center border transition-all active:scale-90 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}
+              >
+                <IoFileTrayFullOutline size={20} />
+              </button>
+            </div>
 
             <div className="relative" ref={menuRef}>
               <button 
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className={`flex items-center gap-3 p-1.5 md:p-2 md:pr-4 rounded-xl md:rounded-2xl border transition-all duration-300 active:scale-95 shadow-sm
-                  ${isProfileOpen 
-                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-[#e6b32a] dark:text-black dark:border-[#e6b32a]' 
-                    : isDarkMode 
-                      ? 'bg-white/5 border-white/10 text-white hover:border-[#e6b32a]/60' 
-                      : 'bg-white border-slate-200 text-slate-900 hover:border-slate-400'
-                  }`}
+                onClick={() => setIsProfileOpen(!isProfileOpen)} 
+                className={`flex items-center gap-2 p-1.5 rounded-xl border transition-all duration-300 active:scale-95 shadow-sm ${isProfileOpen ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}
               >
-                <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center transition-colors ${isProfileOpen ? 'bg-white/20' : 'bg-[#e6b32a] text-black'}`}>
-                  <IoPersonCircleOutline className="text-xl md:text-2xl" />
+                <div className={`w-6 h-6 md:w-7 md:h-7 rounded-lg flex items-center justify-center ${isProfileOpen ? 'bg-white/20' : 'bg-[#e6b32a] text-black'}`}>
+                  <IoPersonCircleOutline size={20} />
                 </div>
-                <div className="hidden sm:block text-left">
-                  <p className="text-[8px] font-black uppercase opacity-50 leading-none">cliente</p>
-                  <p className="text-[11px] font-bold truncate max-w-[80px]">{cliente?.nome?.split(' ')[0] || 'perfil'}</p>
-                </div>
-                <IoChevronDownOutline size={14} className={`hidden sm:block transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
+                <IoChevronDownOutline size={12} className={`transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isProfileOpen && (
-                <div className={`absolute right-0 mt-3 w-60 border rounded-[2rem] shadow-2xl z-50 animate-in fade-in zoom-in-95 overflow-hidden ${
-                  isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-100'
-                }`}>
-                  <div className="p-5 border-b border-black/5 dark:border-white/5">
-                    <p className="text-[9px] font-black uppercase tracking-[3px] text-[#e6b32a] mb-1">email</p>
-                    <p className="text-xs font-bold truncate opacity-80">{cliente?.email}</p>
+                <div className={`absolute right-0 mt-3 w-56 border rounded-3xl shadow-2xl z-50 overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-100'}`}>
+                  <div className="p-4 border-b border-black/5 dark:border-white/5">
+                    <p className="text-[8px] font-black uppercase text-[#e6b32a] mb-1">perfil logado</p>
+                    <p className="text-[11px] font-bold truncate opacity-80">{cliente?.email}</p>
                   </div>
-
                   <div className="p-2">
-                    <button onClick={() => { navigate(`/cliente/configuracoes/${getSafeId()}`); setIsProfileOpen(false); }} className={`w-full px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-3 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
-                      <IoSettingsOutline size={18} /> configurações
+                    <button onClick={() => { navigate(`/cliente/configuracoes/${getSafeId()}`); setIsProfileOpen(false); }} className="w-full flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold hover:opacity-70 transition-colors">
+                      <IoSettingsOutline size={16} /> configurações
                     </button>
                   </div>
-
                   <div className="p-2 border-t border-black/5 dark:border-white/5">
-                    <button onClick={() => { localStorage.removeItem('clienteId'); navigate('/cliente/login'); }} className="w-full px-4 py-3 rounded-xl text-[10px] font-black uppercase text-red-500 flex items-center gap-3 hover:bg-red-500/10 transition-colors">
-                      <IoLogOutOutline size={18} /> encerrar sessão
+                    <button onClick={() => { localStorage.clear(); navigate('/cliente/login'); }} className="w-full px-3 py-2.5 rounded-lg text-[9px] font-black uppercase text-red-500 flex items-center gap-2 hover:bg-red-500/10 transition-colors">
+                      <IoLogOutOutline size={16} /> encerrar sessão
                     </button>
                   </div>
                 </div>
@@ -178,76 +165,78 @@ export default function ClienteDashboard() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-          <div className="lg:col-span-4 space-y-6">
-            {/* BOTÃO REDIMENSIONADO AQUI */}
+        {/* LAYOUT PRINCIPAL */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          
+          {/* COLUNA ESQUERDA: AÇÕES E RESUMO */}
+          <div className="lg:col-span-4 space-y-4">
             <button 
               onClick={() => navigate(`/cliente/novo-agendamento/${getSafeId()}`)}
-              className={`w-full py-6 md:py-8 font-black uppercase text-[10px] md:text-xs tracking-[3px] rounded-3xl shadow-xl transition-all duration-500 flex flex-col items-center justify-center gap-3 group active:scale-95
+              className={`w-full py-8 md:py-12 font-black uppercase text-[10px] md:text-xs tracking-[3px] rounded-[2rem] shadow-xl transition-all duration-500 flex flex-col items-center justify-center gap-4 group active:scale-95
                 ${isDarkMode 
                   ? 'bg-[#e6b32a] text-black hover:bg-[#ffc832] hover:shadow-[#e6b32a]/20' 
                   : 'bg-slate-900 text-white hover:bg-black hover:shadow-slate-900/20'
                 }`}
             >
-              <IoAddCircleOutline size={28} className="group-hover:rotate-90 transition-transform duration-500 ease-out" />
+              <IoAddCircleOutline size={32} className="group-hover:rotate-90 transition-transform duration-500 ease-out" />
               <span>novo agendamento</span>
             </button>
 
-            <div className={`hidden lg:block p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100'}`}>
+            <div className={`p-6 rounded-[2rem] border hidden md:block ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100'}`}>
               <div className="flex items-center gap-3 text-[#e6b32a] mb-2">
-                <IoCalendarClearOutline size={20} />
-                <span className="text-[10px] font-black uppercase tracking-widest">resumo</span>
+                <IoCalendarClearOutline size={18} />
+                <span className="text-[9px] font-black uppercase tracking-widest">status da conta</span>
               </div>
-              <p className="text-2xl font-black lowercase tracking-tighter">
-                {ativos.length} {ativos.length === 1 ? 'corte agendado' : 'cortes agendados'}
+              <p className="text-xl font-black lowercase tracking-tighter leading-tight">
+                {ativos.length} {ativos.length === 1 ? 'compromisso ativo' : 'compromissos ativos'}
               </p>
             </div>
           </div>
 
-          <div className="lg:col-span-8 space-y-6">
-            <div className="flex justify-between items-end px-2">
-              <div>
-                <h3 className="text-[10px] md:text-[11px] font-black uppercase tracking-[3px] text-gray-500">horários reservados</h3>
-                <div className="h-1 w-10 bg-[#e6b32a] mt-1 rounded-full" />
-              </div>
+          {/* COLUNA DIREITA: LISTAGEM */}
+          <div className="lg:col-span-8 space-y-4">
+            <div className="flex items-center justify-between px-2">
+              <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-500 flex items-center gap-2">
+                <div className="w-1.5 h-1.5 bg-[#e6b32a] rounded-full" />
+                próximos horários
+              </h3>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 gap-4">
+            <div className="space-y-3">
               {ativos.length > 0 ? (
                 ativos.map(a => (
-                  <div key={a._id} className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-all hover:scale-[1.01] group ${
+                  <div key={a._id} className={`p-5 md:p-6 rounded-[2rem] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:scale-[1.01] group ${
                     isDarkMode ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/30' : 'bg-white border-slate-100 hover:border-black/10 shadow-sm'
                   }`}>
-                    <div className="flex items-center gap-5">
-                      <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl md:rounded-3xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center transition-transform group-hover:rotate-6">
-                        <IoTimeOutline className="text-3xl md:text-4xl" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center transition-transform group-hover:rotate-6 shrink-0">
+                        <IoTimeOutline size={28} />
                       </div>
-                      <div>
-                        <span className="text-[10px] md:text-[11px] font-black text-[#e6b32a] font-mono uppercase">
+                      <div className="min-w-0">
+                        <span className="text-[10px] font-black text-[#e6b32a] font-mono uppercase">
                           {new Date(a.datahora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
-                        <h3 className="text-2xl md:text-3xl font-black lowercase tracking-tighter leading-none mt-1">
+                        <h3 className="text-xl md:text-2xl font-black lowercase tracking-tighter leading-none mt-1 truncate">
                           {getNomeBarbeiro(a.fk_barbeiro)}
                         </h3>
-                        <p className="text-[10px] text-gray-500 font-black uppercase tracking-widest mt-2 flex items-center gap-2">
-                          <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse" />
-                          {a.tipoCorte === 'C' ? 'cabelo' : a.tipoCorte === 'B' ? 'barba' : 'cabelo + barba'} • r$ {a.valor?.toFixed(2)}
+                        <p className="text-[9px] text-gray-500 font-bold uppercase mt-1.5 tracking-wider flex items-center gap-2">
+                          <span className="w-1 h-1 bg-emerald-500 rounded-full" />
+                          {a.tipoCorte === 'C' ? 'cabelo' : a.tipoCorte === 'B' ? 'barba' : 'completo'} • R$ {a.valor?.toFixed(2)}
                         </p>
                       </div>
                     </div>
 
                     <button 
                       onClick={() => handleOpenModal(a._id)}
-                      className="w-full sm:w-auto px-8 py-4 rounded-2xl border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center gap-2"
+                      className="w-full sm:w-auto px-6 py-3 rounded-xl border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
                     >
                       cancelar
                     </button>
                   </div>
                 ))
               ) : (
-                <div className={`col-span-full py-24 border-2 border-dashed rounded-[3rem] text-center ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
-                  <p className="text-gray-400 text-[10px] md:text-[12px] uppercase font-black tracking-[4px]">você não tem agendamentos ativos</p>
-                  <p className="text-[9px] md:text-[10px] text-gray-500 font-bold uppercase mt-2 tracking-widest">seus próximos cortes aparecerão aqui</p>
+                <div className={`py-20 border-2 border-dashed rounded-[2.5rem] text-center ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                  <p className="text-gray-400 text-[10px] uppercase font-black tracking-[4px]">nenhum agendamento pendente</p>
                 </div>
               )}
             </div>
@@ -255,6 +244,7 @@ export default function ClienteDashboard() {
         </div>
       </div>
 
+      {/* MODAL DE CONFIRMAÇÃO (REUTILIZANDO O ESTILO MOBILE-FIRST) */}
       <ModalConfirmacao 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

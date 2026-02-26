@@ -1,84 +1,106 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
+import CustomAlert from '../../components/CustomAlert';
+import AdminLayout from '../../layout/layout';
+
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
-  PieChart, Pie, Cell 
-} from 'recharts';
-import { 
-  IoArrowBack, IoPeople, IoCalendar, 
-  IoDocumentText, IoStatsChart, IoAnalytics, IoCut, 
-  IoCheckmarkCircle, IoCloseCircle 
+  IoSaveOutline, IoCreateOutline, IoCloseOutline, 
+  IoWallet, IoLockClosed 
 } from 'react-icons/io5';
 
 export default function AdministradorDashboard() {
   const { id } = useParams(); 
-  const navigate = useNavigate();
   const { isDarkMode } = useTheme(); 
   
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
-  const [totalServicosCadastrados, setTotalServicosCadastrados] = useState(0);
+  const [clientes, setClientes] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  const [editingAg, setEditingAg] = useState(null);
+  const [editForm, setEditForm] = useState({});
+  const [alertConfig, setAlertConfig] = useState({ show: false, titulo: '', mensagem: '', tipo: 'success' });
+  
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const horaInicio = 8;
+  const totalHoras = 15; 
+  const alturaLinhaPx = 90; 
 
-  const COLORS = ['#e6b32a', '#3b82f6', '#10b981', '#8b5cf6', '#f43f5e'];
+  const horariosEscopo = Array.from({ length: totalHoras }, (_, i) => {
+    const hora = i + horaInicio;
+    return `${hora < 10 ? '0' + hora : hora}:00`;
+  });
 
   useEffect(() => {
     if (id) fetchGlobalData();
+    const timer = setInterval(() => setCurrentTime(new Date()), 60000);
+    return () => clearInterval(timer);
   }, [id]);
 
   const fetchGlobalData = async () => {
     try {
-      setLoading(true);
       const resAdmin = await api.get(`/barbeiros/${id}`);
       const adminData = resAdmin.data || resAdmin;
-      const targetId = (adminData.fk_barbearia?._id || adminData.fk_barbearia)?.toString();
+      const barbeariaId = (adminData.fk_barbearia?._id || adminData.fk_barbearia)?.toString();
 
-      const [resB, resA, resS] = await Promise.all([
+      const [resB, resA, resC] = await Promise.all([
         api.get('/barbeiros'),
         api.get('/agendamentos'),
-        api.get('/servicos') // Ajuste o endpoint se for /valores ou outro
+        api.get('/clientes')
       ]);
       
-      const todosB = Array.isArray(resB.data) ? resB.data : (Array.isArray(resB) ? resB : []);
-      const todosA = Array.isArray(resA.data) ? resA.data : (Array.isArray(resA) ? resA : []);
-      const todosS = Array.isArray(resS.data) ? resS.data : (Array.isArray(resS) ? resS : []);
+      const todosB = resB.data || resB || [];
+      const todosA = resA.data || resA || [];
+      const todosC = resC.data || resC || [];
 
-      const filtradosB = todosB.filter(b => (b.fk_barbearia?._id || b.fk_barbearia)?.toString() === targetId);
-      const filtradosA = todosA.filter(a => (a.fk_barbearia?._id || a.fk_barbearia)?.toString() === targetId);
-      // Filtra os tipos de serviços cadastrados para esta barbearia
-      const filtradosS = todosS.filter(s => (s.fk_barbearia?._id || s.fk_barbearia)?.toString() === targetId);
-
-      setBarbeiros(filtradosB);
-      setAgendamentos(filtradosA);
-      setTotalServicosCadastrados(filtradosS.length);
+      setBarbeiros(todosB.filter(b => (b.fk_barbearia?._id || b.fk_barbearia)?.toString() === barbeariaId));
+      setAgendamentos(todosA.filter(a => (a.fk_barbearia?._id || a.fk_barbearia)?.toString() === barbeariaId));
+      setClientes(todosC);
     } catch (error) {
-      console.error("erro dashboard:", error);
+      console.error("Erro fetch:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const statsPorBarbeiro = barbeiros.map((b, index) => {
-    const atendimentos = agendamentos.filter(a => (a.fk_barbeiro?._id || a.fk_barbeiro)?.toString() === b._id?.toString() && a.status === 'F');
-    const lucro = atendimentos.reduce((acc, curr) => acc + (Number(curr.valor) || 0), 0);
-    return { 
-      name: b.nome ? b.nome.split(' ')[0] : 'prof.', 
-      fullName: b.nome || 'profissional',
-      lucro, 
-      qtd: atendimentos.length,
-      color: COLORS[index % COLORS.length]
-    };
-  });
+  const getNomeExibicao = (ag) => {
+    if (ag.nomeCliente) return ag.nomeCliente;
+    const clienteId = ag.fk_cliente?._id || ag.fk_cliente;
+    const encontrado = clientes.find(c => String(c._id) === String(clienteId));
+    return encontrado ? encontrado.nome : 'Cliente';
+  };
 
-  // Lógica para Agenda de Hoje
+  const handleEditClick = (ag) => {
+    setEditingAg(ag);
+    setEditForm({ ...ag });
+  };
+
+  const handleSaveEdit = async () => {
+    try {
+      const payload = { status: editForm.status, valor: editForm.valor };
+      await api.put(`/agendamentos/${editingAg._id}`, payload);
+      setEditingAg(null);
+      setAlertConfig({ show: true, titulo: 'Sucesso', mensagem: 'Registro atualizado.', tipo: 'success' });
+      fetchGlobalData();
+    } catch (err) {
+      setAlertConfig({ show: true, titulo: 'Erro', mensagem: 'Falha ao salvar.', tipo: 'error' });
+    }
+  };
+
+  const calculateTimelinePosition = () => {
+    const hours = currentTime.getHours();
+    const minutes = currentTime.getMinutes();
+    if (hours < horaInicio || hours >= (horaInicio + totalHoras)) return null;
+    const diffHours = hours - horaInicio;
+    return 45 + (diffHours * alturaLinhaPx) + ((minutes / 60) * alturaLinhaPx);
+  };
+
+  const linePosition = calculateTimelinePosition();
   const hojeStr = new Date().toISOString().split('T')[0];
-  const temAgendaHoje = agendamentos.some(a => a.datahora.startsWith(hojeStr) && a.status !== 'C');
-  const dataHojeFormatada = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-
-  const lucroTotal = statsPorBarbeiro.reduce((acc, curr) => acc + curr.lucro, 0);
-  const totalLogs = agendamentos.length;
+  const agendamentosHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr));
+  const dataFormatada = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
@@ -87,181 +109,180 @@ export default function AdministradorDashboard() {
   );
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-24 font-sans transition-colors duration-300`}>
-      <div className="max-w-6xl mx-auto space-y-8">
+    <AdminLayout>
+      <div className="p-4 md:p-8 flex flex-col h-full">
         
-        <header className="flex flex-col md:flex-row md:justify-between md:items-center border-b border-black/5 dark:border-white/5 pb-8 gap-6">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate(`/barbeiro/${id}`)}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-white border-slate-200 hover:border-black'
-              }`}
-            >
-              <IoArrowBack size={20} />
-            </button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
-                admin.<span className="text-[#e6b32a]">panel</span>
-              </h1>
-              <p className="text-[9px] text-gray-500 uppercase font-black tracking-[4px] mt-1">unidade ativa</p>
-            </div>
+        {/* HEADER RESTAURADO */}
+        <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-8">
+          <div>
+            <h1 className="text-2xl font-black italic lowercase tracking-tighter">admin.<span className="text-[#e6b32a]">escala</span></h1>
+            <p className="text-[10px] font-bold text-[#e6b32a] uppercase tracking-[2px] mt-1">{dataFormatada}</p>
           </div>
-          
-          <div className="md:text-right">
-            <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest">faturamento total</p>
-            <p className="text-4xl font-black text-[#e6b32a] font-mono tracking-tighter">
-              R$ {lucroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-            </p>
+          <div className="flex gap-4">
+            <div className={`px-5 py-3 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+              <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">agendamentos hoje</p>
+              <p className="text-xl font-black">{agendamentosHoje.length}</p>
+            </div>
           </div>
         </header>
 
-        <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <button 
-            onClick={() => navigate(`/admin/analytics/${id}`)}
-            className="col-span-2 lg:col-span-1 bg-[#e6b32a] p-6 rounded-[2rem] text-left hover:scale-[1.03] active:scale-95 transition-all relative overflow-hidden group shadow-lg shadow-[#e6b32a]/10"
-          >
-            <IoAnalytics size={24} className="mb-4 text-black" />
-            <h2 className="text-xl font-black tracking-tighter text-black uppercase">analytics</h2>
-            <IoStatsChart size={90} className="absolute -right-4 -bottom-4 text-black/10 group-hover:rotate-12 transition-transform" />
-          </button>
-
-          <NavCard onClick={() => navigate(`/admin/barbeiros/${id}`)} icon={<IoPeople/>} label="barbeiros" value={barbeiros.length} isDarkMode={isDarkMode} />
-          
-          <NavCard onClick={() => navigate(`/admin/logs/${id}`)} icon={<IoDocumentText/>} label="logs" value={totalLogs} textColor="text-blue-400" isDarkMode={isDarkMode} />
-          
-          {/* Card Agenda com Status de Hoje */}
-          <NavCard 
-            onClick={() => navigate(`/admin/agenda/${id}`)} 
-            icon={<IoCalendar/>} 
-            label={`hoje ${dataHojeFormatada}`} 
-            value={temAgendaHoje ? <IoCheckmarkCircle className="text-emerald-500" /> : <IoCloseCircle className="text-red-500" />} 
-            isDarkMode={isDarkMode}
-            subtext={temAgendaHoje ? "há horários" : "sem agenda"}
-          />
-          
-          <NavCard 
-            onClick={() => navigate(`/admin/valores/${id}`)} 
-            icon={<IoCut/>} 
-            label="serviços" 
-            value={totalServicosCadastrados} 
-            textColor="text-emerald-400" 
-            isDarkMode={isDarkMode} 
-          />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col h-[400px] ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#e6b32a]" /> faturamento/prof
-            </h3>
-            <div className="flex-1 w-full min-h-0">
-              {statsPorBarbeiro.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={statsPorBarbeiro}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.03} />
-                    <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                    <Tooltip 
-                      cursor={{fill: 'rgba(150,150,150,0.1)'}} 
-                      content={<CustomTooltip isDarkMode={isDarkMode} />} 
-                      wrapperStyle={{ zIndex: 1000 }}
-                    />
-                    <Bar dataKey="lucro" radius={[10, 10, 10, 10]} barSize={35}>
-                      {statsPorBarbeiro.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              ) : <NoData />}
+        {/* GRADE DE ESCALA (PLANILHA COMPLETA) */}
+        <div className={`relative flex-1 rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
+          {linePosition && (
+            <div className="absolute left-0 right-0 z-30 pointer-events-none flex items-center" style={{ top: `${linePosition}px` }}>
+              <div className="w-14 h-[2px] bg-red-500 shadow-[0_0_10px_red]"></div>
+              <div className="flex-1 h-[0.5px] bg-red-500/30"></div>
             </div>
-          </div>
+          )}
 
-          <div className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col h-[400px] relative ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
-            <h3 className="text-[10px] font-black uppercase tracking-widest mb-8 text-gray-500 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> volume total
-            </h3>
-            <div className="flex-1 w-full min-h-0 relative">
-              {statsPorBarbeiro.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={statsPorBarbeiro}
-                      dataKey="qtd"
-                      nameKey="name"
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={70}
-                      outerRadius={95}
-                      paddingAngle={8}
-                      stroke="none"
-                    >
-                      {statsPorBarbeiro.map((entry, index) => (
-                        <Cell key={index} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                       content={<CustomTooltip isDarkMode={isDarkMode} />} 
-                       wrapperStyle={{ zIndex: 1000 }}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : <NoData />}
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">atendimentos</p>
-                <p className={`text-4xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                  {statsPorBarbeiro.reduce((acc, curr) => acc + curr.qtd, 0)}
-                </p>
+          <div className="overflow-x-auto h-full custom-scrollbar">
+            <table className="w-full border-collapse min-w-[1000px]">
+              <thead>
+                <tr className="h-14">
+                  <th className={`sticky left-0 z-40 p-2 border-b border-r text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-slate-50 border-slate-100'}`}>Horário</th>
+                  {barbeiros.map(b => (
+                    <th key={b._id} className={`p-2 border-b border-r text-xs font-black uppercase ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                      {b.nome.split(' ')[0]}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {horariosEscopo.map(horaFixo => {
+                  const horaFixoInt = parseInt(horaFixo.split(':')[0]);
+                  return (
+                    <tr key={horaFixo} style={{ height: `${alturaLinhaPx}px` }}>
+                      <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[11px] font-black ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                        {horaFixo}
+                      </td>
+                      {barbeiros.map(b => {
+                        const ags = agendamentosHoje.filter(a => {
+                          const h = new Date(a.datahora).getHours();
+                          return String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(b._id) && h === horaFixoInt;
+                        });
+
+                        return (
+                          <td key={b._id} className={`p-2 border-b border-r align-top relative ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
+                            <div className="flex flex-col gap-2">
+                              {ags.map(ag => (
+                                <button 
+                                  key={ag._id} 
+                                  onClick={() => handleEditClick(ag)}
+                                  className={`group w-full p-3 rounded-2xl text-left transition-all border shadow-sm ${
+                                    ag.status === 'F' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 
+                                    ag.status === 'C' ? 'bg-red-500/10 border-red-500/20 text-red-400' : 
+                                    'bg-[#e6b32a] text-black border-[#e6b32a]'
+                                  }`}
+                                >
+                                  <p className="text-[11px] font-black leading-none truncate uppercase tracking-tighter">
+                                    {getNomeExibicao(ag)}
+                                  </p>
+                                  <p className="text-[9px] font-bold mt-1 opacity-80 italic">
+                                    {ag.tipoCorte === 'C' ? 'Cabelo' : ag.tipoCorte === 'B' ? 'Barba' : 'Cabelo + Barba'}
+                                  </p>
+                                  <div className="flex justify-between items-center mt-2 border-t border-black/10 pt-1">
+                                    <span className="text-[10px] font-black">R$ {Number(ag.valor).toFixed(2)}</span>
+                                    <IoCreateOutline size={12} className="opacity-40" />
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* MODAL DE EDIÇÃO (RESTURADO E TRAVADO) */}
+      {editingAg && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className={`w-full max-w-md rounded-[2.5rem] overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0f0f0f] border-white/10' : 'bg-white border-slate-200'}`}>
+            <div className="p-8">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black italic tracking-tighter">ajustar.<span className="text-[#e6b32a]">registro</span></h3>
+                <button onClick={() => setEditingAg(null)} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><IoCloseOutline size={28}/></button>
               </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3 opacity-60">
+                  <div className="col-span-2 p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-dashed border-gray-500 flex justify-between items-center">
+                    <div>
+                      <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">cliente</p>
+                      <p className="text-xs font-bold">{getNomeExibicao(editingAg)}</p>
+                    </div>
+                    <IoLockClosed size={14} className="text-gray-500"/>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-dashed border-gray-500 flex justify-between items-center">
+                    <div>
+                      <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">data/hora</p>
+                      <p className="text-[10px] font-bold">{new Date(editingAg.datahora).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</p>
+                    </div>
+                    <IoLockClosed size={12}/>
+                  </div>
+                  <div className="p-4 rounded-2xl bg-black/5 dark:bg-white/5 border border-dashed border-gray-500 flex justify-between items-center">
+                    <div>
+                      <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">profissional</p>
+                      <p className="text-[10px] font-bold">{barbeiros.find(b => b._id === (editingAg.fk_barbeiro?._id || editingAg.fk_barbeiro))?.nome}</p>
+                    </div>
+                    <IoLockClosed size={12}/>
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-[#e6b32a] tracking-widest ml-2">status</label>
+                    <select 
+                      className={`w-full p-4 rounded-2xl border bg-transparent font-bold ${isDarkMode ? 'border-white/20 text-white' : 'border-slate-200'}`}
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({...editForm, status: e.target.value})}
+                    >
+                      <option value="A" className="text-black">Agendado</option>
+                      <option value="F" className="text-black">Finalizado</option>
+                      <option value="C" className="text-black">Cancelado</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[9px] font-black uppercase text-[#e6b32a] tracking-widest ml-2">valor (r$)</label>
+                    <div className="relative">
+                      <IoWallet className="absolute left-4 top-1/2 -translate-y-1/2 text-[#e6b32a]" />
+                      <input 
+                        type="number"
+                        className={`w-full p-4 pl-12 rounded-2xl border bg-transparent font-black text-xl ${isDarkMode ? 'border-white/20 text-white' : 'border-slate-200'}`}
+                        value={editForm.valor}
+                        onChange={(e) => setEditForm({...editForm, valor: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                onClick={handleSaveEdit}
+                className="w-full mt-8 bg-[#e6b32a] text-black font-black uppercase py-5 rounded-2xl shadow-lg shadow-[#e6b32a]/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                <IoSaveOutline size={20}/>
+                confirmar alterações
+              </button>
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      )}
+
+      {alertConfig.show && (
+        <CustomAlert 
+          titulo={alertConfig.titulo} 
+          message={alertConfig.mensagem} 
+          type={alertConfig.tipo} 
+          onClose={() => setAlertConfig({ ...alertConfig, show: false })} 
+        />
+      )}
+    </AdminLayout>
   );
 }
-
-function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, isDarkMode, subtext }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`p-5 rounded-[2rem] border hover:scale-[1.03] active:scale-95 transition-all duration-300 text-left group flex flex-col justify-between h-full ${
-        isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-slate-200 hover:border-black/10 shadow-sm'
-      }`}
-    >
-      <div className="flex justify-between items-center mb-4 text-gray-500 group-hover:text-[#e6b32a] transition-colors">
-        <div className="text-xl">{icon}</div>
-      </div>
-      <div>
-        <p className="text-[9px] font-black uppercase text-gray-400 mb-1">{label}</p>
-        <div className={`text-3xl font-black tracking-tighter ${textColor} flex items-center`}>
-          {value}
-        </div>
-        {subtext && <p className="text-[8px] font-bold text-gray-500 mt-1 uppercase italic">{subtext}</p>}
-      </div>
-    </button>
-  );
-}
-
-function NoData() {
-  return (
-    <div className="h-full flex flex-col items-center justify-center opacity-10">
-      <IoAnalytics size={40} />
-      <p className="text-[10px] font-black uppercase mt-2">sem dados</p>
-    </div>
-  );
-}
-
-const CustomTooltip = ({ active, payload, isDarkMode }) => {
-  if (active && payload && payload.length) {
-    const data = payload[0].payload;
-    return (
-      <div className={`p-4 rounded-2xl border shadow-2xl min-w-[140px] ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-200'}`} style={{ position: 'relative', zIndex: 9999 }}>
-        <p className="text-[10px] font-black uppercase text-gray-500 mb-1">{data.fullName}</p>
-        <p className={`text-xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>R$ {data.lucro.toLocaleString('pt-BR')}</p>
-        <p className="text-[9px] text-[#e6b32a] uppercase font-bold mt-1">{data.qtd} serviços</p>
-      </div>
-    );
-  }
-  return null;
-};
