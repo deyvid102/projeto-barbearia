@@ -59,19 +59,14 @@ export default function BarbeiroCalendario() {
 
   const handleProcessarStatus = async () => {
     if (!acaoTarget.id_ag) return;
-
     try {
-      // alterado para PUT para testar se a rota está registrada desta forma no servidor
       await api.put(`/agendamentos/${acaoTarget.id_ag}`, { status: acaoTarget.status });
-      
       setShowModal(false);
       setAgendamentoSelecionado(null);
       setAcaoTarget({ id_ag: null, status: '', mensagem: '' });
-      
       await fetchAgendamentos();
     } catch (error) { 
       console.error("erro ao atualizar:", error);
-      alert("erro: a rota de atualização não foi encontrada (404). verifique o método no backend."); 
     }
   };
 
@@ -86,7 +81,12 @@ export default function BarbeiroCalendario() {
       <div className="max-w-[1200px] mx-auto p-4 md:p-8 pb-20">
         
         <header className="flex items-center gap-6 border-b border-slate-100 dark:border-white/5 pb-8 mb-12">
-          <button onClick={() => navigate(-1)} className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-black dark:hover:border-[#e6b32a] transition-all">←</button>
+          <button 
+            onClick={() => navigate(-1)} 
+            className="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-black dark:hover:border-[#e6b32a] shadow-sm transition-all"
+          >
+            ←
+          </button>
           <div>
             <h1 className="text-3xl font-black lowercase tracking-tighter">minha.agenda</h1>
             <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-2">próximos dias</p>
@@ -114,7 +114,11 @@ export default function BarbeiroCalendario() {
                             <div 
                               key={item._id}
                               onClick={() => setAgendamentoSelecionado(isSelected ? null : item)}
-                              className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer ${isSelected ? 'bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black scale-[1.02]' : 'bg-slate-50 dark:bg-[#111] border-slate-100 dark:border-white/5 hover:border-slate-300'}`}
+                              className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer shadow-sm ${
+                                isSelected 
+                                  ? 'bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black scale-[1.02] border-transparent' 
+                                  : 'bg-white dark:bg-[#111] border-slate-200 dark:border-white/5 hover:border-[#e6b32a]'
+                              }`}
                             >
                               <div className="flex justify-between items-center">
                                 <span className="font-mono font-black text-xl">{item.horaFormatada}</span>
@@ -132,7 +136,9 @@ export default function BarbeiroCalendario() {
                                         setAcaoTarget({ id_ag: item._id, status: 'F', mensagem: 'confirmar finalização do atendimento?' }); 
                                         setShowModal(true); 
                                       }} 
-                                      className="flex-1 min-w-[140px] py-4 bg-white dark:bg-black text-black dark:text-white text-[10px] font-black uppercase rounded-2xl active:scale-95 transition-all shadow-xl flex items-center justify-center gap-2"
+                                      className={`flex-1 min-w-[140px] py-4 text-[10px] font-black uppercase rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                        isDarkMode ? 'bg-black text-white' : 'bg-white text-black'
+                                      }`}
                                     >
                                       <FaCheck size={12} /> finalizar
                                     </button>
@@ -154,7 +160,9 @@ export default function BarbeiroCalendario() {
                                         const fone = item.fk_cliente?.telefone?.replace(/\D/g, '');
                                         window.open(`https://wa.me/55${fone}`, '_blank'); 
                                       }} 
-                                      className="px-6 py-4 bg-white/10 dark:bg-black/10 text-[10px] font-black uppercase rounded-2xl flex items-center justify-center"
+                                      className={`px-6 py-4 text-[10px] font-black uppercase rounded-2xl flex items-center justify-center ${
+                                        isDarkMode ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-600'
+                                      }`}
                                     >
                                       <FaWhatsapp size={14} />
                                     </button>

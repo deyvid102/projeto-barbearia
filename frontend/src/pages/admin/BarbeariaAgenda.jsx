@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
+import CustomAlert from '../../components/CustomAlert'; 
 import { 
   IoArrowBack, IoSaveOutline, IoCalendarOutline, 
   IoChevronForward, IoChevronBack, 
@@ -20,7 +21,9 @@ export default function BarbeariaAgenda() {
   const [gradeMensal, setGradeMensal] = useState([]);
   const [diaExpandido, setDiaExpandido] = useState(null);
   const [sidebarAberta, setSidebarAberta] = useState(false);
-  const [showToast, setShowToast] = useState(false);
+  
+  // Estado para o CustomAlert
+  const [alertConfig, setAlertConfig] = useState({ show: false, title: '', message: '', type: 'success' });
   const [isModalAberto, setIsModalAberto] = useState(false);
 
   const hoje = new Date();
@@ -170,10 +173,20 @@ export default function BarbeariaAgenda() {
           grade: gradeMensal
         }
       });
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 3000);
+      setAlertConfig({
+        show: true,
+        title: 'Sucesso',
+        message: 'Agenda publicada com sucesso!',
+        type: 'success'
+      });
     } catch (error) {
       console.error("Erro ao salvar:", error);
+      setAlertConfig({
+        show: true,
+        title: 'Erro',
+        message: 'Não foi possível publicar a agenda.',
+        type: 'error'
+      });
     } finally {
       setLoading(false);
     }
@@ -191,6 +204,16 @@ export default function BarbeariaAgenda() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#070707] text-gray-900 dark:text-gray-100 p-4 md:p-6 pb-32">
       
+      {/* Alerta Padrão do Sistema */}
+      {alertConfig.show && (
+        <CustomAlert 
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={() => setAlertConfig({ ...alertConfig, show: false })}
+        />
+      )}
+
       <ModalConfirmacao 
         isOpen={isModalAberto}
         onClose={() => setIsModalAberto(false)}
@@ -198,16 +221,6 @@ export default function BarbeariaAgenda() {
         titulo="Publicar Agenda"
         mensagem="Deseja realmente publicar as alterações na agenda? Isso atualizará a disponibilidade para os clientes."
       />
-
-      <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 transform ${showToast ? 'translate-y-0 opacity-100' : '-translate-y-20 opacity-0 pointer-events-none'}`}>
-        <div className="bg-[#e6b32a] text-black px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border-b-4 border-black/20">
-          <IoCheckmarkDoneCircle size={24} />
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase leading-none">Sucesso</span>
-            <span className="text-xs font-bold">Agenda publicada com sucesso!</span>
-          </div>
-        </div>
-      </div>
 
       <header className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4 mb-6">
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -313,7 +326,7 @@ export default function BarbeariaAgenda() {
         </aside>
       </div>
 
-      {/* MODAL DE DETALHES COM HORÁRIO POR BARBEIRO */}
+      {/* MODAL DE DETALHES */}
       {diaExpandido && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
           <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-lg rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -329,7 +342,7 @@ export default function BarbeariaAgenda() {
             </header>
 
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-               <div className="flex items-center justify-between bg-black/10 p-5 rounded-3xl border border-white/5">
+                <div className="flex items-center justify-between bg-black/10 p-5 rounded-3xl border border-white/5">
                   <span className="text-xs font-black uppercase">Status do Dia</span>
                   <Switch 
                     active={diaExpandido.ativo} 
@@ -341,11 +354,10 @@ export default function BarbeariaAgenda() {
                       setDiaExpandido({...diaExpandido, ativo: novo});
                     }} 
                   />
-               </div>
+                </div>
 
-               {diaExpandido.ativo && (
-                 <div className="space-y-6">
-                    {/* Horário Geral da Unidade */}
+                {diaExpandido.ativo && (
+                  <div className="space-y-6">
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
                             <span className="text-[8px] font-black uppercase opacity-40 block mb-1">Abre às (Geral)</span>
@@ -368,7 +380,6 @@ export default function BarbeariaAgenda() {
                         <div className="grid gap-4">
                             {listaBarbeiros.map(b => {
                                 const escala = diaExpandido.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === b._id.toString());
-                                
                                 return (
                                     <div key={b._id} className={`p-4 rounded-3xl border-2 transition-all ${escala ? 'border-[#e6b32a] bg-[#e6b32a]/5' : 'border-transparent bg-black/10 opacity-50'}`}>
                                         <div className="flex items-center justify-between mb-3">
@@ -431,8 +442,8 @@ export default function BarbeariaAgenda() {
                             })}
                         </div>
                     </div>
-                 </div>
-               )}
+                  </div>
+                )}
             </div>
           </div>
         </div>

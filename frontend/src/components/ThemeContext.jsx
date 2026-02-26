@@ -1,17 +1,22 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
+// Criamos o contexto
 const ThemeContext = createContext();
 
 export const ThemeProvider = ({ children }) => {
-  // Inicializa o tema com base no localStorage ou na preferência do sistema
+  // Inicialização síncrona: o React lê o localStorage logo no primeiro ciclo de vida
   const [isDarkMode, setIsDarkMode] = useState(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme) {
-      return savedTheme === 'dark';
+    try {
+      const saved = localStorage.getItem('theme');
+      // Se não houver nada salvo, o padrão será light (false)
+      return saved === 'dark';
+    } catch (e) {
+      console.error("erro ao ler tema inicial:", e);
+      return false;
     }
-    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  // Efeito para manipular a classe no HTML (importante para Tailwind v4)
   useEffect(() => {
     const root = window.document.documentElement;
     
@@ -24,7 +29,14 @@ export const ThemeProvider = ({ children }) => {
     }
   }, [isDarkMode]);
 
-  const toggleTheme = () => setIsDarkMode(!isDarkMode);
+  // Função de alternância com gravação imediata (previne o valor null)
+  const toggleTheme = () => {
+    setIsDarkMode(prev => {
+      const next = !prev;
+      localStorage.setItem('theme', next ? 'dark' : 'light');
+      return next;
+    });
+  };
 
   return (
     <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
@@ -33,4 +45,11 @@ export const ThemeProvider = ({ children }) => {
   );
 };
 
-export const useTheme = () => useContext(ThemeContext);
+// Hook personalizado para facilitar o uso nos componentes (Login, Config, etc)
+export const useTheme = () => {
+  const context = useContext(ThemeContext);
+  if (!context) {
+    throw new Error('useTheme deve ser usado dentro de um ThemeProvider');
+  }
+  return context;
+};

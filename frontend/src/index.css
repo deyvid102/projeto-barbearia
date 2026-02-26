@@ -1,20 +1,9 @@
 @import "tailwindcss";
 
-/* Esta linha é crucial no v4 para que a classe .dark funcione */
+/* O Tailwind v4 precisa desta variante para reconhecer a classe no HTML */
 @variant dark (&:where(.dark, .dark *));
 
-:root {
-  background-color: white;
-  color: #1a1a1a;
-}
-
-html.dark {
-  background-color: #0a0a0a;
-  color: #f8f8f8;
-}
-
-/* Transição suave para a troca de tema não ser brusca */
-* {
-  transition-property: background-color, border-color, color, fill, stroke;
-  transition-duration: 300ms;
+/* Não force cores no :root, deixe as classes do Tailwind (bg-white / dark:bg-[#0a0a0a]) decidirem */
+html {
+  transition: background-color 0.3s ease;
 }

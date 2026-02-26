@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { useTheme } from '../../components/ThemeContext';
+import CustomAlert from '../../components/CustomAlert'; 
 
 import { 
   IoPersonCircleOutline, 
@@ -11,7 +12,8 @@ import {
   IoTimeOutline,
   IoFileTrayFullOutline,
   IoAddCircleOutline,
-  IoCalendarClearOutline
+  IoCalendarClearOutline,
+  IoChevronDownOutline
 } from 'react-icons/io5';
 
 export default function ClienteDashboard() {
@@ -27,6 +29,7 @@ export default function ClienteDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({ show: false, titulo: '', mensagem: '', tipo: 'success' });
   
   const menuRef = useRef();
 
@@ -81,9 +84,10 @@ export default function ClienteDashboard() {
       const agendamentoOriginal = agendamentos.find(a => a._id === selectedId);
       await api.put(`/agendamentos/${selectedId}`, { ...agendamentoOriginal, status: 'C' });
       setIsModalOpen(false);
+      setAlertConfig({ show: true, titulo: 'cancelado', mensagem: 'seu agendamento foi removido.', tipo: 'success' });
       fetchData(getSafeId());
     } catch (err) {
-      alert("erro ao cancelar");
+      setAlertConfig({ show: true, titulo: 'erro', mensagem: 'não foi possível cancelar.', tipo: 'error' });
     }
   };
 
@@ -104,10 +108,10 @@ export default function ClienteDashboard() {
   );
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 lg:p-12 pb-24 font-sans transition-colors duration-300`}>
+    <div className={`min-h-screen p-4 md:p-8 lg:p-12 pb-24 font-sans transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'}`}>
       <div className="max-w-6xl mx-auto space-y-10">
         
-        <header className="flex flex-row justify-between items-center border-b border-black/5 dark:border-white/5 pb-8 pt-4">
+        <header className={`flex flex-row justify-between items-center border-b pb-8 pt-4 ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
           <div>
             <h1 className="text-2xl md:text-4xl font-black italic lowercase tracking-tighter leading-none">
               {cliente?.nome?.split(' ')[0] || 'cliente'}.<span className="text-[#e6b32a]">me</span>
@@ -118,7 +122,6 @@ export default function ClienteDashboard() {
           <div className="flex items-center gap-2 md:gap-4">
             <button 
               onClick={() => navigate(`/cliente/historico/${getSafeId()}`)}
-              title="Histórico"
               className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
                 isDarkMode 
                   ? 'bg-white/5 border-white/10 hover:border-[#e6b32a] hover:bg-white/10' 
@@ -128,29 +131,47 @@ export default function ClienteDashboard() {
               <IoFileTrayFullOutline className="text-lg md:text-2xl" />
             </button>
 
-            {/* User Menu com Hover */}
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-300 active:scale-90 shadow-sm
+                className={`flex items-center gap-3 p-1.5 md:p-2 md:pr-4 rounded-xl md:rounded-2xl border transition-all duration-300 active:scale-95 shadow-sm
                   ${isProfileOpen 
-                    ? 'bg-[#e6b32a] text-black border-[#e6b32a]' 
+                    ? 'bg-slate-900 text-white border-slate-900 dark:bg-[#e6b32a] dark:text-black dark:border-[#e6b32a]' 
                     : isDarkMode 
-                      ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]/60 hover:bg-white/10' 
-                      : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+                      ? 'bg-white/5 border-white/10 text-white hover:border-[#e6b32a]/60' 
+                      : 'bg-white border-slate-200 text-slate-900 hover:border-slate-400'
                   }`}
               >
-                <IoPersonCircleOutline className={`text-xl md:text-3xl ${isProfileOpen ? 'scale-110' : 'opacity-80'}`} />
+                <div className={`w-7 h-7 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center transition-colors ${isProfileOpen ? 'bg-white/20' : 'bg-[#e6b32a] text-black'}`}>
+                  <IoPersonCircleOutline className="text-xl md:text-2xl" />
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-[8px] font-black uppercase opacity-50 leading-none">cliente</p>
+                  <p className="text-[11px] font-bold truncate max-w-[80px]">{cliente?.nome?.split(' ')[0] || 'perfil'}</p>
+                </div>
+                <IoChevronDownOutline size={14} className={`hidden sm:block transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`} />
               </button>
               
               {isProfileOpen && (
-                <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-[#111] border dark:border-white/10 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
-                  <button onClick={() => navigate(`/cliente/configuracoes/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] md:text-[11px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors">
-                    <IoSettingsOutline size={18} /> configurações
-                  </button>
-                  <button onClick={() => { localStorage.clear(); navigate('/cliente/login'); }} className="w-full px-6 py-4 text-left text-[10px] md:text-[11px] font-black uppercase text-red-500 flex items-center gap-3 border-t dark:border-white/5 hover:bg-red-500/5 transition-all">
-                    <IoLogOutOutline size={18} /> encerrar sessão
-                  </button>
+                <div className={`absolute right-0 mt-3 w-60 border rounded-[2rem] shadow-2xl z-50 animate-in fade-in zoom-in-95 overflow-hidden ${
+                  isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-100'
+                }`}>
+                  <div className="p-5 border-b border-black/5 dark:border-white/5">
+                    <p className="text-[9px] font-black uppercase tracking-[3px] text-[#e6b32a] mb-1">email</p>
+                    <p className="text-xs font-bold truncate opacity-80">{cliente?.email}</p>
+                  </div>
+
+                  <div className="p-2">
+                    <button onClick={() => { navigate(`/cliente/configuracoes/${getSafeId()}`); setIsProfileOpen(false); }} className={`w-full px-4 py-3 rounded-xl text-[10px] font-black uppercase flex items-center gap-3 transition-colors ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-slate-50'}`}>
+                      <IoSettingsOutline size={18} /> configurações
+                    </button>
+                  </div>
+
+                  <div className="p-2 border-t border-black/5 dark:border-white/5">
+                    <button onClick={() => { localStorage.removeItem('clienteId'); navigate('/cliente/login'); }} className="w-full px-4 py-3 rounded-xl text-[10px] font-black uppercase text-red-500 flex items-center gap-3 hover:bg-red-500/10 transition-colors">
+                      <IoLogOutOutline size={18} /> encerrar sessão
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
@@ -158,18 +179,17 @@ export default function ClienteDashboard() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
-          
           <div className="lg:col-span-4 space-y-6">
-            {/* Botão Novo Agendamento com Hover */}
+            {/* BOTÃO REDIMENSIONADO AQUI */}
             <button 
               onClick={() => navigate(`/cliente/novo-agendamento/${getSafeId()}`)}
-              className={`w-full py-8 md:py-12 font-black uppercase text-sm md:text-base tracking-[3px] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl transition-all duration-500 flex flex-col items-center justify-center gap-4 group active:scale-95
+              className={`w-full py-6 md:py-8 font-black uppercase text-[10px] md:text-xs tracking-[3px] rounded-3xl shadow-xl transition-all duration-500 flex flex-col items-center justify-center gap-3 group active:scale-95
                 ${isDarkMode 
-                  ? 'bg-[#e6b32a] text-black hover:bg-[#ffc832] hover:shadow-[#e6b32a]/20 hover:-translate-y-1' 
-                  : 'bg-slate-900 text-white hover:bg-black hover:shadow-xl hover:-translate-y-1'
+                  ? 'bg-[#e6b32a] text-black hover:bg-[#ffc832] hover:shadow-[#e6b32a]/20' 
+                  : 'bg-slate-900 text-white hover:bg-black hover:shadow-slate-900/20'
                 }`}
             >
-              <IoAddCircleOutline size={36} className="group-hover:rotate-90 transition-transform duration-500 ease-out" />
+              <IoAddCircleOutline size={28} className="group-hover:rotate-90 transition-transform duration-500 ease-out" />
               <span>novo agendamento</span>
             </button>
 
@@ -242,6 +262,15 @@ export default function ClienteDashboard() {
         tipo="cancelar"
         mensagem="deseja mesmo cancelar seu horário reservado?"
       />
+
+      {alertConfig.show && (
+        <CustomAlert 
+          titulo={alertConfig.titulo} 
+          message={alertConfig.mensagem} 
+          type={alertConfig.tipo} 
+          onClose={() => setAlertConfig({ ...alertConfig, show: false })} 
+        />
+      )}
     </div>
   );
 }

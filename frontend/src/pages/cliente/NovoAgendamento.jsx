@@ -25,7 +25,7 @@ export default function NovoAgendamento() {
   const [barbeiros, setBarbeiros] = useState([]);
   const [tiposCorte, setTiposCorte] = useState([]);
   const [agendaMensal, setAgendaMensal] = useState(null);
-  const [todosAgendamentos, setTodosAgendamentos] = useState([]); // Cache de agendamentos para filtrar dias lotados
+  const [todosAgendamentos, setTodosAgendamentos] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [loadingHorarios, setLoadingHorarios] = useState(false);
   
@@ -64,7 +64,7 @@ export default function NovoAgendamento() {
 
         const [resBarbearia, resAgendamentos] = await Promise.all([
           api.get(`/barbearias/${bId}`),
-          api.get(`/agendamentos`) // Pegamos todos para saber quais dias ocultar
+          api.get(`/agendamentos`)
         ]);
 
         const dadosB = resBarbearia.data || resBarbearia;
@@ -113,7 +113,6 @@ export default function NovoAgendamento() {
     }
   };
 
-  // Lógica central para saber se um dia tem ao menos 1 horário livre
   const temHorarioDisponivelNoDia = (dataRef) => {
     if (!agendaMensal) return false;
     const dia = dataRef.getDate();
@@ -125,7 +124,6 @@ export default function NovoAgendamento() {
     const agora = new Date();
     const hojeStr = agora.toLocaleDateString('en-CA');
 
-    // Pegamos a abertura e fechamento geral do dia para simplificar a checagem do card
     let [h, m] = configDia.abertura.split(':').map(Number);
     const [hFim, mFim] = configDia.fechamento.split(':').map(Number);
     const totalMinutosFim = hFim * 60 + mFim;
@@ -133,7 +131,6 @@ export default function NovoAgendamento() {
     while ((h * 60 + m) + 40 <= totalMinutosFim) {
       const horaFormatada = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       
-      // Se for hoje, ignora horas que já passaram
       let horarioPassou = false;
       if (dataStr === hojeStr) {
         const slot = new Date();
@@ -142,7 +139,6 @@ export default function NovoAgendamento() {
       }
 
       if (!horarioPassou) {
-        // Verifica se existe algum barbeiro escalado que não esteja ocupado nesse horário
         const existeVaga = configDia.escalas.some(escala => {
           const bId = (escala.barbeiroId?._id || escala.barbeiroId).toString();
           const ocupado = todosAgendamentos.some(a => 
@@ -152,7 +148,7 @@ export default function NovoAgendamento() {
           return !ocupado;
         });
 
-        if (existeVaga) return true; // Achou pelo menos 1 vaga no dia
+        if (existeVaga) return true;
       }
 
       m += 40;
@@ -230,17 +226,16 @@ export default function NovoAgendamento() {
       };
       await api.post('/agendamentos', payload);
       navigate(`/cliente/${id}`);
-    } catch (err) { alert("erro ao salvar agendamento."); }
+    } catch (err) { console.error("erro ao salvar agendamento."); }
   };
 
-  const getButtonConfig = () => {
+  const btnConfig = getButtonConfig();
+  function getButtonConfig() {
     if (step === 1) return { label: "escolher data", disabled: !form.tipoCorte, action: () => setStep(2) };
     if (step === 2) return { label: "escolher barbeiro", disabled: !form.data, action: () => setStep(3) };
     if (step === 3) return { label: "ver horários", disabled: !form.fk_barbeiro, action: () => setStep(4) };
     return { label: "confirmar reserva", disabled: !form.hora, action: handleFinalizar };
-  };
-
-  const btnConfig = getButtonConfig();
+  }
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#070707] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-32 md:pb-8 font-sans`}>
@@ -315,7 +310,7 @@ export default function NovoAgendamento() {
                 </div>
                 
                 {showFullCalendar ? (
-                  <div className="p-4 md:p-8 rounded-[2rem] bg-black/20 border border-white/5">
+                  <div className={`p-4 md:p-8 rounded-[2rem] border ${isDarkMode ? 'bg-black/20 border-white/5' : 'bg-slate-50 border-slate-200'}`}>
                     <div className="flex justify-between items-center mb-8">
                       <button onClick={() => mudarMes(-1)} className="p-3 hover:text-[#e6b32a]"><IoChevronBack size={24}/></button>
                       <span className="font-black text-sm md:text-base uppercase tracking-widest">{currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
@@ -339,7 +334,7 @@ export default function NovoAgendamento() {
                                 ? 'bg-[#e6b32a] text-black scale-110 shadow-lg shadow-[#e6b32a]/20' 
                                 : (isPast || semVaga) 
                                   ? 'opacity-10 cursor-not-allowed grayscale' 
-                                  : isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'
+                                  : isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-white border border-slate-200 hover:bg-slate-100'
                             }`}
                           >
                             {dia.getDate()}
@@ -353,8 +348,6 @@ export default function NovoAgendamento() {
                     {[...Array(14)].map((_, i) => {
                       const d = new Date(); d.setDate(d.getDate() + i);
                       const dStr = d.toLocaleDateString('en-CA');
-                      
-                      // FILTRO SOLICITADO: Não renderiza o card se não houver horário disponível
                       if (!temHorarioDisponivelNoDia(d)) return null;
 
                       return (
@@ -384,7 +377,7 @@ export default function NovoAgendamento() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {barbeiros.length > 0 ? barbeiros.map(b => (
-                    <div key={b._id} onClick={() => setForm({...form, fk_barbeiro: b._id.toString(), fk_barbeiroNome: b.nome, hora: ''})} className={`p-6 rounded-[2rem] border-2 transition-all cursor-pointer flex justify-between items-center ${form.fk_barbeiro === b._id.toString() ? 'border-[#e6b32a] bg-[#e6b32a]/10' : isDarkMode ? 'border-white/5 bg-black/40 hover:border-white/10' : 'border-slate-100 bg-slate-50'}`}>
+                    <div key={b._id} onClick={() => setForm({...form, fk_barbeiro: b._id.toString(), fk_barbeiroNome: b.nome, hora: ''})} className={`p-6 rounded-[2rem] border-2 transition-all cursor-pointer flex justify-between items-center ${form.fk_barbeiro === b._id.toString() ? 'border-[#e6b32a] bg-[#e6b32a]/10' : isDarkMode ? 'border-white/5 bg-black/40 hover:border-white/10' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
                       <span className={`text-xl font-black lowercase ${form.fk_barbeiro === b._id.toString() ? 'text-[#e6b32a]' : (isDarkMode ? 'text-white' : 'text-slate-900')}`}>{b.nome}</span>
                       {form.fk_barbeiro === b._id.toString() && <IoCheckmarkCircle size={24} className="text-[#e6b32a]" />}
                     </div>

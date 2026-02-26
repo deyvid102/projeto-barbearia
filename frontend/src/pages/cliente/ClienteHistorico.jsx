@@ -63,10 +63,9 @@ export default function ClienteHistorico() {
   const totalPages = Math.ceil(historicoTotal.length / itemsPerPage);
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-white text-slate-900'}`}>
+    <div className={`min-h-screen transition-colors duration-300 font-sans ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-white text-slate-900'}`}>
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
         
-        {/* Header no padrão Barbeiro */}
         <header className="flex items-center gap-4 pt-4">
           <button 
             onClick={() => navigate(-1)}
@@ -88,7 +87,6 @@ export default function ClienteHistorico() {
           </div>
         ) : historicoTotal.length > 0 ? (
           <>
-            {/* Lista Vertical (Um abaixo do outro) */}
             <div className="flex flex-col gap-3">
               {currentItems.map(a => (
                 <div 
@@ -126,7 +124,7 @@ export default function ClienteHistorico() {
                   <div className={`px-5 py-3 rounded-xl flex justify-between md:flex-col md:items-end items-center md:justify-center min-w-[120px] border ${
                     isDarkMode ? 'bg-black/20 border-white/5' : 'bg-white border-slate-200'
                   }`}>
-                    <span className="text-[8px] text-slate-400 dark:text-[#e6b32a] font-black uppercase">valor</span>
+                    <span className={`text-[8px] font-black uppercase ${isDarkMode ? 'text-[#e6b32a]' : 'text-slate-400'}`}>valor</span>
                     <span className="text-lg font-black font-mono tracking-tighter">
                       r$ {a.valor?.toFixed(2).replace('.', ',')}
                     </span>
@@ -135,7 +133,6 @@ export default function ClienteHistorico() {
               ))}
             </div>
 
-            {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-4 pt-6 pb-10">
                 <button 
@@ -144,7 +141,7 @@ export default function ClienteHistorico() {
                   className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all active:scale-90 ${
                     currentPage === 1 
                       ? 'opacity-20 cursor-not-allowed border-slate-200' 
-                      : 'dark:border-white/10 hover:border-[#e6b32a] text-[#e6b32a]'
+                      : isDarkMode ? 'border-white/10 hover:border-[#e6b32a] text-[#e6b32a]' : 'border-slate-300 hover:border-black text-slate-900'
                   }`}
                 >
                   <IoChevronBackOutline size={18} />
@@ -160,7 +157,7 @@ export default function ClienteHistorico() {
                   className={`w-10 h-10 rounded-xl flex items-center justify-center border transition-all active:scale-90 ${
                     currentPage === totalPages 
                       ? 'opacity-20 cursor-not-allowed border-slate-200' 
-                      : 'dark:border-white/10 hover:border-[#e6b32a] text-[#e6b32a]'
+                      : isDarkMode ? 'border-white/10 hover:border-[#e6b32a] text-[#e6b32a]' : 'border-slate-300 hover:border-black text-slate-900'
                   }`}
                 >
                   <IoChevronForwardOutline size={18} />

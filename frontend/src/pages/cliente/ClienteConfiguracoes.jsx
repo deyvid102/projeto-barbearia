@@ -4,7 +4,7 @@ import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import { IoMoon, IoSunny } from 'react-icons/io5'; 
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
-import CustomAlert from '../../components/CustomAlert';
+import CustomAlert from '../../components/CustomAlert.jsx';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 
 export default function ClienteConfiguracoes() {
@@ -92,7 +92,7 @@ export default function ClienteConfiguracoes() {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300 font-sans">
+    <div className={`min-h-screen transition-colors duration-300 font-sans ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-white text-slate-900'}`}>
       
       {alertConfig.show && (
         <CustomAlert 
@@ -103,10 +103,12 @@ export default function ClienteConfiguracoes() {
 
       <div className="max-w-4xl mx-auto p-6 md:p-12">
         
-        <header className="flex items-center gap-6 mb-12 border-b border-slate-100 dark:border-white/5 pb-8">
+        <header className={`flex items-center gap-6 mb-12 border-b pb-8 ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
           <button 
             onClick={() => navigate(-1)}
-            className="w-12 h-12 rounded-2xl bg-slate-50 dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-black dark:hover:border-[#e6b32a] transition-all"
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all ${
+              isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-slate-50 border-slate-200 hover:border-black'
+            }`}
           >
             ←
           </button>
@@ -118,15 +120,18 @@ export default function ClienteConfiguracoes() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
-          {/* Sessão: Dados Pessoais */}
           <section className="space-y-4 md:col-span-2">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">dados pessoais</h2>
-            <div className="bg-slate-50 dark:bg-[#111] p-8 rounded-[2.5rem] border border-slate-100 dark:border-white/5 grid grid-cols-1 md:grid-cols-2 gap-6 shadow-sm">
+            <div className={`p-8 rounded-[2.5rem] border grid grid-cols-1 md:grid-cols-2 gap-6 shadow-sm ${
+              isDarkMode ? 'bg-[#111] border-white/5' : 'bg-slate-50 border-slate-100'
+            }`}>
               <div className="space-y-2">
                 <label className="text-[9px] text-slate-400 uppercase font-black tracking-widest pl-1">nome completo</label>
                 <input 
                   type="text"
-                  className="w-full bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] transition-colors"
+                  className={`w-full border rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] transition-colors ${
+                    isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                  }`}
                   value={nome}
                   onChange={(e) => setNome(e.target.value)}
                 />
@@ -135,7 +140,9 @@ export default function ClienteConfiguracoes() {
                 <label className="text-[9px] text-slate-400 uppercase font-black tracking-widest pl-1">telefone</label>
                 <input 
                   type="text"
-                  className="w-full bg-white dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] transition-colors font-mono"
+                  className={`w-full border rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] transition-colors font-mono ${
+                    isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'
+                  }`}
                   value={telefone}
                   onChange={(e) => setTelefone(e.target.value)}
                 />
@@ -143,10 +150,11 @@ export default function ClienteConfiguracoes() {
             </div>
           </section>
 
-          {/* Sessão: Aparência */}
           <section className="space-y-4">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">aparência</h2>
-            <div className="bg-slate-50 dark:bg-[#111] p-8 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
+            <div className={`p-8 rounded-[2.5rem] border flex items-center justify-between shadow-sm ${
+              isDarkMode ? 'bg-[#111] border-white/5' : 'bg-slate-50 border-slate-100'
+            }`}>
               <div>
                 <p className="font-black text-lg lowercase">modo {isDarkMode ? 'escuro' : 'claro'}</p>
                 <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mt-1">interface adaptável</p>
@@ -162,10 +170,11 @@ export default function ClienteConfiguracoes() {
             </div>
           </section>
 
-          {/* Sessão: Segurança */}
           <section className="space-y-4">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">segurança</h2>
-            <div className="bg-slate-50 dark:bg-[#111] p-2 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
+            <div className={`p-2 rounded-[2.5rem] border shadow-sm ${
+               isDarkMode ? 'bg-[#111] border-white/5' : 'bg-slate-50 border-slate-100'
+            }`}>
               <button 
                 type="button"
                 onClick={abrirModalSenha}
@@ -177,19 +186,22 @@ export default function ClienteConfiguracoes() {
                     {novaSenha ? "senha alterada (salve abaixo)" : "mudar credenciais de acesso"}
                   </p>
                 </div>
-                <div className="w-10 h-10 rounded-full bg-slate-200 dark:bg-white/5 flex items-center justify-center text-[#e6b32a] group-hover:bg-[#e6b32a] group-hover:text-black transition-all">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-[#e6b32a] group-hover:bg-[#e6b32a] group-hover:text-black transition-all ${
+                  isDarkMode ? 'bg-white/5' : 'bg-slate-200'
+                }`}>
                   →
                 </div>
               </button>
             </div>
           </section>
 
-          {/* Botão Salvar (Ocupa as duas colunas no PC) */}
           <div className="md:col-span-2 pt-4">
             <button 
               onClick={() => setIsConfirmModalOpen(true)}
               disabled={loading}
-              className="w-full py-5 bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black font-black uppercase text-[11px] tracking-[2px] rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50"
+              className={`w-full py-5 font-black uppercase text-[11px] tracking-[2px] rounded-2xl shadow-xl active:scale-95 transition-all disabled:opacity-50 ${
+                isDarkMode ? 'bg-[#e6b32a] text-black' : 'bg-slate-900 text-white'
+              }`}
             >
               {loading ? "processando..." : "salvar todas as alterações"}
             </button>
@@ -201,9 +213,11 @@ export default function ClienteConfiguracoes() {
       {/* Modal Senha */}
       {isSenhaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-xs bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 space-y-6">
+          <div className={`w-full max-w-xs border rounded-[2.5rem] p-8 space-y-6 ${
+            isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-200'
+          }`}>
             <header className="text-center space-y-2">
-              <h3 className="font-black uppercase text-[10px] tracking-[0.2em]">
+              <h3 className={`font-black uppercase text-[10px] tracking-[0.2em] ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 {etapaSenha === 1 ? "passo 01: senha atual" : "passo 02: nova senha"}
               </h3>
             </header>
@@ -216,7 +230,9 @@ export default function ClienteConfiguracoes() {
                     <input 
                       type={showSenhaAtual ? "text" : "password"}
                       autoFocus
-                      className="w-full bg-slate-50 dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a]"
+                      className={`w-full border rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] ${
+                        isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                      }`}
                       value={senhaAtual}
                       onChange={(e) => setSenhaAtual(e.target.value)}
                     />
@@ -233,7 +249,9 @@ export default function ClienteConfiguracoes() {
                       <input 
                         type={showNovaSenha ? "text" : "password"}
                         autoFocus
-                        className="w-full bg-slate-50 dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a]"
+                        className={`w-full border rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] ${
+                          isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                        }`}
                         value={novaSenha}
                         onChange={(e) => setNovaSenha(e.target.value)}
                       />
@@ -247,7 +265,9 @@ export default function ClienteConfiguracoes() {
                     <div className="relative">
                       <input 
                         type={showConfirmarSenha ? "text" : "password"}
-                        className="w-full bg-slate-50 dark:bg-black border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a]"
+                        className={`w-full border rounded-2xl p-4 text-sm outline-none focus:border-[#e6b32a] ${
+                          isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                        }`}
                         value={confirmarNovaSenha}
                         onChange={(e) => setConfirmarNovaSenha(e.target.value)}
                       />
@@ -263,7 +283,9 @@ export default function ClienteConfiguracoes() {
             <div className="space-y-3 pt-2">
               <button 
                 onClick={handleProximaEtapa}
-                className="w-full py-4 bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black font-black uppercase text-[10px] tracking-widest rounded-2xl"
+                className={`w-full py-4 font-black uppercase text-[10px] tracking-widest rounded-2xl ${
+                  isDarkMode ? 'bg-[#e6b32a] text-black' : 'bg-slate-900 text-white'
+                }`}
               >
                 {etapaSenha === 1 ? "próximo" : "confirmar"}
               </button>

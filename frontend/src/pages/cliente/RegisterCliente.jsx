@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { useTheme } from '../../components/ThemeContext';
-import CustomAlert from '../../components/CustomAlert.jsx';
+import CustomAlert from '../../components/CustomAlert.jsx';;
 
 export default function RegisterCliente() {
   const navigate = useNavigate();
@@ -80,11 +80,11 @@ export default function RegisterCliente() {
   const inputStyle = `w-full p-4 rounded-2xl text-sm outline-none transition-all border ${
     isDarkMode 
       ? 'bg-black border-white/10 text-white focus:border-[#e6b32a]' 
-      : 'bg-slate-50 border-slate-200 text-slate-900 focus:border-black'
+      : 'bg-white border-slate-200 text-slate-900 focus:border-black'
   }`;
 
   return (
-    <div className={`flex min-h-screen items-center justify-center p-4 transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50'}`}>
+    <div className={`flex min-h-screen items-center justify-center p-4 transition-colors duration-300 font-sans ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-gray-50'}`}>
       <form onSubmit={handleSubmit} className={`w-full max-w-sm p-8 space-y-5 rounded-[2.5rem] border shadow-2xl transition-colors ${
         isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200'
       }`}>
@@ -158,6 +158,12 @@ export default function RegisterCliente() {
         <p className={`text-[11px] text-center font-bold lowercase ${isDarkMode ? 'text-gray-500' : 'text-slate-400'}`}>
           já tem conta? <Link to="/cliente/login" className="text-[#e6b32a] hover:underline">faça login</Link>
         </p>
+
+        <div className="pt-4 border-t border-black/5 dark:border-white/5 text-center">
+          <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest leading-relaxed">
+              as senhas são protegidas por bcrypt
+          </p>
+        </div>
       </form>
 
       {alertConfig.show && (

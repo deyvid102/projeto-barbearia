@@ -14,9 +14,9 @@ export default function BarbeiroConfiguracoes() {
   
   const [loading, setLoading] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
-  const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: 'success' });
+  const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: 'success', titulo: '' });
 
-  // Estados para alteração de senha
+  // estados para alteração de senha
   const [isSenhaModalOpen, setIsSenhaModalOpen] = useState(false);
   const [etapaSenha, setEtapaSenha] = useState(1); 
   const [senhaAtual, setSenhaAtual] = useState('');
@@ -27,8 +27,8 @@ export default function BarbeiroConfiguracoes() {
   const [showNovaSenha, setShowNovaSenha] = useState(false);
   const [showConfirmarSenha, setShowConfirmarSenha] = useState(false);
 
-  const showAlert = (message, type = 'success') => {
-    setAlertConfig({ show: true, message, type });
+  const showAlert = (message, type = 'success', titulo = '') => {
+    setAlertConfig({ show: true, message, type, titulo });
   };
 
   const abrirModalSenha = () => {
@@ -41,13 +41,13 @@ export default function BarbeiroConfiguracoes() {
 
   const handleProximaEtapa = () => {
     if (etapaSenha === 1) {
-      if (!senhaAtual) return showAlert("digite sua senha atual", "error");
+      if (!senhaAtual) return showAlert("digite sua senha atual", "error", "erro");
       setEtapaSenha(2);
     } else {
-      if (novaSenha !== confirmarNovaSenha) return showAlert("as senhas não coincidem", "error");
-      if (novaSenha.length < 4) return showAlert("a nova senha é muito curta", "error");
+      if (novaSenha !== confirmarNovaSenha) return showAlert("as senhas não coincidem", "error", "erro");
+      if (novaSenha.length < 4) return showAlert("a nova senha é muito curta", "error", "erro");
       setIsSenhaModalOpen(false);
-      showAlert("senha pronta para ser alterada!", "info");
+      showAlert("senha pronta para ser alterada!", "info", "aviso");
     }
   };
 
@@ -57,20 +57,21 @@ export default function BarbeiroConfiguracoes() {
     try {
       const payload = { admin: true };
       
+      // se houver nova senha validada pelo modal, envia para o backend
       if (novaSenha) {
         payload.senha = novaSenha;
       }
 
       await api.put(`/barbeiros/${id}`, payload);
       
-      showAlert(novaSenha ? "perfil e senha atualizados!" : "privilégios concedidos!");
+      showAlert(novaSenha ? "perfil e senha atualizados!" : "privilégios concedidos!", "success", "sucesso");
       
       setNovaSenha('');
       setSenhaAtual('');
 
-      setTimeout(() => navigate(`/barbeiro/${id}`), 2000);
+      setTimeout(() => navigate(`/barbeiro/dashboard/${id}`), 2000);
     } catch (error) {
-      showAlert(error.response?.data?.message || "erro ao atualizar.", "error");
+      showAlert(error.response?.data?.message || "erro ao atualizar.", "error", "erro");
     } finally { 
       setLoading(false); 
     }
@@ -80,7 +81,9 @@ export default function BarbeiroConfiguracoes() {
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300 font-sans">
       {alertConfig.show && (
         <CustomAlert 
-          {...alertConfig} 
+          titulo={alertConfig.titulo}
+          message={alertConfig.message} 
+          type={alertConfig.type} 
           onClose={() => setAlertConfig({ ...alertConfig, show: false })} 
         />
       )}
@@ -101,7 +104,7 @@ export default function BarbeiroConfiguracoes() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           
-          {/* Sessão de Aparência */}
+          {/* sessão de aparência */}
           <section className="space-y-4">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">aparência</h2>
             <div className="bg-slate-50 dark:bg-[#111] p-8 rounded-[2.5rem] border border-slate-100 dark:border-white/5 flex items-center justify-between shadow-sm">
@@ -120,7 +123,7 @@ export default function BarbeiroConfiguracoes() {
             </div>
           </section>
 
-          {/* Sessão de Segurança (Nova) */}
+          {/* sessão de segurança */}
           <section className="space-y-4">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">segurança</h2>
             <div className="bg-slate-50 dark:bg-[#111] p-2 rounded-[2.5rem] border border-slate-100 dark:border-white/5 shadow-sm">
@@ -130,7 +133,7 @@ export default function BarbeiroConfiguracoes() {
                 className="w-full p-6 flex items-center justify-between group"
               >
                 <div className="text-left">
-                  <p className="text-sm font-bold dark:text-white">alterar senha</p>
+                  <p className="text-sm font-bold dark:text-white lowercase">alterar senha</p>
                   <p className="text-[9px] text-slate-400 uppercase tracking-widest">
                     {novaSenha ? "senha alterada (salve abaixo)" : "clique para mudar sua senha"}
                   </p>
@@ -142,7 +145,7 @@ export default function BarbeiroConfiguracoes() {
             </div>
           </section>
 
-          {/* Sessão Administrativa */}
+          {/* sessão administrativa */}
           <section className="space-y-4 md:col-span-2">
             <h2 className="text-[11px] text-slate-400 font-black uppercase tracking-widest px-2">administrativo</h2>
             <div className="bg-slate-50 dark:bg-[#111] p-8 rounded-[2.5rem] border border-slate-100 dark:border-white/5 space-y-6 shadow-sm">
@@ -162,7 +165,7 @@ export default function BarbeiroConfiguracoes() {
         </div>
       </div>
 
-      {/* Modal de Alteração de Senha */}
+      {/* modal de alteração de senha */}
       {isSenhaModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
           <div className="w-full max-w-xs bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 space-y-6">

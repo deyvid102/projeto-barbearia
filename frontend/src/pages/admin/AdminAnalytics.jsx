@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
+import { useTheme } from '../../components/ThemeContext';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
   AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie 
 } from 'recharts';
 import { 
-  IoArrowBack, IoFilter, IoStatsChart 
+  IoArrowBack, IoFilter, IoStatsChart, IoAnalytics 
 } from 'react-icons/io5';
 
 import SelectPersonalizado from '../../components/SelectPersonalizado';
@@ -15,13 +16,14 @@ import SidebarFiltros from '../../components/SideBarFiltros.jsx';
 export default function AdminAnalytics() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isDarkMode } = useTheme();
   
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const COLORS = ['#e6b32a', '#8b5cf6', '#06b6d4', '#10b981', '#f43f5e'];
+  const COLORS = ['#e6b32a', '#3b82f6', '#10b981', '#8b5cf6', '#f43f5e'];
 
   const [selectedBarbeiro, setSelectedBarbeiro] = useState('todos');
   const [periodoPredefinido, setPeriodoPredefinido] = useState('mensal');
@@ -98,70 +100,83 @@ export default function AdminAnalytics() {
 
   const CustomTooltip = ({ active, payload }) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload;
       return (
-        <div className="bg-white dark:bg-[#0d0d0d] p-3 rounded-xl border border-black/10 dark:border-white/10 shadow-2xl">
-          <p className="text-[10px] font-black uppercase text-[#e6b32a] mb-1">
-            {payload[0].payload.day || payload[0].payload.fullName}
+        <div className={`p-4 rounded-2xl border shadow-2xl relative z-[9999] ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-200'}`}>
+          <p className="text-[10px] font-black uppercase text-gray-500 mb-1">
+            {data.day || data.fullName}
           </p>
-          <p className="text-sm font-black font-mono dark:text-white text-black">
-            R$ {payload[0].value.toLocaleString()}
+          <p className={`text-xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+            R$ {payload[0].value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
           </p>
+          {data.qtd && <p className="text-[9px] text-[#e6b32a] uppercase font-bold mt-1">{data.qtd} serviços</p>}
         </div>
       );
     }
     return null;
   };
 
-  if (loading) return null;
+  if (loading) return (
+    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+      <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+    </div>
+  );
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] text-gray-900 dark:text-gray-100 p-4 md:p-8 font-sans transition-colors overflow-x-hidden">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-24 font-sans transition-colors duration-300`}>
       
-      <header className="max-w-6xl mx-auto flex justify-between items-center mb-8">
+      <header className="max-w-6xl mx-auto flex justify-between items-center mb-12 border-b border-black/5 dark:border-white/5 pb-8">
         <div className="flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center hover:text-[#e6b32a] transition-all">
-            <IoArrowBack size={18} />
+          <button 
+            onClick={() => navigate(-1)} 
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-white border-slate-200 hover:border-black'}`}
+          >
+            <IoArrowBack size={20} />
           </button>
           <div>
-            <h1 className="text-xl font-black italic lowercase tracking-tighter text-gray-900 dark:text-white">admin.<span className="text-[#e6b32a]">analytics</span></h1>
-            <p className="text-[8px] text-gray-500 uppercase font-black tracking-[3px]">inteligência de dados</p>
+            <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
+              admin.<span className="text-[#e6b32a]">analytics</span>
+            </h1>
+            <p className="text-[9px] text-gray-500 uppercase font-black tracking-[4px] mt-1">inteligência de dados</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-6">
           <div className="hidden md:block text-right">
-            <p className="text-[8px] text-gray-500 uppercase font-black tracking-widest text-gray-900 dark:text-gray-400">receita filtrada</p>
-            <p className="text-xl font-black text-[#e6b32a] font-mono">R$ {dadosProcessados.total.toLocaleString()}</p>
+            <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">receita filtrada</p>
+            <p className="text-3xl font-black text-[#e6b32a] font-mono tracking-tighter">
+              R$ {dadosProcessados.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            </p>
           </div>
           <button 
             onClick={() => setIsFilterOpen(true)}
-            className="w-10 h-10 flex items-center justify-center bg-[#e6b32a] text-black rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#e6b32a]/20"
+            className="w-12 h-12 flex items-center justify-center bg-[#e6b32a] text-black rounded-2xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-[#e6b32a]/20"
           >
-            <IoFilter size={20} />
+            <IoFilter size={22} />
           </button>
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto space-y-6">
-        {/* Gráfico de Evolução */}
-        <div className="bg-white dark:bg-[#111] border border-black/5 dark:border-white/5 rounded-[2rem] p-6 shadow-sm">
-          <h3 className="text-[9px] font-black uppercase tracking-[3px] text-gray-400 mb-6 flex items-center gap-2">
-            <IoStatsChart className="text-[#e6b32a]" /> evolução financeira no período
+      <main className="max-w-6xl mx-auto space-y-8">
+        {/* Gráfico de Evolução (Card Principal) */}
+        <div className={`p-6 md:p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
+            <div className="w-1.5 h-1.5 rounded-full bg-[#e6b32a]" /> evolução financeira no período
           </h3>
-          <div className="h-64">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dadosProcessados.timeline}>
                 <defs>
                   <linearGradient id="colorGold" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#e6b32a" stopOpacity={0.2}/>
+                    <stop offset="5%" stopColor="#e6b32a" stopOpacity={0.3}/>
                     <stop offset="95%" stopColor="#e6b32a" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
-                <XAxis dataKey="day" fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                <YAxis fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="valor" stroke="#e6b32a" strokeWidth={3} fill="url(#colorGold)" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.03} />
+                <XAxis dataKey="day" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
+                <YAxis fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
+                <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 1000 }} />
+                <Area type="monotone" dataKey="valor" stroke="#e6b32a" strokeWidth={4} fill="url(#colorGold)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -169,16 +184,17 @@ export default function AdminAnalytics() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Receita por Profissional */}
-          <div className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 shadow-sm">
-            <h3 className="text-[9px] font-black uppercase tracking-[3px] text-gray-400 mb-6">receita por profissional</h3>
-            <div className="h-60">
+          <div className={`p-6 md:p-8 rounded-[2.5rem] border h-[400px] flex flex-col ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-[#e6b32a]" /> receita por profissional
+            </h3>
+            <div className="flex-1 min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dadosProcessados.porBarbeiro}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
-                  <XAxis dataKey="name" fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                  <YAxis fontSize={9} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="lucro" radius={[8, 8, 8, 8]} barSize={30}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.03} />
+                  <XAxis dataKey="name" fontSize={10} axisLine={false} tickLine={false} tick={{fill: '#888'}} />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 1000 }} cursor={{fill: 'rgba(150,150,150,0.1)'}} />
+                  <Bar dataKey="lucro" radius={[10, 10, 10, 10]} barSize={35}>
                     {dadosProcessados.porBarbeiro.map((entry, index) => (
                       <Cell key={index} fill={entry.color} />
                     ))}
@@ -189,43 +205,48 @@ export default function AdminAnalytics() {
           </div>
 
           {/* Market Share */}
-          <div className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-black/5 dark:border-white/5 shadow-sm relative">
-            <h3 className="text-[9px] font-black uppercase tracking-[3px] text-gray-400 mb-6">market share (serviços)</h3>
-            <div className="h-60">
+          <div className={`p-6 md:p-8 rounded-[2.5rem] border h-[400px] flex flex-col relative ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> market share (serviços)
+            </h3>
+            <div className="flex-1 min-h-0 relative">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={dadosProcessados.porBarbeiro}
                     dataKey="qtd"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={95}
+                    paddingAngle={8}
                     stroke="none"
                   >
                     {dadosProcessados.porBarbeiro.map((entry, index) => (
                       <Cell key={index} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<CustomTooltip />} wrapperStyle={{ zIndex: 1000 }} />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pt-6">
-                <p className="text-xl font-black text-gray-900 dark:text-white">{dadosProcessados.totalAtendimentos}</p>
-                <p className="text-[7px] text-gray-500 uppercase font-black">total</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <p className={`text-4xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{dadosProcessados.totalAtendimentos}</p>
+                <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">total serviços</p>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* SIDEBAR DE FILTROS REUTILIZÁVEL */}
+      {/* SIDEBAR DE FILTROS */}
       <SidebarFiltros 
         isOpen={isFilterOpen} 
         onClose={() => setIsFilterOpen(false)} 
         title="filtros.analytics"
         onApply={() => setIsFilterOpen(false)}
       >
-        <section>
+        <section className="space-y-4">
           <SelectPersonalizado 
             label="profissional"
             value={selectedBarbeiro}

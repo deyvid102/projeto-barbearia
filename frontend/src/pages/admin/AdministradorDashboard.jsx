@@ -8,16 +8,18 @@ import {
 } from 'recharts';
 import { 
   IoArrowBack, IoPeople, IoCalendar, 
-  IoDocumentText, IoStatsChart, IoAnalytics, IoCut 
+  IoDocumentText, IoStatsChart, IoAnalytics, IoCut, 
+  IoCheckmarkCircle, IoCloseCircle 
 } from 'react-icons/io5';
 
 export default function AdministradorDashboard() {
   const { id } = useParams(); 
   const navigate = useNavigate();
-  const { isDarkMode } = useTheme(); // Agora consumindo o tema corretamente
+  const { isDarkMode } = useTheme(); 
   
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
+  const [totalServicosCadastrados, setTotalServicosCadastrados] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const COLORS = ['#e6b32a', '#3b82f6', '#10b981', '#8b5cf6', '#f43f5e'];
@@ -33,19 +35,24 @@ export default function AdministradorDashboard() {
       const adminData = resAdmin.data || resAdmin;
       const targetId = (adminData.fk_barbearia?._id || adminData.fk_barbearia)?.toString();
 
-      const [resB, resA] = await Promise.all([
+      const [resB, resA, resS] = await Promise.all([
         api.get('/barbeiros'),
-        api.get('/agendamentos')
+        api.get('/agendamentos'),
+        api.get('/servicos') // Ajuste o endpoint se for /valores ou outro
       ]);
       
       const todosB = Array.isArray(resB.data) ? resB.data : (Array.isArray(resB) ? resB : []);
       const todosA = Array.isArray(resA.data) ? resA.data : (Array.isArray(resA) ? resA : []);
+      const todosS = Array.isArray(resS.data) ? resS.data : (Array.isArray(resS) ? resS : []);
 
       const filtradosB = todosB.filter(b => (b.fk_barbearia?._id || b.fk_barbearia)?.toString() === targetId);
       const filtradosA = todosA.filter(a => (a.fk_barbearia?._id || a.fk_barbearia)?.toString() === targetId);
+      // Filtra os tipos de serviços cadastrados para esta barbearia
+      const filtradosS = todosS.filter(s => (s.fk_barbearia?._id || s.fk_barbearia)?.toString() === targetId);
 
       setBarbeiros(filtradosB);
       setAgendamentos(filtradosA);
+      setTotalServicosCadastrados(filtradosS.length);
     } catch (error) {
       console.error("erro dashboard:", error);
     } finally {
@@ -65,10 +72,13 @@ export default function AdministradorDashboard() {
     };
   });
 
+  // Lógica para Agenda de Hoje
+  const hojeStr = new Date().toISOString().split('T')[0];
+  const temAgendaHoje = agendamentos.some(a => a.datahora.startsWith(hojeStr) && a.status !== 'C');
+  const dataHojeFormatada = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+
   const lucroTotal = statsPorBarbeiro.reduce((acc, curr) => acc + curr.lucro, 0);
   const totalLogs = agendamentos.length;
-  const totalAgenda = agendamentos.filter(a => a.status !== 'F' && a.status !== 'C').length;
-  const totalServicos = agendamentos.filter(a => a.status === 'F').length;
 
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
@@ -106,7 +116,6 @@ export default function AdministradorDashboard() {
           </div>
         </header>
 
-        {/* Cards de Navegação com Mobile Optimization */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           <button 
             onClick={() => navigate(`/admin/analytics/${id}`)}
@@ -117,43 +126,30 @@ export default function AdministradorDashboard() {
             <IoStatsChart size={90} className="absolute -right-4 -bottom-4 text-black/10 group-hover:rotate-12 transition-transform" />
           </button>
 
+          <NavCard onClick={() => navigate(`/admin/barbeiros/${id}`)} icon={<IoPeople/>} label="barbeiros" value={barbeiros.length} isDarkMode={isDarkMode} />
+          
+          <NavCard onClick={() => navigate(`/admin/logs/${id}`)} icon={<IoDocumentText/>} label="logs" value={totalLogs} textColor="text-blue-400" isDarkMode={isDarkMode} />
+          
+          {/* Card Agenda com Status de Hoje */}
           <NavCard 
-            onClick={() => navigate(`/admin/barbeiros/${id}`)}
-            icon={<IoPeople/>} 
-            label="barbeiros" 
-            value={barbeiros.length} 
+            onClick={() => navigate(`/admin/agenda/${id}`)} 
+            icon={<IoCalendar/>} 
+            label={`hoje ${dataHojeFormatada}`} 
+            value={temAgendaHoje ? <IoCheckmarkCircle className="text-emerald-500" /> : <IoCloseCircle className="text-red-500" />} 
             isDarkMode={isDarkMode}
+            subtext={temAgendaHoje ? "há horários" : "sem agenda"}
           />
           
           <NavCard 
-            onClick={() => navigate(`/admin/logs/${id}`)}
-            icon={<IoDocumentText/>} 
-            label="logs" 
-            value={totalLogs} 
-            textColor="text-blue-400" 
-            isDarkMode={isDarkMode}
-          />
-
-          <NavCard 
-            onClick={() => navigate(`/admin/agenda/${id}`)}
-            icon={<IoCalendar/>} 
-            label="agenda" 
-            value={totalAgenda} 
-            textColor="text-purple-400" 
-            isDarkMode={isDarkMode}
-          />
-
-          <NavCard 
-            onClick={() => navigate(`/admin/valores/${id}`)}
+            onClick={() => navigate(`/admin/valores/${id}`)} 
             icon={<IoCut/>} 
             label="serviços" 
-            value={totalServicos} 
+            value={totalServicosCadastrados} 
             textColor="text-emerald-400" 
-            isDarkMode={isDarkMode}
+            isDarkMode={isDarkMode} 
           />
         </div>
 
-        {/* Gráficos Adaptados */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className={`p-6 md:p-8 rounded-[2.5rem] border flex flex-col h-[400px] ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
             <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
@@ -168,6 +164,7 @@ export default function AdministradorDashboard() {
                     <Tooltip 
                       cursor={{fill: 'rgba(150,150,150,0.1)'}} 
                       content={<CustomTooltip isDarkMode={isDarkMode} />} 
+                      wrapperStyle={{ zIndex: 1000 }}
                     />
                     <Bar dataKey="lucro" radius={[10, 10, 10, 10]} barSize={35}>
                       {statsPorBarbeiro.map((entry, index) => (
@@ -203,13 +200,18 @@ export default function AdministradorDashboard() {
                         <Cell key={index} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip content={<CustomTooltip isDarkMode={isDarkMode} />} />
+                    <Tooltip 
+                       content={<CustomTooltip isDarkMode={isDarkMode} />} 
+                       wrapperStyle={{ zIndex: 1000 }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : <NoData />}
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <p className="text-[8px] font-black uppercase text-gray-500 tracking-widest">atendimentos</p>
-                <p className={`text-4xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{totalServicos}</p>
+                <p className={`text-4xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                  {statsPorBarbeiro.reduce((acc, curr) => acc + curr.qtd, 0)}
+                </p>
               </div>
             </div>
           </div>
@@ -219,12 +221,12 @@ export default function AdministradorDashboard() {
   );
 }
 
-function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, isDarkMode }) {
+function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, isDarkMode, subtext }) {
   return (
     <button 
       onClick={onClick}
-      className={`p-5 rounded-[2rem] border hover:scale-[1.03] active:scale-95 transition-all duration-300 text-left group flex flex-col justify-between ${
-        isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-slate-100 hover:border-black/10 shadow-sm'
+      className={`p-5 rounded-[2rem] border hover:scale-[1.03] active:scale-95 transition-all duration-300 text-left group flex flex-col justify-between h-full ${
+        isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-slate-200 hover:border-black/10 shadow-sm'
       }`}
     >
       <div className="flex justify-between items-center mb-4 text-gray-500 group-hover:text-[#e6b32a] transition-colors">
@@ -232,7 +234,10 @@ function NavCard({ icon, label, value, textColor = "text-[#e6b32a]", onClick, is
       </div>
       <div>
         <p className="text-[9px] font-black uppercase text-gray-400 mb-1">{label}</p>
-        <h2 className={`text-2xl font-black tracking-tighter ${textColor}`}>{value}</h2>
+        <div className={`text-3xl font-black tracking-tighter ${textColor} flex items-center`}>
+          {value}
+        </div>
+        {subtext && <p className="text-[8px] font-bold text-gray-500 mt-1 uppercase italic">{subtext}</p>}
       </div>
     </button>
   );
@@ -251,7 +256,7 @@ const CustomTooltip = ({ active, payload, isDarkMode }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
-      <div className={`p-4 rounded-2xl border shadow-2xl relative z-50 ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-200'}`}>
+      <div className={`p-4 rounded-2xl border shadow-2xl min-w-[140px] ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-200'}`} style={{ position: 'relative', zIndex: 9999 }}>
         <p className="text-[10px] font-black uppercase text-gray-500 mb-1">{data.fullName}</p>
         <p className={`text-xl font-black font-mono ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>R$ {data.lucro.toLocaleString('pt-BR')}</p>
         <p className="text-[9px] text-[#e6b32a] uppercase font-bold mt-1">{data.qtd} serviços</p>

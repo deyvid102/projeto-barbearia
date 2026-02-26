@@ -12,7 +12,6 @@ import ClienteConfiguracoes from './pages/cliente/ClienteConfiguracoes';
 
 // imports barbeiro
 import LoginBarbeiro from './pages/barbeiro/LoginBarbeiro';
-// RegisterBarbeiro removido conforme solicitado
 import BarbeiroDashboard from './pages/barbeiro/BarbeiroDashboard';
 import BarbeiroHistorico from './pages/barbeiro/BarbeiroHistorico';
 import BarbeiroEstatisticas from './pages/barbeiro/BarbeiroEstatisticas';
@@ -31,11 +30,7 @@ const ProtectedRegisterRoute = ({ children }) => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
   const barbeariaId = params.get('barbearia');
-
-  if (!barbeariaId) {
-    return <Navigate to="/cliente/login" replace />;
-  }
-
+  if (!barbeariaId) return <Navigate to="/cliente/login" replace />;
   return children;
 };
 
@@ -46,31 +41,27 @@ export default function App() {
         <Routes>
           <Route path="/" element={<SelectProfile />} />
           
-          {/* rotas de cliente */}
+          {/* Rotas de cliente */}
           <Route path="/cliente/login" element={<LoginCliente />} />
-          <Route 
-            path="/cliente/register" 
-            element={
-              <ProtectedRegisterRoute>
-                <RegisterCliente />
-              </ProtectedRegisterRoute>
-            } 
-          />
+          <Route path="/cliente/register" element={<ProtectedRegisterRoute><RegisterCliente /></ProtectedRegisterRoute>} />
           <Route path="/cliente/:id" element={<ClienteDashboard />} />
           <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
           <Route path="/cliente/historico/:id" element={<ClienteHistorico />} />
           <Route path="/cliente/configuracoes/:id" element={<ClienteConfiguracoes />} />
           
-          {/* rotas de barbeiro */}
+          {/* Rotas de barbeiro */}
           <Route path="/barbeiro/login" element={<LoginBarbeiro />} />
-          {/* Rota de registro do barbeiro removida para segurança do fluxo */}
+          
+          {/* Ambas as rotas abaixo carregam o Dashboard para evitar erros de navegação */}
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
+          <Route path="/barbeiro/dashboard/:id" element={<BarbeiroDashboard />} />
+          
           <Route path="/barbeiro/historico/:id" element={<BarbeiroHistorico />} />
           <Route path="/barbeiro/estatisticas/:id" element={<BarbeiroEstatisticas />} />
           <Route path="/barbeiro/configuracoes/:id" element={<BarbeiroConfiguracoes />} />
           <Route path="/barbeiro/calendario/:id" element={<BarbeiroCalendario />} />
 
-          {/* rotas de admin */}
+          {/* Rotas de admin */}
           <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
           <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
