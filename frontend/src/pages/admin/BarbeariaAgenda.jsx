@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api';
-import ModalConfirmacao from '../../components/modais/ModalConfirmacao'; // Importação conforme sua instrução
+import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { 
   IoArrowBack, IoSaveOutline, IoCalendarOutline, 
   IoChevronForward, IoChevronBack, 
@@ -21,8 +21,6 @@ export default function BarbeariaAgenda() {
   const [diaExpandido, setDiaExpandido] = useState(null);
   const [sidebarAberta, setSidebarAberta] = useState(false);
   const [showToast, setShowToast] = useState(false);
-  
-  // Estado para controlar o Modal de Confirmação
   const [isModalAberto, setIsModalAberto] = useState(false);
 
   const hoje = new Date();
@@ -123,8 +121,9 @@ export default function BarbeariaAgenda() {
     setGradeMensal(prev => prev.map(d => {
       if (d.dia === dia) {
         const bIdStr = barbeiroId.toString();
-        const existe = d.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === bIdStr);
-        if (existe) {
+        const escalaExistente = d.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === bIdStr);
+        
+        if (escalaExistente) {
           return { ...d, escalas: d.escalas.filter(e => (e.barbeiroId?._id || e.barbeiroId).toString() !== bIdStr) };
         } else {
           return { ...d, escalas: [...d.escalas, { barbeiroId: bIdStr, entrada: d.abertura, saida: d.fechamento }] };
@@ -139,7 +138,11 @@ export default function BarbeariaAgenda() {
       if (d.dia === dia) {
         return { 
           ...d, 
-          escalas: d.escalas.map(esc => (esc.barbeiroId?._id || esc.barbeiroId).toString() === barbeiroId.toString() ? { ...esc, [campo]: valor } : esc)
+          escalas: d.escalas.map(esc => 
+            (esc.barbeiroId?._id || esc.barbeiroId).toString() === barbeiroId.toString() 
+            ? { ...esc, [campo]: valor } 
+            : esc
+          )
         };
       }
       return d;
@@ -156,7 +159,6 @@ export default function BarbeariaAgenda() {
     setDiaExpandido(null);
   };
 
-  // Função que o modal chama ao confirmar
   const handleConfirmarPublicacao = async () => {
     setIsModalAberto(false);
     try {
@@ -189,7 +191,6 @@ export default function BarbeariaAgenda() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-[#070707] text-gray-900 dark:text-gray-100 p-4 md:p-6 pb-32">
       
-      {/* MODAL DE CONFIRMAÇÃO */}
       <ModalConfirmacao 
         isOpen={isModalAberto}
         onClose={() => setIsModalAberto(false)}
@@ -198,7 +199,6 @@ export default function BarbeariaAgenda() {
         mensagem="Deseja realmente publicar as alterações na agenda? Isso atualizará a disponibilidade para os clientes."
       />
 
-      {/* TOAST DE SUCESSO */}
       <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-500 transform ${showToast ? 'translate-y-0 opacity-100' : '-translate-y-20 opacity-0 pointer-events-none'}`}>
         <div className="bg-[#e6b32a] text-black px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border-b-4 border-black/20">
           <IoCheckmarkDoneCircle size={24} />
@@ -221,7 +221,6 @@ export default function BarbeariaAgenda() {
           <button onClick={() => setSidebarAberta(true)} className="p-3 bg-white dark:bg-white/5 border border-black/5 dark:border-white/10 rounded-xl hover:text-[#e6b32a] active:scale-90 transition-all">
             <IoSettingsOutline size={20} />
           </button>
-          {/* O botão Publicar agora abre o Modal primeiro */}
           <button onClick={() => setIsModalAberto(true)} className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-6 py-3 bg-[#e6b32a] text-black rounded-xl font-black uppercase text-[10px] tracking-widest shadow-lg active:scale-95 transition-all">
             <IoSaveOutline size={16} /> publicar
           </button>
@@ -314,7 +313,7 @@ export default function BarbeariaAgenda() {
         </aside>
       </div>
 
-      {/* MODAL DE DETALHES */}
+      {/* MODAL DE DETALHES COM HORÁRIO POR BARBEIRO */}
       {diaExpandido && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
           <div className="bg-white dark:bg-[#0f0f0f] w-full max-w-lg rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl animate-in zoom-in-95 duration-200">
@@ -329,11 +328,9 @@ export default function BarbeariaAgenda() {
               <button onClick={() => setDiaExpandido(null)} className="p-2 bg-white/5 rounded-full"><IoCloseOutline size={24}/></button>
             </header>
 
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
                <div className="flex items-center justify-between bg-black/10 p-5 rounded-3xl border border-white/5">
-                  <div className="flex flex-col">
-                    <span className="text-xs font-black uppercase">Status do Dia</span>
-                  </div>
+                  <span className="text-xs font-black uppercase">Status do Dia</span>
                   <Switch 
                     active={diaExpandido.ativo} 
                     disabled={isDataPassada(diaExpandido.dia)}
@@ -348,41 +345,87 @@ export default function BarbeariaAgenda() {
 
                {diaExpandido.ativo && (
                  <div className="space-y-6">
+                    {/* Horário Geral da Unidade */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                            <span className="text-[8px] font-black uppercase opacity-40 block mb-1">Abre às</span>
-                            <input type="time" step="60" value={diaExpandido.abertura} onChange={(e) => {
+                            <span className="text-[8px] font-black uppercase opacity-40 block mb-1">Abre às (Geral)</span>
+                            <input type="time" value={diaExpandido.abertura} onChange={(e) => {
                                 updateDiaBase(diaExpandido.dia, 'abertura', e.target.value);
                                 setDiaExpandido({...diaExpandido, abertura: e.target.value});
                             }} className="bg-transparent border-none w-full text-xl font-black focus:ring-0 p-0 text-[#e6b32a]" />
                         </div>
                         <div className="bg-black/20 p-4 rounded-2xl border border-white/5">
-                            <span className="text-[8px] font-black uppercase opacity-40 block mb-1">Fecha às</span>
-                            <input type="time" step="60" value={diaExpandido.fechamento} onChange={(e) => {
+                            <span className="text-[8px] font-black uppercase opacity-40 block mb-1">Fecha às (Geral)</span>
+                            <input type="time" value={diaExpandido.fechamento} onChange={(e) => {
                                 updateDiaBase(diaExpandido.dia, 'fechamento', e.target.value);
                                 setDiaExpandido({...diaExpandido, fechamento: e.target.value});
                             }} className="bg-transparent border-none w-full text-xl font-black focus:ring-0 p-0 text-[#e6b32a]" />
                         </div>
                     </div>
 
-                    <div className="space-y-3">
-                        <h3 className="text-[10px] font-black uppercase opacity-40 tracking-widest ml-1">Equipe Escalada</h3>
-                        <div className="grid gap-2">
+                    <div className="space-y-4">
+                        <h3 className="text-[10px] font-black uppercase opacity-40 tracking-widest ml-1">Escala de Profissionais</h3>
+                        <div className="grid gap-4">
                             {listaBarbeiros.map(b => {
-                                const esc = diaExpandido.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === b._id.toString());
+                                const escala = diaExpandido.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === b._id.toString());
+                                
                                 return (
-                                    <div key={b._id} className={`p-4 rounded-2xl border-2 transition-all flex items-center justify-between ${esc ? 'border-[#e6b32a] bg-[#e6b32a]/5' : 'border-transparent bg-black/10 opacity-50'}`}>
-                                        <span className="text-xs font-black uppercase">{b.nome}</span>
-                                        <Switch 
-                                          active={!!esc} 
-                                          onClick={() => {
-                                            toggleBarbeiroNoDia(diaExpandido.dia, b._id);
-                                            const novaEscala = esc 
-                                                ? diaExpandido.escalas.filter(e => (e.barbeiroId?._id || e.barbeiroId).toString() !== b._id.toString())
-                                                : [...diaExpandido.escalas, { barbeiroId: b._id, entrada: diaExpandido.abertura, saida: diaExpandido.fechamento }];
-                                            setDiaExpandido({...diaExpandido, escalas: novaEscala});
-                                          }} 
-                                        />
+                                    <div key={b._id} className={`p-4 rounded-3xl border-2 transition-all ${escala ? 'border-[#e6b32a] bg-[#e6b32a]/5' : 'border-transparent bg-black/10 opacity-50'}`}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                                                    <IoPersonOutline size={14} />
+                                                </div>
+                                                <span className="text-xs font-black uppercase">{b.nome}</span>
+                                            </div>
+                                            <Switch 
+                                              active={!!escala} 
+                                              onClick={() => {
+                                                toggleBarbeiroNoDia(diaExpandido.dia, b._id);
+                                                const novaEscalaArr = escala 
+                                                    ? diaExpandido.escalas.filter(e => (e.barbeiroId?._id || e.barbeiroId).toString() !== b._id.toString())
+                                                    : [...diaExpandido.escalas, { barbeiroId: b._id, entrada: diaExpandido.abertura, saida: diaExpandido.fechamento }];
+                                                setDiaExpandido({...diaExpandido, escalas: novaEscalaArr});
+                                              }} 
+                                            />
+                                        </div>
+
+                                        {escala && (
+                                            <div className="grid grid-cols-2 gap-3 mt-2 animate-in fade-in slide-in-from-top-1">
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[7px] font-black uppercase opacity-50">Entrada</label>
+                                                    <input 
+                                                        type="time" 
+                                                        value={escala.entrada} 
+                                                        onChange={(e) => {
+                                                            updateEscalaBarbeiro(diaExpandido.dia, b._id, 'entrada', e.target.value);
+                                                            const novasEscalas = diaExpandido.escalas.map(esc => 
+                                                                (esc.barbeiroId?._id || esc.barbeiroId).toString() === b._id.toString() 
+                                                                ? { ...esc, entrada: e.target.value } : esc
+                                                            );
+                                                            setDiaExpandido({...diaExpandido, escalas: novasEscalas});
+                                                        }}
+                                                        className="bg-black/20 border-none rounded-lg text-xs font-bold p-2 text-white focus:ring-1 focus:ring-[#e6b32a]"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="text-[7px] font-black uppercase opacity-50">Saída</label>
+                                                    <input 
+                                                        type="time" 
+                                                        value={escala.saida} 
+                                                        onChange={(e) => {
+                                                            updateEscalaBarbeiro(diaExpandido.dia, b._id, 'saida', e.target.value);
+                                                            const novasEscalas = diaExpandido.escalas.map(esc => 
+                                                                (esc.barbeiroId?._id || esc.barbeiroId).toString() === b._id.toString() 
+                                                                ? { ...esc, saida: e.target.value } : esc
+                                                            );
+                                                            setDiaExpandido({...diaExpandido, escalas: novasEscalas});
+                                                        }}
+                                                        className="bg-black/20 border-none rounded-lg text-xs font-bold p-2 text-white focus:ring-1 focus:ring-[#e6b32a]"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}

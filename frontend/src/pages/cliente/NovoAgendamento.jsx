@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
+import CustomAlert from '../../components/CustomAlert.jsx';
+
 import { 
   IoPricetagOutline, 
   IoTimeOutline, 
@@ -23,7 +25,7 @@ export default function NovoAgendamento() {
   const [barbeiros, setBarbeiros] = useState([]);
   const [tiposCorte, setTiposCorte] = useState([]);
   const [agendaMensal, setAgendaMensal] = useState(null);
-  const [agendamentosOcupados, setAgendamentosOcupados] = useState([]);
+  const [todosAgendamentos, setTodosAgendamentos] = useState([]); // Cache de agendamentos para filtrar dias lotados
   const [loading, setLoading] = useState(true);
   const [loadingHorarios, setLoadingHorarios] = useState(false);
   
@@ -32,7 +34,7 @@ export default function NovoAgendamento() {
     fk_barbeiro: '', 
     fk_barbeiroNome: '',
     fk_barbearia: '', 
-    data: new Date().toISOString().split('T')[0], 
+    data: new Date().toLocaleDateString('en-CA'), 
     hora: '', 
     valor: 0 
   });
@@ -60,9 +62,17 @@ export default function NovoAgendamento() {
         const bId = lista[0].fk_barbearia?._id || lista[0].fk_barbearia;
         setForm(prev => ({ ...prev, fk_barbearia: bId }));
 
-        const resBarbearia = await api.get(`/barbearias/${bId}`);
+        const [resBarbearia, resAgendamentos] = await Promise.all([
+          api.get(`/barbearias/${bId}`),
+          api.get(`/agendamentos`) // Pegamos todos para saber quais dias ocultar
+        ]);
+
         const dadosB = resBarbearia.data || resBarbearia;
         setTiposCorte(dadosB.servicos || []);
+        if (dadosB.agenda_detalhada) setAgendaMensal(dadosB.agenda_detalhada);
+        
+        const ags = resAgendamentos.data || resAgendamentos;
+        setTodosAgendamentos(Array.isArray(ags) ? ags.filter(a => a.status === 'A') : []);
       }
     } catch (err) {
       console.error("erro ao carregar dados iniciais");
@@ -73,21 +83,19 @@ export default function NovoAgendamento() {
 
   const buscarEscalaDoDia = async () => {
     try {
-      const dataSel = new Date(form.data + 'T12:00:00');
-      const mes = dataSel.getMonth();
-      const ano = dataSel.getFullYear();
-      const dia = dataSel.getDate();
+      const [anoStr, mesStr, diaStr] = form.data.split('-').map(Number);
+      const mes = mesStr - 1; 
 
       const res = await api.get(`/barbearias/${form.fk_barbearia}`);
       const dados = res.data || res;
       const agenda = dados.agenda_detalhada;
 
-      if (agenda && agenda.mes === mes && agenda.ano === ano) {
+      if (agenda && agenda.mes === mes && agenda.ano === anoStr) {
         setAgendaMensal(agenda);
-        const configDia = agenda.grade.find(g => g.dia === dia);
+        const configDia = agenda.grade.find(g => g.dia === diaStr);
 
         if (configDia && configDia.ativo) {
-          const idsEscalados = configDia.escalas.map(e => e.barbeiroId.toString());
+          const idsEscalados = configDia.escalas.map(e => (e.barbeiroId?._id || e.barbeiroId).toString());
           const resTodos = await api.get('/barbeiros');
           const todosBarbeiros = resTodos.data || resTodos;
           
@@ -99,22 +107,68 @@ export default function NovoAgendamento() {
         } else {
           setBarbeiros([]);
         }
-      } else {
-        setAgendaMensal(null);
-        setBarbeiros([]);
       }
     } catch (error) {
       console.error("erro ao buscar escala");
     }
   };
 
+  // Lógica central para saber se um dia tem ao menos 1 horário livre
+  const temHorarioDisponivelNoDia = (dataRef) => {
+    if (!agendaMensal) return false;
+    const dia = dataRef.getDate();
+    const configDia = agendaMensal.grade.find(g => g.dia === dia);
+    
+    if (!configDia || !configDia.ativo) return false;
+
+    const dataStr = dataRef.toLocaleDateString('en-CA');
+    const agora = new Date();
+    const hojeStr = agora.toLocaleDateString('en-CA');
+
+    // Pegamos a abertura e fechamento geral do dia para simplificar a checagem do card
+    let [h, m] = configDia.abertura.split(':').map(Number);
+    const [hFim, mFim] = configDia.fechamento.split(':').map(Number);
+    const totalMinutosFim = hFim * 60 + mFim;
+
+    while ((h * 60 + m) + 40 <= totalMinutosFim) {
+      const horaFormatada = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      
+      // Se for hoje, ignora horas que já passaram
+      let horarioPassou = false;
+      if (dataStr === hojeStr) {
+        const slot = new Date();
+        slot.setHours(h, m, 0, 0);
+        if (slot <= agora) horarioPassou = true;
+      }
+
+      if (!horarioPassou) {
+        // Verifica se existe algum barbeiro escalado que não esteja ocupado nesse horário
+        const existeVaga = configDia.escalas.some(escala => {
+          const bId = (escala.barbeiroId?._id || escala.barbeiroId).toString();
+          const ocupado = todosAgendamentos.some(a => 
+            a.fk_barbeiro?._id?.toString() === bId && 
+            a.datahora.startsWith(`${dataStr}T${horaFormatada}:00`)
+          );
+          return !ocupado;
+        });
+
+        if (existeVaga) return true; // Achou pelo menos 1 vaga no dia
+      }
+
+      m += 40;
+      if (m >= 60) { h += Math.floor(m / 60); m = m % 60; }
+    }
+
+    return false;
+  };
+
   const gerarHorarios40Min = () => {
     if (!agendaMensal || !form.data || !form.fk_barbeiro) return [];
-    const diaSel = new Date(form.data + 'T12:00:00').getDate();
-    const configDia = agendaMensal.grade.find(g => g.dia === diaSel);
+    const [ano, mes, dia] = form.data.split('-').map(Number);
+    const configDia = agendaMensal.grade.find(g => g.dia === dia);
     if (!configDia) return [];
 
-    const escalaBarbeiro = configDia.escalas.find(e => e.barbeiroId.toString() === form.fk_barbeiro.toString());
+    const escalaBarbeiro = configDia.escalas.find(e => (e.barbeiroId?._id || e.barbeiroId).toString() === form.fk_barbeiro.toString());
     const inicio = escalaBarbeiro ? escalaBarbeiro.entrada : configDia.abertura;
     const fim = escalaBarbeiro ? escalaBarbeiro.saida : configDia.fechamento;
 
@@ -123,8 +177,18 @@ export default function NovoAgendamento() {
     const [hFim, mFim] = fim.split(':').map(Number);
     const totalMinutosFim = hFim * 60 + mFim;
 
+    const agora = new Date();
+    const hojeStr = agora.toLocaleDateString('en-CA');
+
     while ((h * 60 + m) + 40 <= totalMinutosFim) {
-      horarios.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
+      const horaFormatada = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+      let podeAdicionar = true;
+      if (form.data === hojeStr) {
+        const slot = new Date();
+        slot.setHours(h, m, 0, 0);
+        if (slot <= agora) podeAdicionar = false;
+      }
+      if (podeAdicionar) horarios.push(horaFormatada);
       m += 40;
       if (m >= 60) { h += Math.floor(m / 60); m = m % 60; }
     }
@@ -147,20 +211,11 @@ export default function NovoAgendamento() {
     return dias;
   };
 
-  useEffect(() => {
-    if (form.fk_barbeiro && form.data) {
-      const fetchOcupados = async () => {
-        setLoadingHorarios(true);
-        try {
-          const res = await api.get(`/agendamentos?fk_barbeiro=${form.fk_barbeiro}`);
-          const dados = res.data || res;
-          setAgendamentosOcupados(Array.isArray(dados) ? dados.filter(a => a.status === 'A') : []);
-        } catch (err) { console.error(err); } 
-        finally { setLoadingHorarios(false); }
-      };
-      fetchOcupados();
-    }
-  }, [form.fk_barbeiro, form.data]);
+  const formatarDataResumo = (dataStr) => {
+    if (!dataStr) return '—';
+    const [ano, mes, dia] = dataStr.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
 
   const handleFinalizar = async () => {
     try {
@@ -178,7 +233,6 @@ export default function NovoAgendamento() {
     } catch (err) { alert("erro ao salvar agendamento."); }
   };
 
-  // Lógica de texto e desabilitação do botão de ação
   const getButtonConfig = () => {
     if (step === 1) return { label: "escolher data", disabled: !form.tipoCorte, action: () => setStep(2) };
     if (step === 2) return { label: "escolher barbeiro", disabled: !form.data, action: () => setStep(3) };
@@ -192,7 +246,6 @@ export default function NovoAgendamento() {
     <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-[#070707] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-32 md:pb-8 font-sans`}>
       <div className="max-w-6xl mx-auto">
         
-        {/* Header */}
         <header className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
             <button 
@@ -218,7 +271,6 @@ export default function NovoAgendamento() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
-          {/* Main Content */}
           <main className={`lg:col-span-8 p-6 md:p-10 rounded-[2.5rem] border shadow-2xl min-h-[500px] transition-colors ${
             isDarkMode ? 'bg-[#0d0d0d] border-white/5' : 'bg-white border-slate-100'
           }`}>
@@ -261,6 +313,7 @@ export default function NovoAgendamento() {
                     <IoCalendarNumberOutline size={18} /> {showFullCalendar ? 'voltar' : 'calendário'}
                   </button>
                 </div>
+                
                 {showFullCalendar ? (
                   <div className="p-4 md:p-8 rounded-[2rem] bg-black/20 border border-white/5">
                     <div className="flex justify-between items-center mb-8">
@@ -271,21 +324,48 @@ export default function NovoAgendamento() {
                     <div className="grid grid-cols-7 gap-2 md:gap-4">
                       {['dom','seg','ter','qua','qui','sex','sab'].map(d => <span key={d} className="text-center text-[8px] font-black uppercase text-gray-600 mb-2">{d}</span>)}
                       {getDiasNoMes(currentMonth.getMonth(), currentMonth.getFullYear()).map((dia, i) => {
-                        const dStr = dia.toISOString().split('T')[0];
-                        const isPast = dStr < new Date().toISOString().split('T')[0];
+                        const dStr = dia.toLocaleDateString('en-CA');
+                        const hojeStr = new Date().toLocaleDateString('en-CA');
+                        const isPast = dStr < hojeStr;
+                        const semVaga = !temHorarioDisponivelNoDia(dia);
+
                         return (
-                          <button key={i} disabled={isPast} onClick={() => { setForm({...form, data: dStr, fk_barbeiro: '', hora: ''}); setShowFullCalendar(false); }} className={`aspect-square rounded-2xl text-xs font-black transition-all ${form.data === dStr ? 'bg-[#e6b32a] text-black scale-110 shadow-lg shadow-[#e6b32a]/20' : isPast ? 'opacity-10 cursor-not-allowed' : isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'}`}>{dia.getDate()}</button>
+                          <button 
+                            key={i} 
+                            disabled={isPast || semVaga} 
+                            onClick={() => { setForm({...form, data: dStr, fk_barbeiro: '', hora: ''}); setShowFullCalendar(false); }} 
+                            className={`aspect-square rounded-2xl text-xs font-black transition-all relative ${
+                              form.data === dStr 
+                                ? 'bg-[#e6b32a] text-black scale-110 shadow-lg shadow-[#e6b32a]/20' 
+                                : (isPast || semVaga) 
+                                  ? 'opacity-10 cursor-not-allowed grayscale' 
+                                  : isDarkMode ? 'bg-white/5 hover:bg-white/10' : 'bg-slate-100 hover:bg-slate-200'
+                            }`}
+                          >
+                            {dia.getDate()}
+                          </button>
                         );
                       })}
                     </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {[0,1,2,3,4,5].map(i => {
+                    {[...Array(14)].map((_, i) => {
                       const d = new Date(); d.setDate(d.getDate() + i);
-                      const dStr = d.toISOString().split('T')[0];
+                      const dStr = d.toLocaleDateString('en-CA');
+                      
+                      // FILTRO SOLICITADO: Não renderiza o card se não houver horário disponível
+                      if (!temHorarioDisponivelNoDia(d)) return null;
+
                       return (
-                        <button key={dStr} onClick={() => setForm({...form, data: dStr, fk_barbeiro: '', hora: ''})} className={`p-6 rounded-[2rem] border-2 flex flex-col items-center gap-1 transition-all ${form.data === dStr ? 'border-[#e6b32a] bg-[#e6b32a]/10' : isDarkMode ? 'border-white/5 bg-black/40 hover:border-white/10' : 'border-slate-100 bg-slate-50 hover:border-slate-200'}`}>
+                        <button 
+                          key={dStr} 
+                          onClick={() => setForm({...form, data: dStr, fk_barbeiro: '', hora: ''})} 
+                          className={`p-6 rounded-[2rem] border-2 flex flex-col items-center gap-1 transition-all ${
+                            form.data === dStr ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 
+                            isDarkMode ? 'border-white/5 bg-black/40 hover:border-white/10' : 'border-slate-100 bg-slate-50 hover:border-slate-200'
+                          }`}
+                        >
                           <span className="text-[10px] uppercase font-black text-gray-500">{d.toLocaleDateString('pt-BR', { weekday: 'short' })}</span>
                           <span className="text-xl font-black">{d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                         </button>
@@ -309,7 +389,9 @@ export default function NovoAgendamento() {
                       {form.fk_barbeiro === b._id.toString() && <IoCheckmarkCircle size={24} className="text-[#e6b32a]" />}
                     </div>
                   )) : (
-                    <div className="col-span-full text-center py-16 opacity-50 flex flex-col items-center gap-4 text-[10px] font-black uppercase italic tracking-widest">Nenhum barbeiro disponível para esta data.</div>
+                    <div className="col-span-full text-center py-16 opacity-50 flex flex-col items-center gap-4 text-[10px] font-black uppercase italic tracking-widest">
+                       Nenhum profissional disponível para esta data.
+                    </div>
                   )}
                 </div>
               </div>
@@ -325,25 +407,29 @@ export default function NovoAgendamento() {
                   {loadingHorarios ? (
                     <div className="col-span-full text-center py-20 animate-pulse text-[10px] font-black italic tracking-widest">checando disponibilidade...</div>
                   ) : (
-                    gerarHorarios40Min().map(h => {
-                      const ocupado = agendamentosOcupados.some(a => a.datahora.startsWith(`${form.data}T${h}:00`)) || (new Date(`${form.data}T${h}:00`) < new Date());
+                    gerarHorarios40Min().length > 0 ? gerarHorarios40Min().map(h => {
+                      const ocupado = todosAgendamentos.some(a => 
+                        a.fk_barbeiro?._id?.toString() === form.fk_barbeiro && 
+                        a.datahora.startsWith(`${form.data}T${h}:00`)
+                      );
                       return (
                         <button key={h} disabled={ocupado} onClick={() => setForm({...form, hora: h})} className={`p-4 rounded-2xl border-2 text-sm font-black transition-all ${form.hora === h ? 'border-[#e6b32a] bg-[#e6b32a] text-black shadow-lg shadow-[#e6b32a]/20' : ocupado ? 'opacity-10 border-transparent bg-transparent pointer-events-none' : isDarkMode ? 'border-white/5 bg-black hover:border-[#e6b32a]/40 text-gray-400' : 'border-slate-100 bg-white hover:border-slate-300 text-slate-600'}`}>{h}</button>
                       );
-                    })
+                    }) : (
+                        <div className="col-span-full text-center py-16 opacity-50 text-[10px] font-black uppercase">Agenda lotada para este profissional.</div>
+                    )
                   )}
                 </div>
               </div>
             )}
           </main>
 
-          {/* Sidebar Resumo (PC) - Agora com botão de próxima etapa */}
           <aside className="hidden lg:block lg:col-span-4 sticky top-8">
             <div className={`p-8 rounded-[2.5rem] border shadow-2xl space-y-8 ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
-              <h3 className="text-xs font-black uppercase tracking-[4px] text-[#e6b32a]">resumo do agendamento</h3>
+              <h3 className="text-xs font-black uppercase tracking-[4px] text-[#e6b32a]">resumo</h3>
               <div className="space-y-6">
                 <div className="flex justify-between items-center"><span className="text-[10px] font-black uppercase text-gray-500">serviço</span><span className="font-bold lowercase">{form.tipoCorte || '—'}</span></div>
-                <div className="flex justify-between items-center"><span className="text-[10px] font-black uppercase text-gray-500">data</span><span className="font-bold">{new Date(form.data + 'T12:00:00').toLocaleDateString('pt-BR')}</span></div>
+                <div className="flex justify-between items-center"><span className="text-[10px] font-black uppercase text-gray-500">data</span><span className="font-bold">{formatarDataResumo(form.data)}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[10px] font-black uppercase text-gray-500">barbeiro</span><span className="font-bold lowercase">{form.fk_barbeiroNome || '—'}</span></div>
                 <div className="flex justify-between items-center"><span className="text-[10px] font-black uppercase text-gray-500">horário</span><span className="font-black text-[#e6b32a] text-xl">{form.hora || '--:--'}</span></div>
               </div>
@@ -351,7 +437,6 @@ export default function NovoAgendamento() {
                 <div className="flex justify-between items-end"><span className="text-[10px] font-black uppercase text-gray-500">total</span><span className="text-3xl font-black font-mono">r$ {form.valor.toFixed(2).replace('.', ',')}</span></div>
               </div>
 
-              {/* Botão de ação do PC */}
               <button 
                 disabled={btnConfig.disabled} 
                 onClick={btnConfig.action}
@@ -368,7 +453,6 @@ export default function NovoAgendamento() {
         </div>
       </div>
 
-      {/* Floating Button Mobile */}
       <div className="lg:hidden fixed bottom-8 left-0 right-0 px-6 z-50">
         <button 
           disabled={btnConfig.disabled} 

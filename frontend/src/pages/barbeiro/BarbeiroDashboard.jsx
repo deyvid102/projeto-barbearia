@@ -16,7 +16,11 @@ import {
   IoFlashOutline,
   IoStatsChartOutline,
   IoCheckmarkDoneOutline,
-  IoShareSocialOutline
+  IoShareSocialOutline,
+  IoSaveOutline,
+  IoCloseOutline,
+  IoPricetagOutline,
+  IoCreateOutline
 } from 'react-icons/io5';
 
 export default function BarbeiroDashboard() {
@@ -34,34 +38,22 @@ export default function BarbeiroDashboard() {
   const [statusTarget, setStatusTarget] = useState({ agendamento: null, novoStatus: '', mensagem: '', tipo: '' });
   const [alertConfig, setAlertConfig] = useState({ show: false, titulo: '', mensagem: '', tipo: 'success' });
 
+  // Estados para edição de valor
+  const [editingValorId, setEditingValorId] = useState(null);
+  const [novoValor, setNovoValor] = useState("");
+
   const menuRef = useRef();
   const getSafeId = () => id || localStorage.getItem('barbeiroId');
 
-  // FUNÇÃO CORRIGIDA: Pega o ID da BARBEARIA e não do barbeiro
   const handleCopyRegisterLink = () => {
-    // Aqui buscamos o ID da barbearia dentro dos dados do barbeiro
-    // Ajuste o nome do campo conforme seu banco (ex: fk_barbearia, barbeariaId, etc)
     const barbeariaId = barbeiroData?.fk_barbearia || barbeiroData?.barbeariaId || barbeiroData?._id;
-    
     if (!barbeariaId) {
-      setAlertConfig({
-        show: true,
-        titulo: 'erro',
-        mensagem: 'não foi possível localizar o ID da barbearia.',
-        tipo: 'error'
-      });
+      setAlertConfig({ show: true, titulo: 'erro', mensagem: 'id da barbearia não localizado.', tipo: 'error' });
       return;
     }
-
     const registerLink = `${window.location.origin}/cliente/register?barbearia=${barbeariaId}`;
-    
     navigator.clipboard.writeText(registerLink).then(() => {
-      setAlertConfig({
-        show: true,
-        titulo: 'link copiado!',
-        mensagem: 'link de auto-cadastro da barbearia copiado.',
-        tipo: 'success'
-      });
+      setAlertConfig({ show: true, titulo: 'link copiado!', mensagem: 'link de cadastro copiado.', tipo: 'success' });
       setIsProfileOpen(false);
     });
   };
@@ -75,25 +67,11 @@ export default function BarbeiroDashboard() {
         api.get('/clientes'),
         api.get('/barbeiros') 
       ]);
-
-      const agendados = resAgendados.data || resAgendados || [];
-      setAgendamentos(Array.isArray(agendados) ? agendados : []);
+      setAgendamentos(resAgendados.data || resAgendados || []);
       setClientes(resClientes.data || resClientes || []);
-      
       const dadosBarbeiro = (resBarbeirosLista.data || resBarbeirosLista || []).find(b => String(b._id) === String(currentId));
       setBarbeiroData(dadosBarbeiro);
-
-    } catch (error) {
-      console.error("erro ao buscar dados:", error);
-      setAlertConfig({
-        show: true,
-        titulo: 'erro de carregamento',
-        mensagem: 'não foi possível atualizar os dados.',
-        tipo: 'error'
-      });
-    } finally {
-      if (!isAutoRefresh) setLoading(false);
-    }
+    } catch (error) { console.error(error); } finally { if (!isAutoRefresh) setLoading(false); }
   };
 
   useEffect(() => {
@@ -104,16 +82,6 @@ export default function BarbeiroDashboard() {
     return () => clearInterval(interval);
   }, [id]);
 
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsProfileOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   const getNomeCliente = (fk) => {
     const clienteId = fk?._id || fk;
     return clientes.find(c => String(c._id) === String(clienteId))?.nome || 'desconhecido';
@@ -121,13 +89,23 @@ export default function BarbeiroDashboard() {
 
   const handleUpdateStatus = async () => {
     const { agendamento, novoStatus } = statusTarget;
-    if (!agendamento?._id) return;
     try {
       await api.put(`/agendamentos/${agendamento._id}`, { status: novoStatus });
       setIsConfirmModalOpen(false);
       fetchData(getSafeId(), true);
     } catch (error) {
       setAlertConfig({ show: true, titulo: 'erro', mensagem: 'falha ao atualizar status.', tipo: 'error' });
+    }
+  };
+
+  const handleUpdateValor = async (agendamentoId) => {
+    try {
+      await api.put(`/agendamentos/${agendamentoId}`, { valor: Number(novoValor) });
+      setEditingValorId(null);
+      setAlertConfig({ show: true, titulo: 'sucesso', mensagem: 'valor atualizado!', tipo: 'success' });
+      fetchData(getSafeId(), true);
+    } catch (error) {
+      setAlertConfig({ show: true, titulo: 'erro', mensagem: 'falha ao atualizar valor.', tipo: 'error' });
     }
   };
 
@@ -138,12 +116,6 @@ export default function BarbeiroDashboard() {
   const lucroHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr) && a.status === 'F').reduce((acc, curr) => acc + (curr.valor || 0), 0);
   const totalFuturo = agendamentos.filter(a => a.status === 'A').length;
   const proximoCliente = pendentesHoje[0];
-
-  if (loading && !barbeiroData) return (
-    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
-      <div className="w-8 h-8 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-20 font-sans transition-colors duration-300`}>
@@ -163,30 +135,32 @@ export default function BarbeiroDashboard() {
             </button>
 
             <div className="relative" ref={menuRef}>
-              <button onClick={() => setIsProfileOpen(!isProfileOpen)} className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${isProfileOpen ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
-                <IoPersonCircleOutline size={24} />
+              <button 
+                onClick={() => setIsProfileOpen(!isProfileOpen)} 
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center border transition-all duration-300 active:scale-90 shadow-sm
+                  ${isProfileOpen 
+                    ? 'bg-[#e6b32a] text-black border-[#e6b32a]' 
+                    : isDarkMode 
+                      ? 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-[#e6b32a]/50' 
+                      : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-400'
+                  }`}
+              >
+                <IoPersonCircleOutline size={26} className={isProfileOpen ? 'scale-110' : 'opacity-80'} />
               </button>
               
               {isProfileOpen && (
                 <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-[#111] border dark:border-white/10 rounded-[2rem] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
-                  
-                  <button 
-                    onClick={handleCopyRegisterLink} 
-                    className="w-full px-6 py-4 text-left text-[10px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors text-[#e6b32a]"
-                  >
+                  <button onClick={handleCopyRegisterLink} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors text-[#e6b32a]">
                     <IoShareSocialOutline size={16} /> copiar link cadastro
                   </button>
-
                   <button onClick={() => navigate(`/barbeiro/configuracoes/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors">
                     <IoSettingsOutline size={16} /> configurações
                   </button>
-
                   {barbeiroData?.admin && (
                     <button onClick={() => navigate(`/admin/dashboard/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase text-blue-500 flex items-center gap-3 border-t dark:border-white/5 hover:bg-blue-500/5">
                       <IoShieldCheckmarkOutline size={16} /> painel admin
                     </button>
                   )}
-
                   <button onClick={() => { localStorage.clear(); navigate('/barbeiro/login'); }} className="w-full px-6 py-4 text-left text-[10px] font-black uppercase text-red-500 flex items-center gap-3 border-t dark:border-white/5 hover:bg-red-500/5">
                     <IoLogOutOutline size={16} /> encerrar sessão
                   </button>
@@ -196,7 +170,7 @@ export default function BarbeiroDashboard() {
           </div>
         </header>
 
-        {/* Restante do Dashboard permanece o mesmo */}
+        {/* Estatísticas */}
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
           <NavCard label="estatísticas" value={`r$ ${lucroHoje.toFixed(0)}`} icon={<IoStatsChartOutline />} textColor="text-emerald-500" isDarkMode={isDarkMode} onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)} />
           <NavCard label="agenda total" value={totalFuturo} icon={<IoCalendarOutline />} isDarkMode={isDarkMode} onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)} />
@@ -217,6 +191,7 @@ export default function BarbeiroDashboard() {
           </div>
         </div>
 
+        {/* Agendamentos */}
         <div className="space-y-6">
           <div className="flex justify-between items-end px-2">
             <div>
@@ -226,29 +201,71 @@ export default function BarbeiroDashboard() {
             <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{pendentesHoje.length} pendentes</span>
           </div>
           
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-4">
             {pendentesHoje.length > 0 ? (
               pendentesHoje.map(a => (
-                <div key={a._id} className={`p-5 rounded-[2rem] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all hover:scale-[1.01] group ${isDarkMode ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/30' : 'bg-white border-slate-100 hover:border-black/10'}`}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center transition-transform group-hover:rotate-12">
-                      <IoTimeOutline size={24} />
+                <div key={a._id} className={`p-5 rounded-[2.5rem] border flex flex-col lg:flex-row lg:items-center justify-between gap-6 transition-all group ${isDarkMode ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/20' : 'bg-white border-slate-100 hover:border-black/5 shadow-sm'}`}>
+                  
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-14 h-14 rounded-3xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center shrink-0">
+                      <IoTimeOutline size={28} />
                     </div>
-                    <div>
-                      <span className="text-[10px] font-black text-[#e6b32a] font-mono uppercase">{new Date(a.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h</span>
-                      <h3 className="text-xl font-black lowercase tracking-tighter leading-none mt-0.5">{getNomeCliente(a.fk_cliente)}</h3>
+                    <div className="flex-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="text-[11px] font-black text-[#e6b32a] font-mono uppercase">{new Date(a.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h</span>
+                        <span className="text-[8px] px-2 py-0.5 rounded-lg bg-black/5 dark:bg-white/5 text-gray-500 font-black uppercase tracking-widest border border-black/5 dark:border-white/5">{a.tipoCorte || 'serviço'}</span>
+                      </div>
+                      <h3 className="text-xl font-black lowercase tracking-tighter leading-none">{getNomeCliente(a.fk_cliente)}</h3>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    <button onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'C', mensagem: 'remover agendamento?', tipo: 'cancelar' }); setIsConfirmModalOpen(true); }} className="flex-1 md:flex-none px-6 py-3 rounded-xl border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95">cancelar</button>
-                    <button onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'F', mensagem: 'finalizar atendimento?', tipo: 'confirmar' }); setIsConfirmModalOpen(true); }} className="flex-[2] md:flex-none px-8 py-3 bg-[#e6b32a] text-black text-[9px] font-black uppercase tracking-widest rounded-xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 shadow-lg shadow-[#e6b32a]/10"><IoCheckmarkDoneOutline size={16} /> concluir</button>
+                  {/* Edição de Preço Otimizada */}
+                  <div className="flex items-center lg:justify-center px-2 lg:px-6 lg:border-l lg:border-r border-black/5 dark:border-white/5">
+                    {editingValorId === a._id ? (
+                      <div className="flex items-center gap-2 w-full lg:w-auto animate-in fade-in slide-in-from-bottom-2">
+                        <div className="relative flex-1 lg:flex-none">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[10px] font-black text-[#e6b32a] font-mono">R$</span>
+                          <input 
+                            autoFocus
+                            type="number" 
+                            value={novoValor}
+                            onChange={(e) => setNovoValor(e.target.value)}
+                            className="w-full lg:w-28 bg-black/10 dark:bg-white/5 border border-[#e6b32a] rounded-xl pl-8 pr-3 py-2 text-sm font-black font-mono outline-none shadow-inner"
+                          />
+                        </div>
+                        <button onClick={() => handleUpdateValor(a._id)} className="p-3 bg-emerald-500 text-white rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-emerald-500/20"><IoSaveOutline size={18}/></button>
+                        <button onClick={() => setEditingValorId(null)} className="p-3 bg-rose-500 text-white rounded-xl hover:scale-105 active:scale-95 transition-all shadow-lg shadow-rose-500/20"><IoCloseOutline size={18}/></button>
+                      </div>
+                    ) : (
+                      <button 
+                        onClick={() => { setEditingValorId(a._id); setNovoValor(a.valor); }} 
+                        className={`flex items-center gap-3 px-4 py-2.5 rounded-2xl transition-all w-full lg:w-auto border border-dashed
+                          ${isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}
+                        `}
+                      >
+                        <div className="text-left flex-1 lg:flex-none">
+                          <p className="text-[7px] font-black uppercase tracking-[2px] text-gray-500 mb-0.5">preço atual</p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-black font-mono text-[#e6b32a]">R$</span>
+                            <span className="text-lg font-black font-mono">{(a.valor || 0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                        <IoCreateOutline size={18} className="text-[#e6b32a] opacity-60 group-hover:opacity-100" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Ações */}
+                  <div className="flex items-center gap-2 w-full lg:w-auto">
+                    <button onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'C', mensagem: 'remover agendamento?', tipo: 'cancelar' }); setIsConfirmModalOpen(true); }} className="flex-1 lg:px-6 py-4 rounded-2xl border border-rose-500/20 text-rose-500 text-[10px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all active:scale-95">cancelar</button>
+                    <button onClick={() => { setStatusTarget({ agendamento: a, novoStatus: 'F', mensagem: 'finalizar atendimento?', tipo: 'confirmar' }); setIsConfirmModalOpen(true); }} className="flex-[2] lg:px-8 py-4 bg-[#e6b32a] text-black text-[10px] font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 shadow-lg shadow-[#e6b32a]/20"><IoCheckmarkDoneOutline size={18} /> concluir</button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className={`py-20 border-2 border-dashed rounded-[3rem] text-center ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
-                <p className="text-gray-400 text-[10px] uppercase font-black tracking-[4px]">agenda de hoje concluída</p>
+              <div className={`py-24 border-2 border-dashed rounded-[3rem] text-center ${isDarkMode ? 'border-white/5 text-gray-600' : 'border-slate-100 text-gray-400'}`}>
+                <IoCheckmarkDoneOutline size={40} className="mx-auto mb-4 opacity-20" />
+                <p className="text-[10px] uppercase font-black tracking-[4px]">agenda de hoje concluída</p>
               </div>
             )}
           </div>

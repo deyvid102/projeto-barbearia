@@ -105,10 +105,8 @@ export default function ClienteDashboard() {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 lg:p-12 pb-24 font-sans transition-colors duration-300`}>
-      {/* Container Máximo para não esticar demais em monitores grandes */}
       <div className="max-w-6xl mx-auto space-y-10">
         
-        {/* Header Responsivo */}
         <header className="flex flex-row justify-between items-center border-b border-black/5 dark:border-white/5 pb-8 pt-4">
           <div>
             <h1 className="text-2xl md:text-4xl font-black italic lowercase tracking-tighter leading-none">
@@ -122,21 +120,29 @@ export default function ClienteDashboard() {
               onClick={() => navigate(`/cliente/historico/${getSafeId()}`)}
               title="Histórico"
               className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                isDarkMode ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]' : 'bg-white border-slate-200 hover:border-black shadow-sm'
+                isDarkMode 
+                  ? 'bg-white/5 border-white/10 hover:border-[#e6b32a] hover:bg-white/10' 
+                  : 'bg-white border-slate-200 hover:border-black hover:bg-slate-50 shadow-sm'
               }`}
             >
               <IoFileTrayFullOutline className="text-lg md:text-2xl" />
             </button>
 
+            {/* User Menu com Hover */}
             <div className="relative" ref={menuRef}>
               <button 
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all active:scale-90 ${
-                  isProfileOpen ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200 shadow-sm'
-                }`}
+                className={`w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center border transition-all duration-300 active:scale-90 shadow-sm
+                  ${isProfileOpen 
+                    ? 'bg-[#e6b32a] text-black border-[#e6b32a]' 
+                    : isDarkMode 
+                      ? 'bg-white/5 border-white/10 hover:border-[#e6b32a]/60 hover:bg-white/10' 
+                      : 'bg-white border-slate-200 hover:border-slate-400 hover:bg-slate-50'
+                  }`}
               >
-                <IoPersonCircleOutline className="text-xl md:text-3xl" />
+                <IoPersonCircleOutline className={`text-xl md:text-3xl ${isProfileOpen ? 'scale-110' : 'opacity-80'}`} />
               </button>
+              
               {isProfileOpen && (
                 <div className="absolute right-0 mt-3 w-56 bg-white dark:bg-[#111] border dark:border-white/10 rounded-[1.5rem] md:rounded-[2rem] shadow-2xl py-3 z-50 animate-in fade-in zoom-in-95 overflow-hidden">
                   <button onClick={() => navigate(`/cliente/configuracoes/${getSafeId()}`)} className="w-full px-6 py-4 text-left text-[10px] md:text-[11px] font-black uppercase flex items-center gap-3 hover:bg-[#e6b32a]/10 transition-colors">
@@ -151,16 +157,19 @@ export default function ClienteDashboard() {
           </div>
         </header>
 
-        {/* Seção Principal - Grid para Desktop */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           
-          {/* Lado Esquerdo / Topo: CTA e Status */}
           <div className="lg:col-span-4 space-y-6">
+            {/* Botão Novo Agendamento com Hover */}
             <button 
               onClick={() => navigate(`/cliente/novo-agendamento/${getSafeId()}`)}
-              className="w-full py-8 md:py-12 bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black font-black uppercase text-sm md:text-base tracking-[3px] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl active:scale-95 transition-all flex flex-col items-center justify-center gap-4 group"
+              className={`w-full py-8 md:py-12 font-black uppercase text-sm md:text-base tracking-[3px] rounded-[2.5rem] md:rounded-[3rem] shadow-2xl transition-all duration-500 flex flex-col items-center justify-center gap-4 group active:scale-95
+                ${isDarkMode 
+                  ? 'bg-[#e6b32a] text-black hover:bg-[#ffc832] hover:shadow-[#e6b32a]/20 hover:-translate-y-1' 
+                  : 'bg-slate-900 text-white hover:bg-black hover:shadow-xl hover:-translate-y-1'
+                }`}
             >
-              <IoAddCircleOutline size={32} className="group-hover:rotate-90 transition-transform duration-500" />
+              <IoAddCircleOutline size={36} className="group-hover:rotate-90 transition-transform duration-500 ease-out" />
               <span>novo agendamento</span>
             </button>
 
@@ -175,7 +184,6 @@ export default function ClienteDashboard() {
             </div>
           </div>
 
-          {/* Lado Direito: Lista de Agendamentos */}
           <div className="lg:col-span-8 space-y-6">
             <div className="flex justify-between items-end px-2">
               <div>

@@ -4,7 +4,7 @@ import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import { 
   FaCheckCircle, FaTimesCircle, FaArrowLeft, 
-  FaCalendarAlt, FaHistory 
+  FaCalendarAlt, FaHistory, FaClock 
 } from 'react-icons/fa';
 import { IoFilter } from 'react-icons/io5';
 
@@ -79,7 +79,7 @@ export default function AdminLogs() {
         </button>
       </header>
 
-      <main className="max-w-4xl mx-auto">
+      <main className="max-w-5xl mx-auto">
         <div className="space-y-4">
           {currentLogs.length === 0 ? (
             <div className="text-center py-20 bg-white dark:bg-[#111] rounded-[2rem] border border-dashed border-black/10 dark:border-white/10">
@@ -89,9 +89,11 @@ export default function AdminLogs() {
           ) : (
             <>
               {currentLogs.map((log) => (
-                <div key={log._id} className="bg-white dark:bg-[#111] p-6 rounded-[2.5rem] border border-black/5 dark:border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:shadow-xl transition-all group">
-                  <div className="flex items-center gap-5">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${
+                <div key={log._id} className="bg-white dark:bg-[#111] p-6 rounded-[2.5rem] border border-black/5 dark:border-white/5 flex flex-col md:flex-row md:items-center gap-6 hover:shadow-xl transition-all group">
+                  
+                  {/* Status e Cliente */}
+                  <div className="flex items-center gap-5 flex-1">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${
                       log.status === 'F' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-rose-500/10 text-rose-500'
                     }`}>
                       {log.status === 'F' ? <FaCheckCircle size={24} /> : <FaTimesCircle size={24} />}
@@ -104,20 +106,40 @@ export default function AdminLogs() {
                     </div>
                   </div>
 
-                  <div className="bg-gray-50 dark:bg-white/5 p-4 rounded-2xl border border-black/5 dark:border-white/5">
-                    <p className="text-[8px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
-                      <FaCalendarAlt className="text-[#e6b32a]" size={10} /> data agendada
-                    </p>
-                    <p className="text-xs font-bold font-mono">
-                      {new Date(log.datahora).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                    </p>
+                  {/* Datas */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    {/* Data Agendada */}
+                    <div className="bg-gray-50 dark:bg-white/5 p-3 px-5 rounded-2xl border border-black/5 dark:border-white/5 min-w-[140px]">
+                      <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                        <FaCalendarAlt className="text-[#e6b32a]" size={10} /> data agendada
+                      </p>
+                      <p className="text-xs font-bold font-mono">
+                        {new Date(log.datahora).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+
+                    {/* Data da Ação (Finalizado/Cancelado) */}
+                    <div className="bg-gray-50 dark:bg-white/5 p-3 px-5 rounded-2xl border border-black/5 dark:border-white/5 min-w-[140px]">
+                      <p className="text-[7px] font-black uppercase text-gray-400 tracking-widest mb-1 flex items-center gap-2">
+                        <FaClock className={log.status === 'F' ? 'text-emerald-500' : 'text-rose-500'} size={10} /> {log.status === 'F' ? 'finalizado em' : 'cancelado em'}
+                      </p>
+                      <p className="text-xs font-bold font-mono">
+                        {log.updatedAt 
+                          ? new Date(log.updatedAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+                          : '--/-- --:--'
+                        }
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="text-right">
+                  {/* Valor e Status */}
+                  <div className="text-right min-w-[100px]">
                     <span className={`font-mono font-black text-xl ${log.status === 'F' ? 'text-emerald-500' : 'text-gray-400'}`}>
                       R$ {(log.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
-                    <p className="text-[8px] font-black text-gray-400 uppercase mt-1">{log.status === 'F' ? 'Finalizado' : 'Cancelado'}</p>
+                    <p className={`text-[8px] font-black uppercase mt-1 ${log.status === 'F' ? 'text-emerald-500/60' : 'text-rose-500/60'}`}>
+                      {log.status === 'F' ? 'Concluído' : 'Cancelado'}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -127,7 +149,6 @@ export default function AdminLogs() {
         </div>
       </main>
 
-      {/* SIDEBAR DE FILTROS REUTILIZÁVEL */}
       <SidebarFiltros 
         isOpen={isFilterOpen} 
         onClose={() => setIsFilterOpen(false)} 
@@ -159,7 +180,7 @@ export default function AdminLogs() {
         </section>
 
         <section>
-          <label className="text-[8px] font-black uppercase text-gray-500 block mb-3 tracking-[3px] ml-1">data específica</label>
+          <label className="text-[8px] font-black uppercase text-gray-500 block mb-3 tracking-[3px] ml-1">data agendada</label>
           <input 
             type="date" 
             value={filtroData} 
