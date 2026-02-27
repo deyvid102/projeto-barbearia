@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
+import { IoChevronBackOutline } from 'react-icons/io5';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer 
 } from 'recharts';
@@ -13,7 +14,6 @@ export default function BarbeiroEstatisticas() {
   
   const [todosAgendamentos, setTodosAgendamentos] = useState([]);
   const [agendamentosFiltrados, setAgendamentosFiltrados] = useState([]);
-  const [servicosAdmin, setServicosAdmin] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState('total'); 
   const [datasCustom, setDatasCustom] = useState({ inicio: '', fim: '' });
@@ -22,19 +22,14 @@ export default function BarbeiroEstatisticas() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const resAgendamentos = await api.get(`/agendamentos?fk_barbeiro=${id}`);
-        const finalizados = (resAgendamentos.data || resAgendamentos).filter(a => a.status === 'F');
-        setTodosAgendamentos(finalizados);
-        setAgendamentosFiltrados(finalizados);
-
-        const resServicos = await api.get('/servicos').catch(() => ({ data: [] }));
-        setServicosAdmin(resServicos.data || [
-          {_id:'C', nome:'cabelo', sigla:'C'}, 
-          {_id:'B', nome:'barba', sigla:'B'}, 
-          {_id:'CB', nome:'cabelo+barba', sigla:'CB'}
-        ]);
+        // Puxamos apenas os finalizados para não inflar o lucro com agendamentos abertos/cancelados
+        const res = await api.get(`/agendamentos?fk_barbeiro=${id}&status=F`);
+        const dados = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        
+        setTodosAgendamentos(dados);
+        setAgendamentosFiltrados(dados);
       } catch (err) {
-        console.error(err);
+        console.error("Erro ao carregar estatísticas:", err);
       } finally { setLoading(false); }
     };
     fetchData();
@@ -63,13 +58,33 @@ export default function BarbeiroEstatisticas() {
     setAgendamentosFiltrados(filtrados);
   }, [filtro, datasCustom, todosAgendamentos]);
 
-  const lucroExibido = agendamentosFiltrados.reduce((acc, a) => acc + (a.valor || 0), 0);
-  const ticketMedio = lucroExibido / (agendamentosFiltrados.length || 1);
+  // CORREÇÃO DO LUCRO: Garantindo que seja tratado como número
+  const lucroExibido = agendamentosFiltrados.reduce((acc, a) => {
+    const valor = parseFloat(a.valor) || 0;
+    return acc + valor;
+  }, 0);
 
-  const rankingDinamico = servicosAdmin.map(servico => {
-    const qtd = agendamentosFiltrados.filter(ag => ag.tipoCorte === servico.nome || ag.tipoCorte === servico._id || ag.tipoCorte === servico.sigla).length;
-    return { label: servico.nome, qtd, porcentagem: agendamentosFiltrados.length > 0 ? (qtd / agendamentosFiltrados.length) * 100 : 0 };
-  }).sort((a, b) => b.qtd - a.qtd);
+  const ticketMedio = agendamentosFiltrados.length > 0 ? lucroExibido / agendamentosFiltrados.length : 0;
+
+  // CORREÇÃO DO RANKING: Agrupando por string do serviço
+  const gerarRanking = () => {
+    const contagem = {};
+    agendamentosFiltrados.forEach(ag => {
+      const nomeServico = ag.tipoCorte || 'Outros';
+      contagem[nomeServico] = (contagem[nomeServico] || 0) + 1;
+    });
+
+    return Object.entries(contagem)
+      .map(([label, qtd]) => ({
+        label,
+        qtd,
+        porcentagem: (qtd / agendamentosFiltrados.length) * 100
+      }))
+      .sort((a, b) => b.qtd - a.qtd)
+      .slice(0, 4); // Top 4
+  };
+
+  const rankingDinamico = gerarRanking();
 
   const dadosGrafico = Array.from({ length: 6 }).map((_, i) => {
     const dAlvo = new Date();
@@ -78,39 +93,39 @@ export default function BarbeiroEstatisticas() {
     const valor = todosAgendamentos.filter(a => {
       const d = new Date(a.datahora);
       return d.getMonth() === dAlvo.getMonth() && d.getFullYear() === dAlvo.getFullYear();
-    }).reduce((acc, a) => acc + (a.valor || 0), 0);
+    }).reduce((acc, a) => acc + (parseFloat(a.valor) || 0), 0);
     return { mes: mesNome, valor };
   });
 
   if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
-      <div className="w-8 h-8 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+      <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300">
-      <div className="max-w-5xl mx-auto p-4 md:p-6 space-y-6">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-3 md:p-6 pb-24 font-sans transition-colors duration-300`}>
+      <div className="max-w-[1200px] mx-auto space-y-6">
         
-        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-2">
+        <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-black/5 dark:border-white/5 pb-6">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-[#e6b32a] shadow-sm transition-all">←</button>
+            <button onClick={() => navigate(-1)} className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
+              <IoChevronBackOutline size={20} />
+            </button>
             <div>
-              <h1 className="text-2xl font-black italic lowercase tracking-tighter leading-none">lucros.estatisticas</h1>
-              <p className="text-[9px] text-[#e6b32a] uppercase font-black tracking-[3px] mt-1">desempenho filtrado</p>
+              <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
+                meus.<span className="text-[#e6b32a]">números</span>
+              </h1>
+              <p className="text-[8px] md:text-[9px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-1">análise de lucros</p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 bg-slate-100/50 dark:bg-white/5 p-1.5 rounded-2xl border border-slate-200 dark:border-white/10">
+          <div className="flex flex-wrap items-center gap-1.5 bg-black/5 dark:bg-white/5 p-1.5 rounded-2xl border border-black/5 dark:border-white/10">
             {['diario', 'mensal', 'anual', 'total', 'personalizado'].map((f) => (
               <button
                 key={f}
                 onClick={() => setFiltro(f)}
-                className={`px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${
-                  filtro === f 
-                  ? 'bg-[#e6b32a] text-black shadow-md' 
-                  : 'text-slate-500 hover:text-[#e6b32a]'
-                }`}
+                className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all ${filtro === f ? 'bg-[#e6b32a] text-black shadow-lg shadow-[#e6b32a]/20' : 'text-slate-500 hover:text-[#e6b32a]'}`}
               >
                 {f}
               </button>
@@ -119,71 +134,66 @@ export default function BarbeiroEstatisticas() {
         </header>
 
         {filtro === 'personalizado' && (
-          <div className="flex gap-3 animate-in fade-in slide-in-from-top-2">
-            <input 
-              type="date" 
-              onChange={(e) => setDatasCustom({...datasCustom, inicio: e.target.value})}
-              className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-[10px] font-mono outline-none focus:border-[#e6b32a] shadow-sm"
-            />
-            <input 
-              type="date" 
-              onChange={(e) => setDatasCustom({...datasCustom, fim: e.target.value})}
-              className="bg-white dark:bg-[#111] border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2 text-[10px] font-mono outline-none focus:border-[#e6b32a] shadow-sm"
-            />
+          <div className="flex gap-3 animate-in fade-in slide-in-from-top-2 p-4 bg-black/5 dark:bg-white/5 rounded-3xl border border-black/5 dark:border-white/5">
+            <input type="date" onChange={(e) => setDatasCustom({...datasCustom, inicio: e.target.value})} className={`flex-1 p-3 rounded-xl text-[10px] font-black border outline-none ${isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200'}`} />
+            <input type="date" onChange={(e) => setDatasCustom({...datasCustom, fim: e.target.value})} className={`flex-1 p-3 rounded-xl text-[10px] font-black border outline-none ${isDarkMode ? 'bg-black border-white/10 text-white' : 'bg-white border-slate-200'}`} />
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div className="lg:col-span-2 bg-slate-900 p-6 rounded-[2rem] border border-slate-800 shadow-xl">
-            <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest mb-1">
-              lucro {filtro === 'total' ? 'acumulado' : filtro}
-            </p>
-            <h2 className="text-4xl md:text-5xl font-black text-[#e6b32a] font-mono tracking-tighter">
-              r$ {lucroExibido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 bg-slate-950 p-10 rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden">
+            <p className="text-[10px] text-slate-500 uppercase font-black tracking-[5px] mb-2">lucro bruto ({filtro})</p>
+            <h2 className="text-5xl md:text-7xl font-black text-[#e6b32a] font-mono tracking-tighter">
+              R$ {lucroExibido.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </h2>
           </div>
-          <div className="bg-white dark:bg-[#111] p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 flex flex-col justify-center shadow-sm">
-            <p className="text-[9px] text-slate-400 uppercase font-black mb-1">ticket médio período</p>
-            <h3 className="text-xl font-black font-mono">r$ {ticketMedio.toFixed(2)}</h3>
-            <p className="text-[8px] text-slate-500 uppercase mt-1">{agendamentosFiltrados.length} atendimentos</p>
+
+          <div className={`p-8 rounded-[2.5rem] border flex flex-col justify-center shadow-sm ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
+            <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">ticket médio</p>
+            <h3 className="text-3xl font-black font-mono">R$ {ticketMedio.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</h3>
+            <p className="text-[10px] font-black uppercase text-[#e6b32a] mt-2">{agendamentosFiltrados.length} serviços</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 h-[300px] flex flex-col shadow-sm">
-            <h2 className="text-[10px] text-[#e6b32a] font-black uppercase tracking-[4px] mb-6">histórico semestral (bruto)</h2>
+          {/* Gráfico */}
+          <div className={`p-8 rounded-[2.5rem] border h-[350px] flex flex-col shadow-sm ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
+            <h2 className="text-[10px] text-[#e6b32a] font-black uppercase tracking-[4px] mb-8">evolução (6 meses)</h2>
             <div className="flex-1 w-full min-h-0">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={dadosGrafico}>
                   <defs>
                     <linearGradient id="colorValor" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#e6b32a" stopOpacity={0.2}/>
+                      <stop offset="5%" stopColor="#e6b32a" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="#e6b32a" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.1} />
-                  <XAxis dataKey="mes" axisLine={false} tickLine={false} fontSize={9} tick={{fill: '#888'}} dy={5} />
-                  <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#1a1a1a' : '#fff', borderRadius: '12px', border: 'none', fontSize: '11px', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                  <Area type="monotone" dataKey="valor" stroke="#e6b32a" strokeWidth={3} fill="url(#colorValor)" />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} strokeOpacity={0.05} />
+                  <XAxis dataKey="mes" axisLine={false} tickLine={false} fontSize={10} tick={{fill: '#888'}} dy={10} />
+                  <Tooltip contentStyle={{ backgroundColor: isDarkMode ? '#111' : '#fff', borderRadius: '15px', border: '1px solid #e6b32a33' }} />
+                  <Area type="monotone" dataKey="valor" stroke="#e6b32a" strokeWidth={4} fill="url(#colorValor)" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="bg-white dark:bg-[#111] p-6 rounded-[2rem] border border-slate-200 dark:border-white/5 flex flex-col shadow-sm">
-            <h2 className="text-[10px] text-[#e6b32a] font-black uppercase tracking-[4px] mb-6">ranking do período</h2>
-            <div className="space-y-4 flex-1">
-              {rankingDinamico.slice(0, 3).map((item, idx) => (
-                <div key={idx} className="space-y-2">
+          {/* Ranking corrigido */}
+          <div className={`p-8 rounded-[2.5rem] border flex flex-col shadow-sm ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100'}`}>
+            <h2 className="text-[10px] text-[#e6b32a] font-black uppercase tracking-[4px] mb-8">ranking de serviços</h2>
+            <div className="space-y-6 flex-1">
+              {rankingDinamico.length > 0 ? rankingDinamico.map((item, idx) => (
+                <div key={idx} className="space-y-3">
                   <div className="flex justify-between items-end">
-                    <span className="text-base font-black lowercase">{item.label}</span>
-                    <span className="text-[9px] font-bold text-slate-400 uppercase">{item.qtd} un.</span>
+                    <span className="text-lg font-black lowercase italic">{item.label}</span>
+                    <span className="text-[10px] font-black text-[#e6b32a] uppercase">{item.qtd} un.</span>
                   </div>
-                  <div className="h-1.5 w-full bg-slate-100 dark:bg-white/5 rounded-full overflow-hidden">
-                    <div className="h-full bg-slate-900 dark:bg-[#e6b32a] transition-all" style={{ width: `${item.porcentagem}%` }} />
+                  <div className="h-2 w-full bg-black/5 dark:bg-white/5 rounded-full overflow-hidden">
+                    <div className="h-full bg-slate-900 dark:bg-[#e6b32a] transition-all duration-1000" style={{ width: `${item.porcentagem}%` }} />
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-center text-slate-500 text-[10px] uppercase font-black py-20">sem dados para o período</p>
+              )}
             </div>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert';
-import { IoAdd, IoArrowBack, IoTrashOutline, IoClose, IoPricetagOutline } from 'react-icons/io5';
+import { IoAdd, IoArrowBack, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
 
 export default function ValoresGerenciamento() {
@@ -20,7 +20,7 @@ export default function ValoresGerenciamento() {
   const [modalConfig, setModalConfig] = useState({ tipo: '', mensagem: '', acao: null });
   const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: '' });
 
-  const [formData, setFormData] = useState({ nome: '', valor: '' });
+  const [formData, setFormData] = useState({ nome: '', valor: '', tempo: '' });
 
   const carregarDados = async () => {
     try {
@@ -37,7 +37,14 @@ export default function ValoresGerenciamento() {
 
       const resBarbearia = await api.get(`/barbearias/${bId}`);
       const barbeariaData = resBarbearia.data || resBarbearia;
-      setServicos(barbeariaData.servicos || []);
+      
+      // Sanitização: Garante que se vier algum serviço antigo sem tempo, ele não quebre o Model
+      const servicosFormatados = (barbeariaData.servicos || []).map(s => ({
+        ...s,
+        tempo: s.tempo || 30 // Valor padrão caso o banco retorne undefined
+      }));
+      
+      setServicos(servicosFormatados);
     } catch (error) {
       console.error(error);
       setAlertConfig({ show: true, message: 'erro ao conectar com o servidor', type: 'error' });
@@ -55,11 +62,12 @@ export default function ValoresGerenciamento() {
       setEditingIndex(index);
       setFormData({ 
         nome: servicos[index].nome, 
-        valor: servicos[index].valor.toString().replace('.', ',')
+        valor: servicos[index].valor.toString().replace('.', ','),
+        tempo: servicos[index].tempo || '30' 
       });
     } else {
       setEditingIndex(null);
-      setFormData({ nome: '', valor: '' });
+      setFormData({ nome: '', valor: '', tempo: '' });
     }
     setIsFormOpen(true);
   };
@@ -76,10 +84,17 @@ export default function ValoresGerenciamento() {
 
   const salvarAlteracoes = async () => {
     try {
-      let novaListaServicos = [...servicos];
+      // 1. Criamos a nova lista baseada no estado atual
+      let novaListaServicos = servicos.map(s => ({
+        nome: s.nome,
+        valor: Number(s.valor),
+        tempo: Number(s.tempo || 30) // Proteção extra: garante tempo em todos
+      }));
+
       const novoServico = {
         nome: formData.nome.toLowerCase(),
-        valor: parseFloat(formData.valor.replace(',', '.'))
+        valor: parseFloat(formData.valor.replace(',', '.')),
+        tempo: Number(formData.tempo)
       };
 
       if (editingIndex !== null) {
@@ -88,6 +103,7 @@ export default function ValoresGerenciamento() {
         novaListaServicos.push(novoServico);
       }
 
+      // Envia apenas os campos necessários para o Model
       await api.put(`/barbearias/${barbeariaId}`, { servicos: novaListaServicos });
       
       setAlertConfig({ show: true, message: 'tabela de preços atualizada!', type: 'success' });
@@ -95,7 +111,8 @@ export default function ValoresGerenciamento() {
       setIsConfirmModalOpen(false);
       carregarDados();
     } catch (error) {
-      setAlertConfig({ show: true, message: 'erro ao salvar alterações', type: 'error' });
+      console.error("Erro ao salvar:", error.response?.data || error.message);
+      setAlertConfig({ show: true, message: 'erro ao salvar: verifique os campos', type: 'error' });
       setIsConfirmModalOpen(false);
     }
   };
@@ -106,7 +123,14 @@ export default function ValoresGerenciamento() {
       mensagem: `remover "${servicos[editingIndex].nome}" permanentemente?`,
       acao: async () => {
         try {
-          const novaLista = servicos.filter((_, i) => i !== editingIndex);
+          const novaLista = servicos
+            .filter((_, i) => i !== editingIndex)
+            .map(s => ({
+                nome: s.nome,
+                valor: Number(s.valor),
+                tempo: Number(s.tempo || 30)
+            }));
+
           await api.put(`/barbearias/${barbeariaId}`, { servicos: novaLista });
           
           setAlertConfig({ show: true, message: 'serviço removido!', type: 'success' });
@@ -185,7 +209,10 @@ export default function ValoresGerenciamento() {
                     </div>
                     <div>
                       <h3 className="text-base md:text-lg font-black text-black dark:text-white lowercase tracking-tight">{serv.nome}</h3>
-                      <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest opacity-70">serviço ativo</p>
+                      <div className="flex items-center gap-1.5 opacity-60">
+                        <IoTimeOutline size={12} className="text-[#e6b32a]"/>
+                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">{serv.tempo || 0} min</p>
+                      </div>
                     </div>
                   </div>
                   <div className="text-right flex items-center gap-4">
@@ -250,15 +277,29 @@ export default function ValoresGerenciamento() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">valor de venda (r$)</label>
-                <input 
-                  className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono"
-                  placeholder="0,00"
-                  value={formData.valor}
-                  onChange={(e) => setFormData({...formData, valor: e.target.value})}
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">valor (r$)</label>
+                  <input 
+                    className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono"
+                    placeholder="0,00"
+                    value={formData.valor}
+                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">tempo (min)</label>
+                  <input 
+                    type="number"
+                    className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono"
+                    placeholder="30"
+                    value={formData.tempo}
+                    onChange={(e) => setFormData({...formData, tempo: e.target.value})}
+                    required
+                  />
+                </div>
               </div>
             </div>
 

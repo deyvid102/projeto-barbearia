@@ -4,6 +4,7 @@ import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { useTheme } from '../../components/ThemeContext';
 import { FaWhatsapp, FaTrashAlt, FaCheck } from 'react-icons/fa';
+import { IoChevronBackOutline } from 'react-icons/io5';
 
 export default function BarbeiroCalendario() {
   const { id } = useParams();
@@ -71,42 +72,50 @@ export default function BarbeiroCalendario() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
-      <p className="text-[#e6b32a] font-black uppercase tracking-[5px] animate-pulse">sincronizando agenda...</p>
+    <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+      <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] text-slate-900 dark:text-gray-100 transition-colors duration-300">
-      <div className="max-w-[1200px] mx-auto p-4 md:p-8 pb-20">
+    <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-3 md:p-6 pb-24 font-sans transition-colors duration-300`}>
+      <div className="max-w-[1400px] mx-auto space-y-8">
         
-        <header className="flex items-center gap-6 border-b border-slate-100 dark:border-white/5 pb-8 mb-12">
+        <header className="flex items-center gap-4 md:gap-6 border-b border-black/5 dark:border-white/5 pb-6">
           <button 
             onClick={() => navigate(-1)} 
-            className="w-12 h-12 rounded-2xl bg-white dark:bg-white/5 flex items-center justify-center border border-slate-200 dark:border-white/10 hover:border-black dark:hover:border-[#e6b32a] shadow-sm transition-all"
+            className={`w-11 h-11 rounded-xl flex items-center justify-center border transition-all active:scale-90 ${
+              isDarkMode ? 'bg-white/5 border-white/10 hover:bg-white/10' : 'bg-white border-slate-200 hover:bg-gray-50'
+            }`}
           >
-            ←
+            <IoChevronBackOutline size={20} />
           </button>
+          
           <div>
-            <h1 className="text-3xl font-black lowercase tracking-tighter">minha.agenda</h1>
-            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-2">próximos dias</p>
+            <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">
+              minha.<span className="text-[#e6b32a]">agenda</span>
+            </h1>
+            <p className="text-[8px] md:text-[9px] text-[#e6b32a] uppercase font-black tracking-[4px] mt-1">próximos compromissos</p>
           </div>
         </header>
 
         {Object.keys(agenda).length === 0 ? (
-          <div className="text-center py-32 bg-slate-50 dark:bg-[#111] rounded-[3rem] border border-dashed border-slate-200 dark:border-white/10">
-            <p className="text-slate-400 uppercase font-black text-[10px] tracking-widest">sem agendamentos pendentes</p>
+          <div className="text-center py-24 bg-black/5 dark:bg-white/5 rounded-[2.5rem] border border-dashed border-black/10 dark:border-white/10">
+            <p className="text-slate-400 uppercase font-black text-[10px] tracking-widest">nenhum agendamento futuro</p>
           </div>
         ) : (
-          <div className="space-y-16">
+          <div className="space-y-12">
             {Object.entries(agenda).map(([mes, dias]) => (
-              <section key={mes} className="space-y-8">
-                <h2 className="text-[#e6b32a] font-black uppercase text-xs tracking-[8px] border-l-4 border-[#e6b32a] pl-4">{mes}</h2>
+              <section key={mes} className="space-y-6">
+                <div className="flex items-center gap-4">
+                   <div className="h-[2px] w-8 bg-[#e6b32a]"></div>
+                   <h2 className="text-[#e6b32a] font-black uppercase text-[11px] tracking-[6px]">{mes}</h2>
+                </div>
                 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   {Object.entries(dias).map(([dia, lista]) => (
                     <div key={dia} className="space-y-4">
-                      <p className="text-[11px] text-slate-400 font-black uppercase tracking-[4px]">{dia}</p>
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-[3px] ml-2">{dia}</p>
                       <div className="grid gap-3">
                         {lista.map((item) => {
                           const isSelected = agendamentoSelecionado?._id === item._id;
@@ -114,44 +123,62 @@ export default function BarbeiroCalendario() {
                             <div 
                               key={item._id}
                               onClick={() => setAgendamentoSelecionado(isSelected ? null : item)}
-                              className={`p-6 rounded-[2.5rem] border transition-all cursor-pointer shadow-sm ${
+                              className={`p-5 rounded-[2rem] border transition-all cursor-pointer shadow-sm ${
                                 isSelected 
-                                  ? 'bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black scale-[1.02] border-transparent' 
-                                  : 'bg-white dark:bg-[#111] border-slate-200 dark:border-white/5 hover:border-[#e6b32a]'
+                                  ? 'bg-slate-900 dark:bg-[#e6b32a] text-white dark:text-black scale-[1.01] border-transparent' 
+                                  : isDarkMode 
+                                    ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/50' 
+                                    : 'bg-white border-slate-200 hover:border-[#e6b32a]'
                               }`}
                             >
                               <div className="flex justify-between items-center">
-                                <span className="font-mono font-black text-xl">{item.horaFormatada}</span>
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-60">{item.tipoCorte}</span>
+                                <div className="flex items-center gap-4">
+                                   <span className="font-mono font-black text-xl">{item.horaFormatada}</span>
+                                   <div className={`w-[1px] h-4 ${isSelected ? 'bg-white/20 dark:bg-black/20' : 'bg-black/10 dark:white/10'}`}></div>
+                                   <span className="text-[11px] font-black lowercase tracking-tighter opacity-80">
+                                      {/* Correção aqui: exibe a string do serviço diretamente */}
+                                      {item.tipoCorte || 'serviço'}
+                                   </span>
+                                </div>
+                                <span className="text-[10px] font-black opacity-60">R$ {(parseFloat(item.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                               </div>
+
                               {isSelected && (
-                                <div className="mt-6 pt-6 border-t border-white/10 dark:border-black/10 animate-in fade-in slide-in-from-top-4">
-                                  <p className="text-[10px] uppercase font-black mb-1 opacity-50">cliente</p>
-                                  <p className="font-black text-2xl lowercase tracking-tighter mb-6">{item.fk_cliente?.nome || 'não identificado'}</p>
+                                <div className="mt-6 pt-6 border-t border-white/10 dark:border-black/10 animate-in fade-in slide-in-from-top-2">
+                                  <div className="mb-6">
+                                    <p className="text-[9px] uppercase font-black mb-1 opacity-50 tracking-widest">cliente</p>
+                                    <p className="font-black text-2xl lowercase tracking-tighter italic">
+                                      {item.fk_cliente?.nome || item.nomeCliente || 'cliente externo'}
+                                    </p>
+                                  </div>
                                   
-                                  <div className="flex flex-wrap gap-3">
+                                  <div className="grid grid-cols-3 gap-3">
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
-                                        setAcaoTarget({ id_ag: item._id, status: 'F', mensagem: 'confirmar finalização do atendimento?' }); 
+                                        setAcaoTarget({ id_ag: item._id, status: 'F', mensagem: 'finalizar este atendimento?' }); 
                                         setShowModal(true); 
                                       }} 
-                                      className={`flex-1 min-w-[140px] py-4 text-[10px] font-black uppercase rounded-2xl active:scale-95 transition-all shadow-lg flex items-center justify-center gap-2 ${
-                                        isDarkMode ? 'bg-black text-white' : 'bg-white text-black'
+                                      className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                                        isDarkMode ? 'bg-black/40 text-white' : 'bg-white/20 text-black'
                                       }`}
                                     >
-                                      <FaCheck size={12} /> finalizar
+                                      <FaCheck size={14} className="text-emerald-500" />
+                                      <span className="text-[8px] font-black uppercase">concluir</span>
                                     </button>
                                     
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
-                                        setAcaoTarget({ id_ag: item._id, status: 'C', mensagem: 'deseja cancelar este agendamento?' }); 
+                                        setAcaoTarget({ id_ag: item._id, status: 'C', mensagem: 'cancelar este agendamento?' }); 
                                         setShowModal(true); 
                                       }} 
-                                      className="px-6 py-4 border border-red-500/30 text-red-500 text-[10px] font-black uppercase rounded-2xl hover:bg-red-500/10 transition-all flex items-center justify-center"
+                                      className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                                        isDarkMode ? 'bg-black/40 text-white' : 'bg-white/20 text-black'
+                                      }`}
                                     >
-                                      <FaTrashAlt size={12} />
+                                      <FaTrashAlt size={14} className="text-red-500" />
+                                      <span className="text-[8px] font-black uppercase">cancelar</span>
                                     </button>
 
                                     <button 
@@ -160,11 +187,12 @@ export default function BarbeiroCalendario() {
                                         const fone = item.fk_cliente?.telefone?.replace(/\D/g, '');
                                         window.open(`https://wa.me/55${fone}`, '_blank'); 
                                       }} 
-                                      className={`px-6 py-4 text-[10px] font-black uppercase rounded-2xl flex items-center justify-center ${
-                                        isDarkMode ? 'bg-black/20 text-white' : 'bg-slate-100 text-slate-600'
+                                      className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${
+                                        isDarkMode ? 'bg-black/40 text-white' : 'bg-white/20 text-black'
                                       }`}
                                     >
-                                      <FaWhatsapp size={14} />
+                                      <FaWhatsapp size={14} className="text-emerald-400" />
+                                      <span className="text-[8px] font-black uppercase">whatsapp</span>
                                     </button>
                                   </div>
                                 </div>
@@ -187,6 +215,7 @@ export default function BarbeiroCalendario() {
         onClose={() => setShowModal(false)} 
         onConfirm={handleProcessarStatus} 
         mensagem={acaoTarget.mensagem} 
+        tipo={acaoTarget.status === 'C' ? 'remover' : 'confirmar'}
       />
     </div>
   );

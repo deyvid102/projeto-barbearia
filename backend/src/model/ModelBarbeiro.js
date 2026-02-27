@@ -9,7 +9,7 @@ const ModelBarbeiro = new mongoose.Schema({
     email: {
         type: String,
         required: true,
-        unique: true // Recomendado para evitar e-mails duplicados
+        unique: true 
     },
     senha: {
         type: String,
@@ -21,7 +21,7 @@ const ModelBarbeiro = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['A', 'S', 'C'],
+        enum: ['A', 'S', 'C'], // A: Ativo, S: Suspenso, C: Cancelado
         default: 'A',
     },
     fk_barbearia: {
@@ -34,9 +34,8 @@ const ModelBarbeiro = new mongoose.Schema({
     collection: 'barbeiros' 
 });
 
-// Middleware: Criptografa a senha antes de salvar no banco de dados
+// Middleware: Criptografa a senha usando bcrypt antes de salvar
 ModelBarbeiro.pre('save', async function (next) {
-    // Se a senha não foi modificada (ex: atualizou apenas o nome), pula a criptografia
     if (!this.isModified('senha')) {
         return next();
     }
@@ -50,9 +49,10 @@ ModelBarbeiro.pre('save', async function (next) {
     }
 });
 
-// Método customizado para comparar senhas (usado no login)
+// Método para comparar senhas durante o login
 ModelBarbeiro.methods.compararSenha = async function (senhaDigitada) {
     return await bcrypt.compare(senhaDigitada, this.senha);
 };
 
+// O nome 'barbeiro' deve coincidir com o ref usado no ModelBarbearia
 export default mongoose.model('barbeiro', ModelBarbeiro);
