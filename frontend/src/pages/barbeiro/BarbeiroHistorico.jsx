@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
-import { IoChevronBackOutline, IoChevronForwardOutline, IoTimeOutline, IoReceiptOutline } from 'react-icons/io5';
+import { IoChevronBackOutline, IoChevronForwardOutline, IoTimeOutline, IoReceiptOutline, IoPersonOutline } from 'react-icons/io5';
 
 export default function BarbeiroHistorico() {
   const { id } = useParams();
@@ -55,7 +55,7 @@ export default function BarbeiroHistorico() {
     <div className={`min-h-screen ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'} p-3 md:p-6 pb-24 font-sans transition-colors duration-300`}>
       <div className="max-w-[1200px] mx-auto space-y-8">
         
-        {/* HEADER PADRONIZADO - Título no canto superior esquerdo */}
+        {/* HEADER PADRONIZADO */}
         <header className="flex items-center gap-4 md:gap-6 border-b border-black/5 dark:border-white/5 pb-6">
           <button 
             onClick={() => navigate(-1)} 
@@ -96,15 +96,23 @@ export default function BarbeiroHistorico() {
                       {a.status === 'F' ? <IoReceiptOutline size={24} /> : <IoTimeOutline size={24} />}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                           {new Date(a.datahora).toLocaleDateString('pt-BR')} • {new Date(a.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}h
                         </span>
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
-                          a.status === 'F' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
-                        }`}>
-                          {a.status === 'F' ? 'finalizado' : 'cancelado'}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-lg ${
+                            a.status === 'F' ? 'bg-green-500/20 text-green-500' : 'bg-red-500/20 text-red-500'
+                          }`}>
+                            {a.status === 'F' ? 'finalizado' : 'cancelado'}
+                          </span>
+                          
+                          {/* Quem realizou a ação */}
+                          <span className="flex items-center gap-1 text-[8px] font-black uppercase bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-lg text-slate-400">
+                            <IoPersonOutline size={10} />
+                            {a.status === 'C' ? (a.canceladoPor || 'Cliente') : 'Barbeiro'}
+                          </span>
+                        </div>
                       </div>
                       <h3 className="font-black text-xl lowercase tracking-tighter italic">
                         {getNomeCliente(a.fk_cliente)}

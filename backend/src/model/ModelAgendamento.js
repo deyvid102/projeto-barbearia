@@ -1,24 +1,34 @@
-
 import mongoose from "mongoose";
 
 const ModelAgendamento = new mongoose.Schema({
     tipoCorte: {
         type: String,
-        required:true
+        required: true
     },
+    // Data e hora de INÍCIO do agendamento
     datahora: {
         type: Date,
         required: true,
         index: true
     },
+    // Sugestão adicionada: Data e hora de FIM (facilita muito a query de checagem de conflitos)
+    datahora_fim: {
+        type: Date,
+        required: true
+    },
+    // Tempo estimado para o serviço (vindo do ModelBarbearia.servicos.tempo)
+    tempo_estimado: {
+        type: Number, // em minutos
+        required: true
+    },
     valor: {
-    type: Number,
-    max: 999.99, 
-    set: v => parseFloat(v.toFixed(2)) 
+        type: Number,
+        max: 999.99, 
+        set: v => parseFloat(v.toFixed(2)) 
     },
     status: {
         type: String,
-        enum: ['A', 'F', 'C'],
+        enum: ['A', 'F', 'C'], // A: Agendado, F: Finalizado, C: Cancelado
         default: 'A',
     },
     fk_cliente: {
@@ -36,7 +46,12 @@ const ModelAgendamento = new mongoose.Schema({
         ref: 'barbearia',
         required: true
     }
-    
-}, { timestamps: true });
+}, { 
+    timestamps: true,
+    collection: 'agendamentos'
+});
+
+// Sugestão adicionada: Índice para buscar a agenda do barbeiro de forma rápida
+ModelAgendamento.index({ fk_barbeiro: 1, datahora: 1 });
 
 export default mongoose.model('agendamento', ModelAgendamento);

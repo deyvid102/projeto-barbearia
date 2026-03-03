@@ -38,20 +38,36 @@ export default function LoginBarbeiro() {
         email: email.toLowerCase().trim(), 
         senha 
       });
-      const user = response.data || response;
 
-      if (user && user._id) {
-        localStorage.setItem('barbeiroId', user._id);
-        navigate(`/barbeiro/dashboard/${user._id}`);
+      // O seu Api.js já retorna o body transformado em JSON
+      const user = response;
+
+      console.log("Resposta do servidor:", user); // Log para debug
+
+      // Verificando se o ID existe (o MongoDB usa _id)
+      if (user && (user._id || user.id)) {
+        const idFinal = user._id || user.id;
+        localStorage.setItem('barbeiroId', idFinal);
+        
+        // Opcional: Salvar outros dados se necessário
+        localStorage.setItem('barbeiroNome', user.nome);
+
+        navigate(`/barbeiro/dashboard/${idFinal}`);
       } else {
-        throw new Error('dados de usuário inválidos.');
+        // Se cair aqui, o log acima vai mostrar o que o servidor mandou de "errado"
+        console.error("Estrutura de usuário inesperada:", user);
+        throw new Error('falha ao processar dados do perfil profissional.');
       }
     } catch (error) {
       console.error("erro na autenticação:", error);
+      
+      // Captura a mensagem vinda da API ou usa uma padrão
+      const msg = error.response?.data?.mensagem || error.message || 'credenciais inválidas.';
+
       setAlertConfig({ 
         show: true, 
         titulo: 'falha no acesso', 
-        mensagem: error.response?.data?.message || 'credenciais de profissional inválidas.', 
+        mensagem: msg, 
         tipo: 'error' 
       });
     } finally {
@@ -70,9 +86,9 @@ export default function LoginBarbeiro() {
       isDarkMode ? 'bg-[#0a0a0a]' : 'bg-slate-50'
     }`}>
       
-      {/* Coluna da Esquerda: Formulario */}
       <div className="flex items-center justify-center p-8 lg:p-20 order-2 lg:order-1 relative">
         <button 
+          type="button"
           onClick={() => navigate('/')} 
           className={`absolute top-8 left-8 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 shadow-sm ${
             isDarkMode ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-black'
@@ -140,7 +156,6 @@ export default function LoginBarbeiro() {
         </form>
       </div>
 
-      {/* Coluna da Direita: Imagem */}
       <div className="hidden lg:block relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 bg-[#e6b32a]/10 z-10 mix-blend-overlay"></div>
         <img 

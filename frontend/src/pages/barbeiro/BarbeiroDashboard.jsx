@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
-// Importações conforme orientações [2026-02-22] e [2026-02-25]
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert'; 
 
@@ -12,7 +11,7 @@ import {
   IoStatsChartOutline, IoChevronDownOutline, IoCloseOutline,
   IoCheckmarkCircleOutline, IoSyncOutline, 
   IoOptionsOutline, IoTimeOutline, IoShieldOutline,
-  IoCloseCircleOutline, IoTodayOutline 
+  IoCloseCircleOutline, IoTodayOutline, IoCopyOutline 
 } from 'react-icons/io5';
 
 export default function BarbeiroDashboard() {
@@ -43,8 +42,9 @@ export default function BarbeiroDashboard() {
   
   const getSafeId = useCallback(() => id || localStorage.getItem('barbeiroId'), [id]);
   
-  const ALTURA_LINHA = 110; 
-  const ALTURA_CABECALHO = 56;
+  // Mantendo o tamanho compacto que você solicitou anteriormente
+  const ALTURA_LINHA = 20; 
+  const ALTURA_CABECALHO = 48;
 
   const hoje = new Date();
   const hojeStr = hoje.toISOString().split('T')[0];
@@ -106,7 +106,7 @@ export default function BarbeiroDashboard() {
   useEffect(() => {
     fetchData();
     const intervalData = setInterval(() => fetchData(true), 15000);
-    const intervalTime = setInterval(() => setCurrentTime(new Date()), 30000);
+    const intervalTime = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => { clearInterval(intervalData); clearInterval(intervalTime); };
   }, [fetchData]);
 
@@ -134,19 +134,21 @@ export default function BarbeiroDashboard() {
     return escopo;
   };
 
-  const calculateTimelinePosition = () => {
-    const hours = currentTime.getHours();
-    const minutes = currentTime.getMinutes();
-    if (hours < configLimites.inicio || hours > configLimites.fim) return null;
-    const horasDesdeInicio = hours - configLimites.inicio;
-    const percentualMinutos = minutes / 60;
-    return ALTURA_CABECALHO + (horasDesdeInicio * ALTURA_LINHA) + (percentualMinutos * ALTURA_LINHA);
+  const getTimelinePositionPercentage = (horaCard) => {
+    const currentHour = currentTime.getHours();
+    const [cardHour] = horaCard.split(':');
+    
+    if (currentHour === parseInt(cardHour)) {
+      const minutes = currentTime.getMinutes();
+      const seconds = currentTime.getSeconds();
+      return ((minutes * 60 + seconds) / 3600) * 100;
+    }
+    return null;
   };
 
   const handleSalvarAcoes = async () => {
     if (!selectedAg) return;
     try {
-      // Ao cancelar pelo painel do barbeiro, enviamos explicitamente que foi o barbeiro
       const payload = { 
         status: novoStatus,
         valor: novoPreco 
@@ -163,6 +165,25 @@ export default function BarbeiroDashboard() {
     } catch (error) {
       setAlertConfig({ show: true, titulo: 'erro', mensagem: 'falha ao atualizar.', tipo: 'error' });
     }
+  };
+
+  const handleCopyLink = () => {
+    const fkBarbearia = barbeiroLogado?.fk_barbearia?._id || barbeiroLogado?.fk_barbearia;
+    if (!fkBarbearia) {
+      setAlertConfig({ show: true, titulo: 'erro', mensagem: 'ID da barbearia não encontrado.', tipo: 'error' });
+      return;
+    }
+    
+    const urlBase = window.location.origin;
+    const linkCadastro = `${urlBase}/cliente/register?barbearia=${fkBarbearia}`;
+    
+    navigator.clipboard.writeText(linkCadastro)
+      .then(() => {
+        setAlertConfig({ show: true, titulo: 'copiado!', mensagem: 'Link de cadastro copiado com sucesso.', tipo: 'success' });
+      })
+      .catch(() => {
+        setAlertConfig({ show: true, titulo: 'erro', mensagem: 'Falha ao copiar o link.', tipo: 'error' });
+      });
   };
 
   const openAcoes = (ag) => {
@@ -208,13 +229,14 @@ export default function BarbeiroDashboard() {
         <header className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-6">
           <div>
             <h1 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter leading-none">
-              barbearia.<span className="text-[#e6b32a]">geral</span>
+              barber.<span className="text-[#e6b32a]">flow</span>
             </h1>
             <p className="hidden md:block text-[9px] text-gray-500 uppercase font-black tracking-[3px] mt-2">Painel do Profissional</p>
           </div>
 
           <div className="flex items-center gap-3 md:gap-4">
             <div className="flex items-center gap-3 border-r border-black/5 dark:border-white/5 pr-4 md:pr-6">
+              <NavButton icon={IoCopyOutline} label="Link Cadastro" onClick={handleCopyLink} />
               <NavButton icon={IoCalendarOutline} label="Calendário" onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)} />
               <NavButton icon={IoFileTrayFullOutline} label="Histórico" onClick={() => navigate(`/barbeiro/historico/${getSafeId()}`)} />
               <NavButton icon={IoStatsChartOutline} label="Estatísticas" onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)} />
@@ -251,7 +273,6 @@ export default function BarbeiroDashboard() {
           </div>
         </header>
 
-        {/* Stats Section */}
         <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-2">
           <div className={`p-4 md:p-5 rounded-[2rem] border flex items-center gap-4 transition-all ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
             <div className="w-10 h-10 rounded-xl bg-[#e6b32a]/10 text-[#e6b32a] flex items-center justify-center">
@@ -295,14 +316,6 @@ export default function BarbeiroDashboard() {
         </section>
 
         <div className={`relative rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-sm'}`}>
-          {calculateTimelinePosition() && (
-            <div className="absolute left-0 right-0 z-[60] group pointer-events-auto flex items-center cursor-help" style={{ top: `${calculateTimelinePosition()}px`, transition: 'top 0.5s linear' }}>
-              <div className="w-14 h-[3px] bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.8)] rounded-full"></div>
-              <div className="flex-1 h-[1px] bg-red-600/40"></div>
-              <div className="absolute left-16 px-2 py-1 bg-red-600 text-white text-[9px] font-black rounded-lg opacity-0 group-hover:opacity-100 transition-opacity shadow-lg">{currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</div>
-            </div>
-          )}
-
           <div className="overflow-x-auto custom-scrollbar">
             <table className="w-full border-collapse min-w-[1200px] table-fixed">
               <thead>
@@ -316,9 +329,27 @@ export default function BarbeiroDashboard() {
               <tbody>
                 {getEscopoHorarios().map(hora => {
                   const hInt = parseInt(hora.split(':')[0]);
+                  const posLinha = getTimelinePositionPercentage(hora);
+
                   return (
-                    <tr key={hora} style={{ height: `${ALTURA_LINHA}px` }}>
-                      <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[11px] font-black ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>{hora}</td>
+                    <tr key={hora} className="relative group/row" style={{ height: `${ALTURA_LINHA}px` }}>
+                      <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[11px] font-black transition-colors ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500 group-hover/row:text-[#e6b32a]' : 'bg-slate-50 border-slate-100 text-slate-400 group-hover/row:text-black'}`}>
+                        {hora}
+                        {/* Linha que atravessa a tabela toda */}
+                        {posLinha !== null && (
+                          <div 
+                            className="absolute left-0 w-[1400px] z-50 pointer-events-auto flex items-center group/line cursor-crosshair" 
+                            style={{ top: `${posLinha}%`, transition: 'top 1s linear' }}
+                          >
+                            <div className="w-full h-[1.5px] bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.4)]"></div>
+                            
+                            {/* Tooltip de hora atual no hover */}
+                            <div className="absolute left-10 -top-6 px-2 py-1 bg-red-600 text-white text-[9px] font-black rounded shadow-lg opacity-0 group-hover/line:opacity-100 transition-opacity whitespace-nowrap z-[60]">
+                              {currentTime.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </div>
+                          </div>
+                        )}
+                      </td>
                       {barbeiros.map(b => {
                         const ags = agendamentosHoje.filter(a => String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(b._id) && new Date(a.datahora).getHours() === hInt);
                         const isMeuAtendimento = String(b._id) === String(getSafeId());
@@ -329,7 +360,7 @@ export default function BarbeiroDashboard() {
                                 <button 
                                   key={ag._id} 
                                   onClick={() => isMeuAtendimento && openAcoes(ag)} 
-                                  className={`w-full p-2.5 rounded-xl text-left border shadow-sm transition-all h-fit 
+                                  className={`w-full p-2 rounded-xl text-left border shadow-sm transition-all h-fit relative z-10
                                     ${!isMeuAtendimento ? 'opacity-30 grayscale' : 'hover:scale-[1.02] active:scale-95'} 
                                     ${ag.status === 'F' 
                                       ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
@@ -340,7 +371,6 @@ export default function BarbeiroDashboard() {
                                   <div className="flex justify-between items-start gap-1">
                                     <p className="text-[9px] font-black uppercase truncate leading-tight">
                                       {getNomeExibicao(ag)}
-                                      {/* Exibição de quem cancelou */}
                                       {ag.status === 'C' && (
                                         <span className="block text-[7px] mt-0.5 opacity-80 bg-red-500/20 px-1 rounded w-fit">
                                           [{ag.canceladoPor || 'S/ INFO'}]
@@ -350,7 +380,7 @@ export default function BarbeiroDashboard() {
                                     <span className="text-[8px] font-black bg-black/10 px-1 rounded whitespace-nowrap">{new Date(ag.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
                                   </div>
                                   <p className="text-[8px] font-bold opacity-80 italic lowercase truncate mt-0.5">{ag.tipoCorte || 'serviço'}</p>
-                                  <div className="flex justify-between items-center mt-1.5 border-t border-black/5 pt-1">
+                                  <div className="flex justify-between items-center mt-1 border-t border-black/5 pt-1">
                                      <span className="text-[9px] font-black">R$ {Number(ag.valor).toFixed(2)}</span>
                                      {isMeuAtendimento && <IoOptionsOutline size={12} className="opacity-60" />}
                                   </div>

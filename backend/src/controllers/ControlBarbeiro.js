@@ -1,6 +1,7 @@
 import Barbeiro from "../model/ModelBarbeiro.js";
 import Agendamento from "../model/ModelAgendamento.js";
-import mongoose from "mongoose"; // Importado para validar o ID
+import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 
 // CREATE
 export const criarBarbeiro = async (req, res) => {
@@ -8,6 +9,7 @@ export const criarBarbeiro = async (req, res) => {
         const novo = await Barbeiro.create(req.body);
         res.status(201).json(novo);
     } catch (error) {
+        console.error("Erro ao criar barbeiro:", error);
         res.status(500).json({ error: error.message });
     }
 };
@@ -17,31 +19,36 @@ export const loginBarbeiro = async (req, res) => {
     try {
         const { email, senha } = req.body;
 
-        // 1. Busca o barbeiro pelo e-mail
-        const barbeiro = await Barbeiro.findOne({ email });
+        if (!email || !senha) {
+            return res.status(400).json({ mensagem: "e-mail e senha são obrigatórios" });
+        }
+
+        // AJUSTE AQUI: Adicionado .select('+senha') para trazer a senha oculta
+        const barbeiro = await Barbeiro.findOne({ email: email.toLowerCase().trim() }).select('+senha');
 
         if (!barbeiro) {
             return res.status(401).json({ mensagem: "e-mail ou senha inválidos" });
         }
 
-        // 2. Compara a senha digitada com o hash do banco
+        // Agora o compararSenha terá acesso ao 'this.senha'
         const senhaCorreta = await barbeiro.compararSenha(senha);
 
         if (!senhaCorreta) {
             return res.status(401).json({ mensagem: "e-mail ou senha inválidos" });
         }
 
-        // 3. Retorna os dados (sem a senha por segurança)
-        // Padronizado para usar fk_barbearia
+        // Retorna os dados (a senha será removida automaticamente do objeto pela config do model)
         return res.status(200).json({
             _id: barbeiro._id,
             nome: barbeiro.nome,
             email: barbeiro.email,
             admin: barbeiro.admin,
-            fk_barbearia: barbeiro.fk_barbearia || barbeiro.barbearia_id
+            fk_barbearia: barbeiro.fk_barbearia
         });
+
     } catch (error) {
-        return res.status(500).json({ error: error.message });
+        console.error("ERRO NO LOGIN:", error);
+        return res.status(500).json({ error: "Erro interno no servidor" });
     }
 };
 
@@ -49,24 +56,22 @@ export const loginBarbeiro = async (req, res) => {
 export const listarBarbeiro = async (req, res) => {
     try {
         const barbeiros = await Barbeiro.find().lean();
-        return res.status(200).json(barbeiros); // Simplificado o envio de JSON
+        return res.status(200).json(barbeiros);
     } catch (error) {
         console.error("erro ao listar barbeiros:", error);
         return res.status(500).json({ error: error.message });
     }
 };
 
-// READ - buscar por ID (trazendo dados da barbearia vinculada)
+// READ - buscar por ID
 export const listarBarbeiroPorId = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Validação de ID para evitar erro de Cast (500)
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ message: "ID do barbeiro em formato inválido" });
         }
 
-        // Tenta popular fk_barbearia (padronizado)
         const barbeiro = await Barbeiro.findById(id).populate('fk_barbearia');
         
         if (!barbeiro) {
@@ -90,7 +95,7 @@ export const atualizarBarbeiro = async (req, res) => {
         }
 
         const dadosAtualizados = req.body;
-        const barbeiro = await Barbeiro.findById(barbeiroId);
+        const barbeiro = await Barbeiro.findById(barbeiroId).select('+senha');
         
         if (!barbeiro) {
             return res.status(404).json({ message: "barbeiro não encontrado" });
@@ -105,7 +110,7 @@ export const atualizarBarbeiro = async (req, res) => {
     }
 };
 
-// DELETE - exclusão em cascata
+// DELETE
 export const excluirBarbeiro = async (req, res) => {
     try {
         const barbeiroId = req.params.id;

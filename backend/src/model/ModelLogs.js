@@ -28,7 +28,17 @@ const ModelLogs = new mongoose.Schema({
         enum: ['A', 'F', 'C'],
         required: true
     },
-    // Data e hora exata em que o barbeiro realizou a ação
+    // NOVO: Armazena quem realizou o cancelamento (Ex: 'Administrador', 'Cliente', 'Barbeiro')
+    canceladoPor: {
+        type: String,
+        default: null
+    },
+    // NOVO: Armazena quem finalizou o serviço
+    finalizadoPor: {
+        type: String,
+        default: null
+    },
+    // Data e hora exata em que a ação ocorreu
     data_log: {
         type: Date,
         default: Date.now,

@@ -4,16 +4,21 @@ import bcrypt from "bcrypt";
 const ModelBarbeiro = new mongoose.Schema({
     nome: {
         type: String,
-        required: true
+        required: true,
+        trim: true
     },
     email: {
         type: String,
         required: true,
-        unique: true 
+        unique: true,
+        lowercase: true, // Garante consistência no banco
+        trim: true,
+        match: [/^\S+@\S+\.\S+$/, 'Por favor, insira um email válido']
     },
     senha: {
         type: String,
-        required: true
+        required: true,
+        select: false // Evita que a senha seja retornada em buscas comuns por padrão
     },
     admin: {
         type: Boolean,
@@ -54,5 +59,4 @@ ModelBarbeiro.methods.compararSenha = async function (senhaDigitada) {
     return await bcrypt.compare(senhaDigitada, this.senha);
 };
 
-// O nome 'barbeiro' deve coincidir com o ref usado no ModelBarbearia
 export default mongoose.model('barbeiro', ModelBarbeiro);

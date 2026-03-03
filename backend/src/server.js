@@ -8,9 +8,10 @@ import rotaClientes from "./routes/RouteCliente.js";
 import rotaAgendamento from "./routes/RouteAgendamento.js";
 import rotaBarbeiro from "./routes/routeBarbeiro.js";
 import RouteBarbearia from "./routes/RouteBarbearia.js";
-import RouteLogs from "./routes/RouteLogs.js"; // Importação da nova rota de logs
+import RouteLogs from "./routes/RouteLogs.js"; 
+import RouteAgenda from "./routes/RouteAgenda.js"; // 1. Nova importação da rota de Agenda
 
-// Carrega as variáveis do .env que está na raiz
+// Carrega as variáveis do .env
 dotenv.config();
 
 const app = express();
@@ -25,7 +26,8 @@ app.use("/", rotaClientes);
 app.use("/", rotaBarbeiro);
 app.use("/", rotaAgendamento);
 app.use("/", RouteBarbearia);
-app.use("/", RouteLogs); // Registro da rota de auditoria/logs
+app.use("/", RouteLogs);
+app.use("/", RouteAgenda); // 2. Registro da nova rota de Agenda
 
 // Conexão com o banco
 const connectDB = async () => {

@@ -7,18 +7,23 @@ import {
 } from 'react-icons/io5';
 
 export default function Sidebar() {
-  const { id } = useParams();
+  const { id } = useParams(); // ID que está na URL
   const navigate = useNavigate();
-  const location = useLocation(); // Para identificar a rota atual
+  const location = useLocation();
   const { isDarkMode } = useTheme();
 
+  // RECUPERAR ID DA BARBEARIA DO STORAGE
+  // Geralmente você salva o usuário como string no login. 
+  // Se o campo for diferente de 'fk_barbearia', ajuste o nome abaixo.
+  const userData = JSON.parse(localStorage.getItem('user') || '{}');
+  const barbeariaId = userData.fk_barbearia || id; 
+
   const menuItems = [
-    { icon: <IoAnalytics />, label: 'Analytics', path: `/admin/analytics/${id}` },
-    { icon: <IoPeople />, label: 'Equipe', path: `/admin/barbeiros/${id}` },
-    { icon: <IoDocumentText />, label: 'Histórico', path: `/admin/logs/${id}` },
-    // Alterado para a rota de agenda (escala completa)
-    { icon: <IoCalendar />, label: 'Agenda', path: `/admin/agenda/${id}` },
-    { icon: <IoCut />, label: 'Serviços', path: `/admin/valores/${id}` },
+    { icon: <IoAnalytics />, label: 'Analytics', path: `/admin/analytics/${barbeariaId}` },
+    { icon: <IoPeople />, label: 'Equipe', path: `/admin/barbeiros/${barbeariaId}` },
+    { icon: <IoDocumentText />, label: 'Histórico', path: `/admin/logs/${barbeariaId}` },
+    { icon: <IoCalendar />, label: 'Agenda', path: `/admin/agenda/${barbeariaId}` },
+    { icon: <IoCut />, label: 'Serviços', path: `/admin/valores/${barbeariaId}` },
   ];
 
   return (
@@ -28,7 +33,7 @@ export default function Sidebar() {
         : 'bg-white border-slate-200 shadow-sm'
     }`}>
       
-      {/* Botão Voltar */}
+      {/* Botão Voltar - Usa o ID do usuário para voltar ao perfil dele */}
       <button 
         onClick={() => navigate(`/barbeiro/${id}`)} 
         className={`p-3 rounded-2xl transition-all mb-4 ${
@@ -41,7 +46,9 @@ export default function Sidebar() {
       {/* Itens de Navegação */}
       <div className="flex flex-col gap-6 flex-1">
         {menuItems.map((item, index) => {
-          const isActive = location.pathname === item.path;
+          // Verifica se a rota atual começa com o path do item (para manter ativo mesmo em subrotas)
+          const isActive = location.pathname.includes(item.path.split('/').slice(0, 3).join('/'));
+          
           return (
             <SidebarIcon 
               key={index}

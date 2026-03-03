@@ -112,7 +112,6 @@ export default function ClienteDashboard() {
     <div className={`min-h-screen p-4 md:p-6 pb-24 font-sans transition-colors duration-300 ${isDarkMode ? 'bg-[#0a0a0a] text-gray-100' : 'bg-gray-50 text-slate-900'}`}>
       <div className="max-w-[1200px] mx-auto space-y-6">
         
-        {/* TOP BAR UNIFICADA */}
         <header className="flex justify-between items-center border-b border-black/5 dark:border-white/5 pb-4">
           <div>
             <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
@@ -165,10 +164,7 @@ export default function ClienteDashboard() {
           </div>
         </header>
 
-        {/* LAYOUT PRINCIPAL */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          
-          {/* COLUNA ESQUERDA: AÇÕES E RESUMO */}
           <div className="lg:col-span-4 space-y-4">
             <button 
               onClick={() => navigate(`/cliente/novo-agendamento/${getSafeId()}`)}
@@ -193,7 +189,6 @@ export default function ClienteDashboard() {
             </div>
           </div>
 
-          {/* COLUNA DIREITA: LISTAGEM */}
           <div className="lg:col-span-8 space-y-4">
             <div className="flex items-center justify-between px-2">
               <h3 className="text-[10px] font-black uppercase tracking-[3px] text-gray-500 flex items-center gap-2">
@@ -205,7 +200,7 @@ export default function ClienteDashboard() {
             <div className="space-y-3">
               {ativos.length > 0 ? (
                 ativos.map(a => (
-                  <div key={a._id} className={`p-5 md:p-6 rounded-[2rem] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all hover:scale-[1.01] group ${
+                  <div key={a._id} className={`p-5 md:p-6 rounded-[2rem] border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all group ${
                     isDarkMode ? 'bg-[#111] border-white/5 hover:border-[#e6b32a]/30' : 'bg-white border-slate-100 hover:border-black/10 shadow-sm'
                   }`}>
                     <div className="flex items-center gap-4">
@@ -216,22 +211,31 @@ export default function ClienteDashboard() {
                         <span className="text-[10px] font-black text-[#e6b32a] font-mono uppercase">
                           {new Date(a.datahora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
                         </span>
-                        <h3 className="text-xl md:text-2xl font-black lowercase tracking-tighter leading-none mt-1 truncate">
+                        {/* NOME DO BARBEIRO REDUZIDO PARA text-lg */}
+                        <h3 className="text-lg md:text-xl font-black lowercase tracking-tighter leading-none mt-1 truncate">
                           {getNomeBarbeiro(a.fk_barbeiro)}
                         </h3>
-                        <p className="text-[9px] text-gray-500 font-bold uppercase mt-1.5 tracking-wider flex items-center gap-2">
-                          <span className="w-1 h-1 bg-emerald-500 rounded-full" />
-                          {a.tipoCorte === 'C' ? 'cabelo' : a.tipoCorte === 'B' ? 'barba' : 'completo'} • R$ {a.valor?.toFixed(2)}
+                        {/* TIPO DE CORTE SEM O PONTO VERDE */}
+                        <p className="text-[9px] text-gray-500 font-bold uppercase mt-1.5 tracking-wider">
+                          {a.tipoCorte ? a.tipoCorte.toLowerCase() : 'serviço'}
                         </p>
                       </div>
                     </div>
 
-                    <button 
-                      onClick={() => handleOpenModal(a._id)}
-                      className="w-full sm:w-auto px-6 py-3 rounded-xl border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
-                    >
-                      cancelar
-                    </button>
+                    <div className="flex items-center gap-4">
+                      {/* PREÇO MAIS CHAMATIVO */}
+                      <div className={`px-4 py-2 rounded-2xl font-black text-lg ${isDarkMode ? 'bg-[#e6b32a]/10 text-[#e6b32a]' : 'bg-slate-100 text-slate-900'}`}>
+                        R$ {a.valor?.toFixed(2)}
+                      </div>
+
+                      <button 
+                        onClick={() => handleOpenModal(a._id)}
+                        className="w-full sm:w-auto px-4 py-3 rounded-xl border border-red-500/20 text-red-500 text-[9px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all active:scale-95 flex items-center justify-center"
+                      >
+                        <IoCloseOutline size={16} className="mr-1" />
+                        cancelar
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (
@@ -244,7 +248,6 @@ export default function ClienteDashboard() {
         </div>
       </div>
 
-      {/* MODAL DE CONFIRMAÇÃO (REUTILIZANDO O ESTILO MOBILE-FIRST) */}
       <ModalConfirmacao 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
