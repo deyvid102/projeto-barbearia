@@ -5,8 +5,9 @@ import {
     listarBarbeiroPorId, 
     atualizarBarbeiro, 
     excluirBarbeiro,
-    loginBarbeiro // Adicione esta importação
-} from "../controllers/ControlBarbeiro.js"; // Verifique se o nome do arquivo está correto
+    loginBarbeiro,
+    buscarBarbeariaPorBarbeiro // Importação da nova função
+} from "../controllers/ControlBarbeiro.js";
 
 const router = Router();
 
@@ -15,6 +16,9 @@ router.get("/barbeiros", listarBarbeiro);
 router.get("/barbeiros/:id", listarBarbeiroPorId);
 router.put("/barbeiros/:id", atualizarBarbeiro);
 router.delete("/barbeiros/:id", excluirBarbeiro);
+
+// Rota para pegar o ID da barbearia através do ID do barbeiro
+router.get("/barbeiros/:id/barbearia", buscarBarbeariaPorBarbeiro);
 
 // Nova rota de login
 router.post("/barbeiros/login", loginBarbeiro);

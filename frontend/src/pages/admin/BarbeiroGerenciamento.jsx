@@ -3,8 +3,9 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert';
+import AdminLayout from '../../layout/layout';
 import { useTheme } from '../../components/ThemeContext';
-import { IoAdd, IoArrowBack, IoTrashOutline, IoClose, IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5';
+import { IoAdd, IoTrashOutline, IoClose, IoEyeOutline, IoEyeOffOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
 
 export default function BarbeiroGerenciamento() {
@@ -155,19 +156,11 @@ export default function BarbeiroGerenciamento() {
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#070707] text-gray-200' : 'bg-gray-50 text-slate-900'} font-sans pb-10 transition-colors duration-300`}>
+    <AdminLayout>
       <div className="max-w-2xl lg:max-w-5xl mx-auto p-5 md:p-10 space-y-8">
         
         <header className={`flex items-center justify-between py-6 border-b ${isDarkMode ? 'border-white/5' : 'border-black/5'}`}>
           <div className="flex items-center gap-4 md:gap-6">
-            <button 
-              onClick={() => navigate(`/admin/dashboard/${id}`)} 
-              className={`w-10 h-10 md:w-12 md:h-12 rounded-2xl flex items-center justify-center border active:scale-90 transition-all text-[#e6b32a] shadow-sm ${
-                isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-black/10'
-              }`}
-            >
-              <IoArrowBack size={20} className="md:size-6" />
-            </button>
             <div>
               <h1 className={`text-2xl md:text-3xl font-black tracking-tighter lowercase leading-tight italic ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                 equipe<span className="text-[#e6b32a]">.</span>
@@ -378,6 +371,6 @@ export default function BarbeiroGerenciamento() {
         tipo={modalConfig.tipo}
         mensagem={modalConfig.mensagem}
       />
-    </div>
+    </AdminLayout>
   );
 }

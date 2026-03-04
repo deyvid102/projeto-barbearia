@@ -3,16 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert';
+import AdminLayout from '../../layout/layout';
 
 import { 
-  IoArrowBackOutline, 
   IoTrashOutline,
   IoChevronBack, 
   IoChevronForward,
   IoFastFoodOutline,
   IoPersonOutline,
-  IoAddOutline,
-  IoTimeOutline
+  IoAddOutline
 } from 'react-icons/io5';
 
 export default function BarbeariaAgenda() {
@@ -123,7 +122,6 @@ export default function BarbeariaAgenda() {
     }
   };
 
-  // Função para pegar as iniciais baseado no nome
   const getIniciais = (nome) => {
     if (!nome || typeof nome !== 'string') return "??";
     const limpo = nome.trim();
@@ -148,20 +146,20 @@ export default function BarbeariaAgenda() {
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-[#070707] text-white' : 'bg-gray-50 text-slate-900'} p-4 md:p-8 pb-20`}>
-      {loading && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md">
-          <div className="w-12 h-12 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
-        </div>
-      )}
-      {alertConfig.show && <CustomAlert {...alertConfig} onClose={() => setAlertConfig({ ...alertConfig, show: false })} />}
+    <AdminLayout>
+      <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
+        {loading && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md">
+            <div className="w-12 h-12 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+          </div>
+        )}
+        
+        {alertConfig.show && <CustomAlert {...alertConfig} onClose={() => setAlertConfig({ ...alertConfig, show: false })} />}
 
-      <div className="max-w-7xl mx-auto">
         <header className="flex items-center gap-4 mb-10">
-          <button onClick={() => navigate(-1)} className={`w-12 h-12 rounded-2xl border flex items-center justify-center transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} hover:border-[#e6b32a]`}>
-            <IoArrowBackOutline size={22} />
-          </button>
-          <h1 className="text-2xl font-black italic lowercase tracking-tighter">escalas.<span className="text-[#e6b32a]">profissionais</span></h1>
+          <h1 className="text-2xl font-black italic lowercase tracking-tighter">
+            escalas.<span className="text-[#e6b32a]">profissionais</span>
+          </h1>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -180,7 +178,7 @@ export default function BarbeariaAgenda() {
                         <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-xs text-white ${getCorBarbeiro(b._id)}`}>
                           {getIniciais(b.nome)}
                         </div>
-                        <span className="font-black text-lg lowercase tracking-tighter">{b.nome}</span>
+                        <span className="font-black text-lg lowercase tracking-tighter truncate max-w-[120px]">{b.nome}</span>
                       </div>
                       <button onClick={() => setConfigBarbeiros(p => ({...p, [b._id]: {...conf, selecionado: !conf.selecionado}}))} className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${conf.selecionado ? 'bg-[#e6b32a] text-black' : 'bg-white/5 text-gray-400 border border-white/10 hover:border-[#e6b32a]/40'}`}>
                         {conf.selecionado ? 'Ativo' : 'Selecionar'}
@@ -192,11 +190,11 @@ export default function BarbeariaAgenda() {
                         <div className="grid grid-cols-2 gap-4">
                           <div className="space-y-1">
                             <label className="text-[8px] uppercase font-black opacity-40">Entrada</label>
-                            <input type="time" value={conf.abertura} onChange={e => setConfigBarbeiros(p => ({...p, [b._id]: {...conf, abertura: e.target.value}}))} className="w-full bg-transparent border-b border-white/10 py-1 text-sm font-bold focus:border-[#e6b32a] outline-none"/>
+                            <input type="time" value={conf.abertura} onChange={e => setConfigBarbeiros(p => ({...p, [b._id]: {...conf, abertura: e.target.value}}))} className={`w-full bg-transparent border-b py-1 text-sm font-bold focus:border-[#e6b32a] outline-none ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}/>
                           </div>
                           <div className="space-y-1">
                             <label className="text-[8px] uppercase font-black opacity-40">Saída</label>
-                            <input type="time" value={conf.fechamento} onChange={e => setConfigBarbeiros(p => ({...p, [b._id]: {...conf, fechamento: e.target.value}}))} className="w-full bg-transparent border-b border-white/10 py-1 text-sm font-bold focus:border-[#e6b32a] outline-none"/>
+                            <input type="time" value={conf.fechamento} onChange={e => setConfigBarbeiros(p => ({...p, [b._id]: {...conf, fechamento: e.target.value}}))} className={`w-full bg-transparent border-b py-1 text-sm font-bold focus:border-[#e6b32a] outline-none ${isDarkMode ? 'border-white/10' : 'border-black/10'}`}/>
                           </div>
                         </div>
 
@@ -262,8 +260,6 @@ export default function BarbeariaAgenda() {
                       <div className="flex flex-col gap-1.5 overflow-y-auto scrollbar-hide">
                         {escalasDoDia.map(esc => {
                           const idB = esc.fk_barbeiro?._id || esc.fk_barbeiro;
-                          
-                          // BUSCA O NOME: tenta no objeto populado, se não, busca na lista de barbeiros pelo ID
                           const barbeiroEncontrado = barbeiros.find(b => b._id === idB);
                           const nomeB = esc.fk_barbeiro?.nome || barbeiroEncontrado?.nome || '??';
 
@@ -291,6 +287,6 @@ export default function BarbeariaAgenda() {
           </main>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 }

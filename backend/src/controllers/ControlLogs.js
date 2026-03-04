@@ -9,41 +9,41 @@ export const buscarLogsPorBarbearia = async (req, res) => {
     try {
         const { id_barbearia } = req.params;
 
+        // Filtra estritamente pelo fk_barbearia para garantir o isolamento dos dados
         const logs = await ModelLogs.find({ fk_barbearia: id_barbearia })
             .populate('fk_barbeiro', 'nome email')
             .populate('fk_cliente', 'nome telefone')
             .populate('fk_agendamento', 'tipoCorte valor datahora')
-            .sort({ data_log: -1 });
+            .sort({ data_log: -1 }); // Mais recentes primeiro
 
-        if (!logs || logs.length === 0) {
+        // Retorna array vazio se não houver registros, mantendo o padrão do frontend
+        if (!logs) {
             return res.status(200).json([]); 
         }
 
         return res.status(200).json(logs);
     } catch (error) {
-        console.error("erro ao buscar logs:", error);
-        return res.status(500).json({ error: "erro interno ao buscar logs." });
+        console.error("Erro ao buscar logs:", error);
+        return res.status(500).json({ error: "Erro interno ao buscar logs." });
     }
 };
 
 /**
  * Função interna para registrar ações
- * Ajustada para suportar canceladoPor e finalizadoPor
+ * Pode ser chamada dentro de outros controllers (Barbeiro/Cliente)
  */
 export const registrarLogAcao = async (dados) => {
     try {
-        // Agora o objeto de criação recebe tudo que for passado em 'dados'
-        // Isso permite capturar canceladoPor e finalizadoPor vindos do controller de agendamento
+        // Usamos o spread operator para pegar todos os campos (fk_barbearia, status_acao, etc)
+        // e garantimos que os novos campos canceladoPor e finalizadoPor sejam persistidos
         await ModelLogs.create({
-            fk_barbearia: dados.fk_barbearia,
-            fk_barbeiro: dados.fk_barbeiro,
-            fk_agendamento: dados.fk_agendamento,
-            fk_cliente: dados.fk_cliente,
-            status_acao: dados.status_acao,
-            canceladoPor: dados.canceladoPor || null, // Novo campo
-            finalizadoPor: dados.finalizadoPor || null  // Novo campo
+            ...dados,
+            data_log: new Date() // Garante a timestamp da ação
         });
+        
+        console.log(`Log registrado: ${dados.status_acao} por ${dados.finalizadoPor || dados.canceladoPor || 'Sistema'}`);
     } catch (error) {
-        console.error("falha ao gravar log:", error);
+        console.error("Falha ao gravar log no banco:", error);
+        // Não lançamos erro aqui para não travar a execução principal do agendamento
     }
 };

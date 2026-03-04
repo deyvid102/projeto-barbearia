@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert';
-import { IoAdd, IoArrowBack, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
+import AdminLayout from '../../layout/layout';
+import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
 
 export default function ValoresGerenciamento() {
@@ -38,10 +39,9 @@ export default function ValoresGerenciamento() {
       const resBarbearia = await api.get(`/barbearias/${bId}`);
       const barbeariaData = resBarbearia.data || resBarbearia;
       
-      // Sanitização: Garante que se vier algum serviço antigo sem tempo, ele não quebre o Model
       const servicosFormatados = (barbeariaData.servicos || []).map(s => ({
         ...s,
-        tempo: s.tempo || 30 // Valor padrão caso o banco retorne undefined
+        tempo: s.tempo || 30 
       }));
       
       setServicos(servicosFormatados);
@@ -84,11 +84,10 @@ export default function ValoresGerenciamento() {
 
   const salvarAlteracoes = async () => {
     try {
-      // 1. Criamos a nova lista baseada no estado atual
       let novaListaServicos = servicos.map(s => ({
         nome: s.nome,
         valor: Number(s.valor),
-        tempo: Number(s.tempo || 30) // Proteção extra: garante tempo em todos
+        tempo: Number(s.tempo || 30)
       }));
 
       const novoServico = {
@@ -103,7 +102,6 @@ export default function ValoresGerenciamento() {
         novaListaServicos.push(novoServico);
       }
 
-      // Envia apenas os campos necessários para o Model
       await api.put(`/barbearias/${barbeariaId}`, { servicos: novaListaServicos });
       
       setAlertConfig({ show: true, message: 'tabela de preços atualizada!', type: 'success' });
@@ -111,7 +109,6 @@ export default function ValoresGerenciamento() {
       setIsConfirmModalOpen(false);
       carregarDados();
     } catch (error) {
-      console.error("Erro ao salvar:", error.response?.data || error.message);
       setAlertConfig({ show: true, message: 'erro ao salvar: verifique os campos', type: 'error' });
       setIsConfirmModalOpen(false);
     }
@@ -146,17 +143,11 @@ export default function ValoresGerenciamento() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#070707] text-gray-900 dark:text-gray-200 font-sans pb-10 transition-colors">
-      <div className="max-w-2xl lg:max-w-5xl mx-auto p-5 md:p-10 space-y-8">
+    <AdminLayout>
+      <div className="max-w-[1600px] mx-auto p-5 md:p-10 space-y-8">
         
         <header className="flex items-center justify-between py-6 border-b border-black/5 dark:border-white/5">
           <div className="flex items-center gap-4 md:gap-6">
-            <button 
-              onClick={() => navigate(`/admin/dashboard/${id}`)} 
-              className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-white dark:bg-[#111] flex items-center justify-center border border-black/10 dark:border-white/10 active:scale-90 transition-all text-[#e6b32a] shadow-sm"
-            >
-              <IoArrowBack size={20} className="md:size-6" />
-            </button>
             <div>
               <h1 className="text-2xl md:text-3xl font-black tracking-tighter lowercase leading-tight text-black dark:text-white italic">
                 tabela<span className="text-[#e6b32a]">.</span>preços
@@ -233,7 +224,6 @@ export default function ValoresGerenciamento() {
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-black/95 backdrop-blur-md p-4">
           <div className="absolute inset-0" onClick={() => setIsFormOpen(false)} />
-          
           <form 
             onSubmit={preSubmit} 
             className="relative bg-white dark:bg-[#0d0d0d] w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 space-y-6 shadow-2xl border border-black/5 dark:border-white/10 animate-in zoom-in-95 duration-300"
@@ -247,19 +237,11 @@ export default function ValoresGerenciamento() {
               </div>
               <div className="flex gap-2">
                 {editingIndex !== null && (
-                  <button 
-                    type="button" 
-                    onClick={triggerDelete}
-                    className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center active:scale-90 transition-all border border-red-500/20 hover:bg-red-500 hover:text-white"
-                  >
+                  <button type="button" onClick={triggerDelete} className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center active:scale-90 transition-all border border-red-500/20 hover:bg-red-500 hover:text-white">
                     <IoTrashOutline size={20} />
                   </button>
                 )}
-                <button 
-                  type="button" 
-                  onClick={() => setIsFormOpen(false)}
-                  className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 text-gray-400 flex items-center justify-center active:scale-90 transition-all border border-black/5 dark:border-white/10"
-                >
+                <button type="button" onClick={() => setIsFormOpen(false)} className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 text-gray-400 flex items-center justify-center active:scale-90 transition-all border border-black/5 dark:border-white/10">
                   <IoClose size={22} />
                 </button>
               </div>
@@ -268,45 +250,22 @@ export default function ValoresGerenciamento() {
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">descrição do serviço</label>
-                <input 
-                  className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all"
-                  placeholder="ex: corte degradê"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                  required
-                />
+                <input className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all" placeholder="ex: corte degradê" value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} required />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">valor (r$)</label>
-                  <input 
-                    className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono"
-                    placeholder="0,00"
-                    value={formData.valor}
-                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
-                    required
-                  />
+                  <input className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono" placeholder="0,00" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} required />
                 </div>
-
                 <div className="space-y-2">
                   <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">tempo (min)</label>
-                  <input 
-                    type="number"
-                    className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono"
-                    placeholder="30"
-                    value={formData.tempo}
-                    onChange={(e) => setFormData({...formData, tempo: e.target.value})}
-                    required
-                  />
+                  <input type="number" className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono" placeholder="30" value={formData.tempo} onChange={(e) => setFormData({...formData, tempo: e.target.value})} required />
                 </div>
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="w-full py-4 md:py-5 bg-[#e6b32a] text-black rounded-xl md:rounded-2xl text-xs md:text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all shadow-xl shadow-[#e6b32a]/10 mt-2"
-            >
+            <button type="submit" className="w-full py-4 md:py-5 bg-[#e6b32a] text-black rounded-xl md:rounded-2xl text-xs md:text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all shadow-xl shadow-[#e6b32a]/10 mt-2">
               confirmar e salvar
             </button>
           </form>
@@ -320,6 +279,6 @@ export default function ValoresGerenciamento() {
         tipo={modalConfig.tipo}
         mensagem={modalConfig.mensagem}
       />
-    </div>
+    </AdminLayout>
   );
 }
