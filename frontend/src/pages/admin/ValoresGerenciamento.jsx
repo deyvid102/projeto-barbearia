@@ -4,13 +4,15 @@ import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert';
 import AdminLayout from '../../layout/layout';
+import { useTheme } from '../../components/ThemeContext';
 import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
 
 export default function ValoresGerenciamento() {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+  const { isDarkMode } = useTheme();
+
   const [servicos, setServicos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [barbeariaId, setBarbeariaId] = useState(null);
@@ -29,7 +31,7 @@ export default function ValoresGerenciamento() {
       const resBarbeiro = await api.get(`/barbeiros/${id}`);
       const barbeiroData = resBarbeiro.data || resBarbeiro;
       const bId = barbeiroData.fk_barbearia?._id || barbeiroData.fk_barbearia;
-      
+
       if (!bId) {
         setAlertConfig({ show: true, message: 'unidade não encontrada', type: 'error' });
         return;
@@ -38,12 +40,12 @@ export default function ValoresGerenciamento() {
 
       const resBarbearia = await api.get(`/barbearias/${bId}`);
       const barbeariaData = resBarbearia.data || resBarbearia;
-      
+
       const servicosFormatados = (barbeariaData.servicos || []).map(s => ({
         ...s,
-        tempo: s.tempo || 30 
+        tempo: s.tempo || 30
       }));
-      
+
       setServicos(servicosFormatados);
     } catch (error) {
       console.error(error);
@@ -60,10 +62,10 @@ export default function ValoresGerenciamento() {
   const handleOpenForm = (index = null) => {
     if (index !== null) {
       setEditingIndex(index);
-      setFormData({ 
-        nome: servicos[index].nome, 
+      setFormData({
+        nome: servicos[index].nome,
         valor: servicos[index].valor.toString().replace('.', ','),
-        tempo: servicos[index].tempo || '30' 
+        tempo: servicos[index].tempo || '30'
       });
     } else {
       setEditingIndex(null);
@@ -103,7 +105,7 @@ export default function ValoresGerenciamento() {
       }
 
       await api.put(`/barbearias/${barbeariaId}`, { servicos: novaListaServicos });
-      
+
       setAlertConfig({ show: true, message: 'tabela de preços atualizada!', type: 'success' });
       setIsFormOpen(false);
       setIsConfirmModalOpen(false);
@@ -123,13 +125,13 @@ export default function ValoresGerenciamento() {
           const novaLista = servicos
             .filter((_, i) => i !== editingIndex)
             .map(s => ({
-                nome: s.nome,
-                valor: Number(s.valor),
-                tempo: Number(s.tempo || 30)
+              nome: s.nome,
+              valor: Number(s.valor),
+              tempo: Number(s.tempo || 30)
             }));
 
           await api.put(`/barbearias/${barbeariaId}`, { servicos: novaLista });
-          
+
           setAlertConfig({ show: true, message: 'serviço removido!', type: 'success' });
           setIsConfirmModalOpen(false);
           setIsFormOpen(false);
@@ -144,74 +146,82 @@ export default function ValoresGerenciamento() {
 
   return (
     <AdminLayout>
-      <div className="max-w-[1600px] mx-auto p-5 md:p-10 space-y-8">
-        
-        <header className="flex items-center justify-between py-6 border-b border-black/5 dark:border-white/5">
-          <div className="flex items-center gap-4 md:gap-6">
-            <div>
-              <h1 className="text-2xl md:text-3xl font-black tracking-tighter lowercase leading-tight text-black dark:text-white italic">
-                tabela<span className="text-[#e6b32a]">.</span>preços
-              </h1>
-              <p className="text-[9px] md:text-[10px] text-gray-400 dark:text-gray-500 uppercase font-black tracking-[3px] md:tracking-[4px] ml-1">
-                ajuste de serviços e valores
-              </p>
-            </div>
+      <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
+
+        {/* HEADER PADRONIZADO */}
+        <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div>
+            <h1 className="text-3xl font-black italic lowercase tracking-tighter leading-none">
+              tabela<span className="text-[#e6b32a]">.preços</span>
+            </h1>
+            <p className="text-[10px] uppercase tracking-[3px] font-bold opacity-40 mt-2">Ajuste de serviços e valores</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => handleOpenForm()}
-            className="h-10 md:h-12 px-4 md:px-6 bg-[#e6b32a] text-black rounded-xl md:rounded-2xl flex items-center gap-2 active:scale-95 transition-all shadow-xl shadow-[#e6b32a]/20"
+            className="h-12 px-6 bg-[#e6b32a] text-black rounded-2xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl shadow-[#e6b32a]/20 w-fit"
           >
             <IoAdd size={20} className="stroke-[3]" />
-            <span className="text-[10px] md:text-xs font-black uppercase tracking-tight">novo</span>
+            <span className="text-xs font-black uppercase tracking-widest">Novo Serviço</span>
           </button>
         </header>
 
         {alertConfig.show && (
           <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[90%] md:w-auto">
-            <CustomAlert 
-              message={alertConfig.message} 
-              type={alertConfig.type} 
-              onClose={() => setAlertConfig({ ...alertConfig, show: false })} 
+            <CustomAlert
+              message={alertConfig.message}
+              type={alertConfig.type}
+              onClose={() => setAlertConfig({ ...alertConfig, show: false })}
             />
           </div>
         )}
 
         {loading ? (
           <div className="flex flex-col items-center py-24 gap-4">
-            <div className="w-8 h-8 border-3 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+            <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4">
             {servicos.length === 0 ? (
-              <div className="col-span-full py-20 text-center border-2 border-dashed border-black/5 dark:border-white/5 rounded-[2rem] md:rounded-[2.5rem] opacity-40">
+              <div className="col-span-full py-20 text-center border-2 border-dashed border-black/5 dark:border-white/5 rounded-[2.5rem] opacity-40">
                 <p className="font-black uppercase text-[10px] tracking-[4px]">nenhum serviço listado</p>
               </div>
             ) : (
               servicos.map((serv, index) => (
-                <div 
+                <div
                   key={index}
                   onClick={() => handleOpenForm(index)}
-                  className="group p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border bg-white dark:bg-[#0d0d0d] border-black/5 dark:border-white/5 hover:border-[#e6b32a]/30 active:scale-[0.98] transition-all relative overflow-hidden cursor-pointer shadow-sm flex justify-between items-center"
+                  className={`group p-6 rounded-[2.5rem] border transition-all cursor-pointer relative overflow-hidden flex items-center justify-between h-32 ${
+                    isDarkMode 
+                    ? 'bg-white/5 border-white/5 hover:border-[#e6b32a]/50' 
+                    : 'bg-slate-50 border-slate-100 hover:border-[#e6b32a]'
+                  }`}
                 >
-                  <div className="flex items-center gap-4 md:gap-5">
-                    <div className="w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-2xl bg-gray-50 dark:bg-[#111] flex items-center justify-center text-[#e6b32a] border border-black/5 dark:border-white/10 group-hover:bg-[#e6b32a] group-hover:text-black transition-colors">
-                      <IoPricetagOutline size={22} />
+                  <div className="flex items-center gap-5">
+                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-[#e6b32a] border transition-colors ${
+                      isDarkMode ? 'bg-black/40 border-white/10 group-hover:bg-[#e6b32a] group-hover:text-black' : 'bg-white border-black/5 group-hover:bg-[#e6b32a] group-hover:text-black'
+                    }`}>
+                      <IoPricetagOutline size={24} />
                     </div>
                     <div>
-                      <h3 className="text-base md:text-lg font-black text-black dark:text-white lowercase tracking-tight">{serv.nome}</h3>
-                      <div className="flex items-center gap-1.5 opacity-60">
-                        <IoTimeOutline size={12} className="text-[#e6b32a]"/>
-                        <p className="text-[10px] text-gray-400 dark:text-gray-500 uppercase font-bold tracking-widest">{serv.tempo || 0} min</p>
+                      <h3 className={`text-xl font-black lowercase tracking-tighter truncate ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+                        {serv.nome}
+                      </h3>
+                      <div className="flex items-center gap-1.5 mt-1 opacity-40">
+                        <IoTimeOutline size={12} />
+                        <p className="text-[10px] font-bold uppercase tracking-widest">
+                          {serv.tempo || 0} min
+                        </p>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right flex items-center gap-4">
-                    <span className="text-lg md:text-xl font-mono font-black text-black dark:text-white">
+
+                  <div className="text-right flex items-center gap-6">
+                    <span className={`text-xl font-mono font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
                       R$ {parseFloat(serv.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
-                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl bg-black/5 dark:bg-white/5 flex items-center justify-center text-[#e6b32a] group-hover:scale-110 transition-transform">
-                      <FaEdit size={14} />
+                    <div className="w-10 h-10 rounded-xl bg-[#e6b32a] text-black flex items-center justify-center shadow-lg shadow-[#e6b32a]/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <FaEdit size={16} />
                     </div>
                   </div>
                 </div>
@@ -221,52 +231,92 @@ export default function ValoresGerenciamento() {
         )}
       </div>
 
+      {/* MODAL FORMULÁRIO PADRONIZADO */}
       {isFormOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/90 dark:bg-black/95 backdrop-blur-md p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="absolute inset-0" onClick={() => setIsFormOpen(false)} />
+          
           <form 
             onSubmit={preSubmit} 
-            className="relative bg-white dark:bg-[#0d0d0d] w-full max-w-md rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-10 space-y-6 shadow-2xl border border-black/5 dark:border-white/10 animate-in zoom-in-95 duration-300"
+            className={`relative w-full max-w-md rounded-[3rem] p-8 md:p-10 space-y-8 shadow-2xl border animate-in zoom-in-95 duration-300 ${
+              isDarkMode ? 'bg-[#0d0d0d] border-white/10' : 'bg-white border-slate-200'
+            }`}
           >
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-xl md:text-2xl font-black text-black dark:text-white lowercase tracking-tighter">
-                  {editingIndex !== null ? 'editar serviço' : 'novo serviço'}
+                <h2 className="text-2xl font-black italic lowercase tracking-tighter">
+                  {editingIndex !== null ? 'editar.' : 'novo.'}<span className="text-[#e6b32a]">serviço</span>
                 </h2>
-                <div className="h-1 w-10 bg-[#e6b32a] mt-1 rounded-full" />
+                <div className="h-1.5 w-8 bg-[#e6b32a] mt-2 rounded-full" />
               </div>
               <div className="flex gap-2">
                 {editingIndex !== null && (
-                  <button type="button" onClick={triggerDelete} className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center active:scale-90 transition-all border border-red-500/20 hover:bg-red-500 hover:text-white">
+                  <button 
+                    type="button" 
+                    onClick={triggerDelete}
+                    className="w-10 h-10 rounded-xl bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all border border-red-500/10"
+                  >
                     <IoTrashOutline size={20} />
                   </button>
                 )}
-                <button type="button" onClick={() => setIsFormOpen(false)} className="w-10 h-10 rounded-xl bg-black/5 dark:bg-white/5 text-gray-400 flex items-center justify-center active:scale-90 transition-all border border-black/5 dark:border-white/10">
+                <button 
+                  type="button" 
+                  onClick={() => setIsFormOpen(false)}
+                  className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center text-gray-400 hover:bg-white/10 transition-all border border-white/5"
+                >
                   <IoClose size={22} />
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div className="space-y-2">
-                <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">descrição do serviço</label>
-                <input className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all" placeholder="ex: corte degradê" value={formData.nome} onChange={(e) => setFormData({...formData, nome: e.target.value})} required />
+                <label className="text-[9px] uppercase font-black opacity-40 ml-1 tracking-[2px]">descrição do serviço</label>
+                <input 
+                  className={`w-full rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#e6b32a]/20 focus:border-[#e6b32a] transition-all border ${
+                    isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                  }`}
+                  placeholder="ex: corte degradê"
+                  value={formData.nome}
+                  onChange={(e) => setFormData({...formData, nome: e.target.value})}
+                  required
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">valor (r$)</label>
-                  <input className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono" placeholder="0,00" value={formData.valor} onChange={(e) => setFormData({...formData, valor: e.target.value})} required />
+                  <label className="text-[9px] uppercase font-black opacity-40 ml-1 tracking-[2px]">valor (r$)</label>
+                  <input 
+                    className={`w-full rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#e6b32a]/20 focus:border-[#e6b32a] transition-all border font-mono ${
+                      isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                    placeholder="0,00"
+                    value={formData.valor}
+                    onChange={(e) => setFormData({...formData, valor: e.target.value})}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[9px] md:text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 ml-1 tracking-[2px]">tempo (min)</label>
-                  <input type="number" className="w-full bg-gray-50 dark:bg-[#141414] border border-black/5 dark:border-white/10 rounded-xl md:rounded-2xl p-4 text-sm md:text-base text-black dark:text-white outline-none focus:border-[#e6b32a] transition-all font-mono" placeholder="30" value={formData.tempo} onChange={(e) => setFormData({...formData, tempo: e.target.value})} required />
+                  <label className="text-[9px] uppercase font-black opacity-40 ml-1 tracking-[2px]">tempo (min)</label>
+                  <input 
+                    type="number"
+                    className={`w-full rounded-2xl p-4 text-sm font-bold outline-none focus:ring-2 focus:ring-[#e6b32a]/20 focus:border-[#e6b32a] transition-all border font-mono ${
+                      isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-slate-50 border-slate-200 text-slate-900'
+                    }`}
+                    placeholder="30"
+                    value={formData.tempo}
+                    onChange={(e) => setFormData({...formData, tempo: e.target.value})}
+                    required
+                  />
                 </div>
               </div>
             </div>
 
-            <button type="submit" className="w-full py-4 md:py-5 bg-[#e6b32a] text-black rounded-xl md:rounded-2xl text-xs md:text-sm font-black uppercase tracking-widest active:scale-[0.97] transition-all shadow-xl shadow-[#e6b32a]/10 mt-2">
-              confirmar e salvar
+            <button 
+              type="submit" 
+              className="w-full py-5 bg-[#e6b32a] text-black rounded-[1.5rem] text-[10px] font-black uppercase tracking-[2px] active:scale-[0.97] transition-all shadow-xl shadow-[#e6b32a]/20 mt-4"
+            >
+              {editingIndex !== null ? 'Salvar Alterações' : 'Adicionar à Tabela'}
             </button>
           </form>
         </div>

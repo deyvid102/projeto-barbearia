@@ -50,13 +50,16 @@ export default function AdminLogs() {
         
         setLogs(logsFiltradosBase);
 
-        // BUSCA O NOME DA BARBEARIA PELO fk_barbearia
+        // --- LÓGICA IGUAL AO ADMIN ANALYTICS ---
         const logComEmpresa = logsFiltradosBase.find(l => l.fk_barbearia);
-        if (logComEmpresa && typeof logComEmpresa.fk_barbearia === 'object') {
+        if (logComEmpresa) {
           const empresa = logComEmpresa.fk_barbearia;
           setNomeBarbearia(empresa.nome_fantasia || empresa.nome || 'Barbearia');
         } else {
-          setNomeBarbearia(userData.fk_barbearia?.nome_fantasia || userData.fk_barbearia?.nome || 'Barbearia');
+          if (storageUser) {
+            const userDataParsed = JSON.parse(storageUser);
+            setNomeBarbearia(userDataParsed.fk_barbearia?.nome_fantasia || userDataParsed.fk_barbearia?.nome || 'Barbearia');
+          }
         }
       }
     } catch (error) {
@@ -133,11 +136,10 @@ export default function AdminLogs() {
     <AdminLayout>
       <div className="p-4 md:p-8 flex flex-col h-full print:block print:bg-white print:p-0">
         
-        {/* CABEÇALHO TELA */}
         <header className="mb-8 flex justify-between items-end print:hidden">
           <div>
             <h1 className="text-2xl font-black italic lowercase tracking-tighter">
-              logs.<span className="text-[#e6b32a]">atividades</span>
+              histórico.<span className="text-[#e6b32a]">atividades</span>
             </h1>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">Relatório de Auditoria</p>
           </div>
@@ -148,10 +150,10 @@ export default function AdminLogs() {
           </div>
         </header>
 
-        {/* --- CABEÇALHO EXCLUSIVO PARA O PDF --- */}
-        <div className="hidden print:block mb-8 border-b-2 border-black pb-4">
-          <h1 className="text-2xl font-black uppercase tracking-tighter text-black">Relatório de Auditoria (Logs)</h1>
-          <div className="mt-4 grid grid-cols-2 gap-4 text-[10pt] font-bold uppercase text-black">
+        {/* --- CABEÇALHO EXCLUSIVO PARA O PDF (ESTILO ANALYTICS) --- */}
+        <div className="hidden print:block mb-8 border-b-2 border-black pb-4 text-black">
+          <h1 className="text-2xl font-black uppercase tracking-tighter">Relatório de Auditoria (Logs)</h1>
+          <div className="mt-4 grid grid-cols-2 gap-4 text-[10pt] font-bold uppercase">
             <p>Barbearia: <span className="font-normal">{nomeBarbearia}</span></p>
             <p className="text-right">{new Date().toLocaleDateString('pt-BR')} às {new Date().toLocaleTimeString('pt-BR')}</p>
             <p className="text-black">{labelPeriodoPDF}</p>
@@ -263,7 +265,6 @@ export default function AdminLogs() {
         @media print {
           @page { size: A4; margin: 10mm; }
           
-          /* Forçar cores claras no PDF ignorando o Dark Mode da UI */
           html, body, .AdminLayout_main, #pdf-table-area, table, tr, td, th { 
             background-color: white !important; 
             color: black !important; 
@@ -279,14 +280,12 @@ export default function AdminLogs() {
           
           .AdminLayout_main { padding: 0 !important; margin: 0 !important; }
           
-          /* Força o navegador a imprimir cores de fundo e sombras */
           * { 
             -webkit-print-color-adjust: exact !important; 
             color-adjust: exact !important; 
             print-color-adjust: exact !important;
           }
 
-          /* Ajuste de contraste para textos que eram dourados ou cinzas na tela */
           .text-gray-400, .text-[#e6b32a], .text-emerald-500, .text-red-500 {
             color: black !important;
           }

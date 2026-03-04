@@ -8,7 +8,8 @@ import AdminLayout from '../../layout/layout';
 import { 
   IoSaveOutline, IoCloseOutline, IoSyncOutline, 
   IoPersonOutline, IoCheckmarkCircleOutline, IoTimeOutline, 
-  IoCloseCircleOutline, IoChevronDownOutline, IoOptionsOutline
+  IoCloseCircleOutline, IoChevronDownOutline, IoOptionsOutline,
+  IoCutOutline, IoCashOutline, IoCalendarOutline, IoStatsChartOutline
 } from 'react-icons/io5';
 
 export default function AdministradorDashboard() {
@@ -18,10 +19,10 @@ export default function AdministradorDashboard() {
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [clientes, setClientes] = useState([]);
-  const [configLimites, setConfigLimites] = useState({ inicio: 8, fim: 18 });
+  // Agora inicializamos com strings de horário vindas do banco
+  const [configLimites, setConfigLimites] = useState({ abertura: "08:00", fechamento: "18:00" });
   const [loading, setLoading] = useState(true);
   
-  // Estados do Modal de Ações
   const [isAcoesModalOpen, setIsAcoesModalOpen] = useState(false);
   const [isSelectOpen, setIsSelectOpen] = useState(false);
   const [selectedAg, setSelectedAg] = useState(null);
@@ -37,7 +38,6 @@ export default function AdministradorDashboard() {
   const ALTURA_CABECALHO = 48;
 
   const hoje = new Date();
-  const diaDoMes = hoje.getDate();
   const hojeStr = hoje.toISOString().split('T')[0];
 
   const statusOptions = [
@@ -51,7 +51,7 @@ export default function AdministradorDashboard() {
       if (!isAutoRefresh) setLoading(true);
       
       const resBeb = await api.get('/barbearias');
-      const barbearias = resBeb.data || resBeb || [];
+      const barbearias = Array.isArray(resBeb.data) ? resBeb.data : (Array.isArray(resBeb) ? resBeb : []);
       
       let minhaBarbearia = barbearias.find(b => {
         const bId = String(b._id || b.id).trim();
@@ -71,6 +71,12 @@ export default function AdministradorDashboard() {
 
       const barbeariaIdReal = String(minhaBarbearia._id || minhaBarbearia.id);
 
+      // 🛠️ ATUALIZAÇÃO: Captura os horários fixos configurados pelo Admin na Sidebar
+      setConfigLimites({
+        abertura: minhaBarbearia.abertura || "08:00",
+        fechamento: minhaBarbearia.fechamento || "18:00"
+      });
+
       const [resB, resA, resC] = await Promise.all([
         api.get('/barbeiros'),
         api.get(`/agendamentos/barbearia/${barbeariaIdReal}`).catch(() => api.get('/agendamentos')),
@@ -84,23 +90,13 @@ export default function AdministradorDashboard() {
       setBarbeiros(todosBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === barbeariaIdReal));
       setAgendamentos(todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === barbeariaIdReal));
       setClientes(todosClientes);
-
-      const gradeDia = minhaBarbearia.agenda_detalhada?.grade?.find(g => g.dia === diaDoMes);
-      if (gradeDia?.escalas?.length > 0) {
-        const todasEntradas = gradeDia.escalas.map(e => parseInt(e.entrada.split(':')[0]));
-        const todasSaidas = gradeDia.escalas.map(e => parseInt(e.saida.split(':')[0]));
-        setConfigLimites({
-          inicio: Math.min(...todasEntradas),
-          fim: Math.max(...todasSaidas)
-        });
-      }
       
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
     } finally {
       if (!isAutoRefresh) setLoading(false);
     }
-  }, [id, diaDoMes]);
+  }, [id]);
 
   useEffect(() => {
     fetchGlobalData();
@@ -139,17 +135,9 @@ export default function AdministradorDashboard() {
   const handleSalvarAcoes = async () => {
     if (!selectedAg) return;
     try {
-      // AJUSTE: Enviando quem realizou a ação para os Logs
-      const payload = { 
-        status: novoStatus,
-        valor: novoPreco 
-      };
-
-      if (novoStatus === 'C') {
-        payload.canceladoPor = 'Administrador';
-      } else if (novoStatus === 'F') {
-        payload.finalizadoPor = 'Administrador';
-      }
+      const payload = { status: novoStatus, valor: novoPreco };
+      if (novoStatus === 'C') payload.canceladoPor = 'Administrador';
+      else if (novoStatus === 'F') payload.finalizadoPor = 'Administrador';
 
       await api.put(`/agendamentos/${selectedAg._id}`, payload);
       setIsAcoesModalOpen(false);
@@ -160,9 +148,13 @@ export default function AdministradorDashboard() {
     }
   };
 
+  // 🛠️ ATUALIZAÇÃO: Agora gera o escopo baseado exatamente no horário "08:00" a "18:00"
   const getEscopoHorarios = () => {
     const escopo = [];
-    for (let i = configLimites.inicio; i <= configLimites.fim; i++) {
+    const hInicio = parseInt(configLimites.abertura.split(':')[0]);
+    const hFim = parseInt(configLimites.fechamento.split(':')[0]);
+
+    for (let i = hInicio; i <= hFim; i++) {
       escopo.push(`${i < 10 ? '0' + i : i}:00`);
     }
     return escopo;
@@ -180,6 +172,16 @@ export default function AdministradorDashboard() {
   };
 
   const agendamentosHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr));
+  
+  const stats = {
+    total: agendamentosHoje.length,
+    abertos: agendamentosHoje.filter(a => a.status === 'A').length,
+    finalizados: agendamentosHoje.filter(a => a.status === 'F').length,
+    cancelados: agendamentosHoje.filter(a => a.status === 'C').length
+  };
+
+  const dataFormatada = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const diaSemana = hoje.toLocaleDateString('pt-BR', { weekday: 'long' });
   const currentStatusObj = statusOptions.find(s => s.id === novoStatus) || statusOptions[0];
 
   if (loading) return (
@@ -191,19 +193,49 @@ export default function AdministradorDashboard() {
   return (
     <AdminLayout>
       <div className="p-4 md:p-8 flex flex-col h-full">
-        <header className="flex flex-col md:flex-row md:justify-between md:items-end gap-4 mb-6">
-          <div>
-            <h1 className="text-2xl font-black italic lowercase tracking-tighter">admin.<span className="text-[#e6b32a]">escala</span></h1>
-            <p className="text-[10px] font-bold text-[#e6b32a] uppercase tracking-[2px]">Gestão Profissional</p>
+        <header className="mb-8 space-y-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+            <div>
+              <h1 className="text-3xl font-black italic lowercase tracking-tighter">admin.<span className="text-[#e6b32a]">escala</span></h1>
+              <div className="flex items-center gap-2 mt-1">
+                <IoCalendarOutline className="text-[#e6b32a]" size={14} />
+                <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
+                   {diaSemana}, {dataFormatada}
+                </p>
+              </div>
+            </div>
+            
+            <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
+               <IoSyncOutline className="animate-spin text-[#e6b32a]" size={18} />
+               <div className="text-right">
+                 <p className="text-[10px] font-black uppercase opacity-50 leading-none">Status do Sistema</p>
+                 <p className="text-xs font-black">Sincronizado</p>
+               </div>
+            </div>
           </div>
-          <div className={`px-5 py-2 rounded-2xl border flex items-center gap-3 ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}>
-            <IoSyncOutline className="animate-spin text-[#e6b32a]" size={16} />
-            <p className="text-xs font-black">{agendamentosHoje.length} Atendimentos Hoje</p>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { label: 'Atendimentos', value: stats.total, icon: IoStatsChartOutline, color: 'text-[#e6b32a]', bg: 'bg-[#e6b32a]/10' },
+              { label: 'Agendados', value: stats.abertos, icon: IoTimeOutline, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+              { label: 'Finalizados', value: stats.finalizados, icon: IoCheckmarkCircleOutline, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+              { label: 'Cancelados', value: stats.cancelados, icon: IoCloseCircleOutline, color: 'text-red-500', bg: 'bg-red-500/10' },
+            ].map((stat, i) => (
+              <div key={i} className={`p-4 rounded-[1.5rem] border transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+                <div className="flex justify-between items-start mb-2">
+                  <div className={`p-2 rounded-xl ${stat.bg} ${stat.color}`}>
+                    <stat.icon size={18} />
+                  </div>
+                  <span className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>{stat.value}</span>
+                </div>
+                <p className="text-[10px] font-black uppercase tracking-widest opacity-50">{stat.label}</p>
+              </div>
+            ))}
           </div>
         </header>
 
         <div className={`relative flex-1 rounded-[2rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-          <div className="overflow-x-auto h-[calc(100vh-250px)] custom-scrollbar">
+          <div className="overflow-x-auto h-[calc(100vh-380px)] custom-scrollbar">
             <table className="w-full border-collapse min-w-[1200px] table-fixed">
               <thead>
                 <tr style={{ height: `${ALTURA_CABECALHO}px` }}>
@@ -256,9 +288,25 @@ export default function AdministradorDashboard() {
                                         {new Date(ag.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                                       </span>
                                     </div>
-                                    <div className="flex items-center gap-1 mt-0.5 opacity-60">
-                                       <IoPersonOutline size={7}/>
-                                       <p className="text-[7px] font-bold italic">{getNomeBarbeiro(ag)}</p>
+                                    <div className="mt-1 border-t border-black/5 pt-1">
+                                      <div className="flex justify-between items-end">
+                                        <div className="space-y-0.5">
+                                          <div className="flex items-center gap-1 opacity-80">
+                                            <IoCutOutline size={8}/>
+                                            <p className="text-[7px] font-bold uppercase truncate">{ag.tipoCorte || 'Serviço'}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1">
+                                            <IoCashOutline size={8}/>
+                                            <p className="text-[8px] font-black">R$ {ag.valor || '0,00'}</p>
+                                          </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-right">
+                                           <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
+                                              {getNomeBarbeiro(ag)}
+                                           </p>
+                                           <IoPersonOutline size={9} className="opacity-50"/>
+                                        </div>
+                                      </div>
                                     </div>
                                   </div>
                                 </button>
@@ -276,7 +324,7 @@ export default function AdministradorDashboard() {
         </div>
       </div>
 
-      {/* MODAL DE AÇÕES ESTILO BARBEIRO DASHBOARD */}
+      {/* MODAL DE AÇÕES */}
       {isAcoesModalOpen && selectedAg && (
         <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md">
           <div className={`w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0f0f0f] border-white/10' : 'bg-white border-slate-200'} animate-in slide-in-from-bottom md:zoom-in duration-300`}>
@@ -290,16 +338,16 @@ export default function AdministradorDashboard() {
                 </div>
                 <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><IoCloseOutline size={28}/></button>
               </div>
-
               <div className="space-y-6">
-                {/* Info Cliente/Serviço */}
                 <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                   <p className="text-[10px] font-black uppercase text-gray-500 mb-1 tracking-wider">Cliente / Profissional</p>
-                   <p className="text-sm font-black uppercase text-[#e6b32a]">{getNomeExibicao(selectedAg)}</p>
-                   <p className="text-xs font-bold opacity-70 italic">Atendido por: {getNomeBarbeiro(selectedAg)}</p>
+                    <p className="text-[10px] font-black uppercase text-gray-500 mb-1 tracking-wider">Cliente / Profissional</p>
+                    <p className="text-sm font-black uppercase text-[#e6b32a]">{getNomeExibicao(selectedAg)}</p>
+                    <p className="text-xs font-bold opacity-70 italic">Atendido por: {getNomeBarbeiro(selectedAg)}</p>
+                    <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
+                        <IoCutOutline size={14} className="text-[#e6b32a]" />
+                        <p className="text-xs font-black uppercase">{selectedAg.tipoCorte || 'Corte/Serviço'}</p>
+                    </div>
                 </div>
-
-                {/* Input Valor */}
                 <div className={`p-5 rounded-[2rem] border transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 focus-within:border-[#e6b32a]/50' : 'bg-slate-50 border-slate-200 focus-within:border-black/30'}`}>
                   <label className="text-[9px] font-black uppercase text-[#e6b32a] mb-2 block tracking-widest ml-1">valor do serviço</label>
                   <div className="flex items-center relative">
@@ -307,8 +355,6 @@ export default function AdministradorDashboard() {
                       <input type="number" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 pl-7 font-black text-3xl py-1 outline-none" />
                   </div>
                 </div>
-
-                {/* Select de Status Customizado */}
                 <div className="space-y-2 relative" ref={selectRef}>
                   <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest ml-1">atualizar status</label>
                   <button onClick={() => setIsSelectOpen(!isSelectOpen)} className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} ${isSelectOpen ? 'border-[#e6b32a] ring-2 ring-[#e6b32a]/10' : ''}`}>
@@ -318,7 +364,6 @@ export default function AdministradorDashboard() {
                     </div>
                     <IoChevronDownOutline size={16} className={`transition-transform duration-300 ${isSelectOpen ? 'rotate-180' : ''}`} />
                   </button>
-
                   {isSelectOpen && (
                     <div className={`absolute bottom-full mb-2 w-full border rounded-2xl shadow-2xl z-[130] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-200 ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
                       {statusOptions.map((opt) => (
@@ -330,7 +375,6 @@ export default function AdministradorDashboard() {
                     </div>
                   )}
                 </div>
-
                 <button onClick={handleSalvarAcoes} className="w-full py-5 rounded-[2rem] bg-[#e6b32a] text-black font-black uppercase text-[11px] tracking-[2px] shadow-lg hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3">
                   <IoSaveOutline size={20}/> Salvar Alterações
                 </button>

@@ -20,6 +20,10 @@ const ModelBarbeiro = new mongoose.Schema({
         required: true,
         select: false // Evita que a senha seja retornada em buscas comuns por padrão
     },
+    foto: {
+        type: String, // Armazenará a string Base64
+        default: null
+    },
     admin: {
         type: Boolean,
         default: false,
