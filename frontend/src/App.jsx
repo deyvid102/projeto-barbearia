@@ -4,7 +4,7 @@ import { ThemeProvider } from './components/ThemeContext';
 // Landing Page Principal (Index)
 import PaginaBarbearia from './pages/PaginaBarbearia';
 
-// O Portal de Escolha (Para onde os logins voltam)
+// O Portal de Escolha
 import SelectProfile from './pages/SelectProfile';
 
 // imports cliente
@@ -31,13 +31,33 @@ import AdminLogs from './pages/admin/AdminLogs';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import BarbeariaAgenda from './pages/admin/BarbeariaAgenda';
 
-// Validação de registro vinculado
+/**
+ * Validação de registro vinculado
+ * Garante que o usuário só acesse a tela de registro se vier com o link de uma barbearia
+ */
 const ProtectedRegisterRoute = ({ children }) => {
   const location = useLocation();
   const params = new URLSearchParams(location.search);
-  const barbeariaId = params.get('barbearia');
-  if (!barbeariaId) return <Navigate to="/cliente/login" replace />;
+  const barbeariaId = params.get('fk_barbearia') || params.get('barbearia');
+  
+  if (!barbeariaId) {
+    // Redireciona para o login preservando query params se houver
+    return <Navigate to={`/cliente/login${location.search}`} replace />;
+  }
+  
   return children;
+};
+
+/**
+ * Componente para gerenciar o redirecionamento da rota raiz "/"
+ * Preservando os parâmetros de barbearia caso existam
+ */
+const RootRedirect = () => {
+  const location = useLocation();
+  const defaultBarbearia = "67c85888e285f7a07010499b";
+  // Se houver parâmetros na URL atual, anexa eles ao redirecionamento
+  const destination = `/${defaultBarbearia}${location.search}`;
+  return <Navigate to={destination} replace />;
 };
 
 export default function App() {
@@ -45,25 +65,30 @@ export default function App() {
     <ThemeProvider>
       <Router>
         <Routes>
-          {/* 1. URL PADRÃO (VITRINE) */}
-          <Route path="/" element={<PaginaBarbearia />} />
-          
-          {/* 2. PORTAL DE ACESSO (Onde os logins buscam "Voltar") */}
+          {/* 1. ROTAS FIXAS E AUTENTICAÇÃO */}
           <Route path="/select-profile" element={<SelectProfile />} />
           
-          {/* Rotas de Cliente */}
           <Route path="/cliente/login" element={<LoginCliente />} />
-          <Route path="/cliente/register" element={
-            <ProtectedRegisterRoute>
-              <RegisterCliente />
-            </ProtectedRegisterRoute>
-          } />
+          
+          <Route 
+            path="/cliente/register" 
+            element={
+              <ProtectedRegisterRoute>
+                <RegisterCliente />
+              </ProtectedRegisterRoute>
+            } 
+          />
+          
+          {/* ROTAS DASHBOARD CLIENTE */}
           <Route path="/cliente/:id" element={<ClienteDashboard />} />
           <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
           <Route path="/cliente/historico/:id" element={<ClienteHistorico />} />
           <Route path="/cliente/configuracoes/:id" element={<ClienteConfiguracoes />} />
           
-          {/* Rotas de Barbeiro */}
+          {/* ATALHO PARA AGENDAMENTO DIRETO PELA VITRINE */}
+          <Route path="/agendar/:idBarbearia" element={<NovoAgendamento />} />
+
+          {/* ROTAS BARBEIRO */}
           <Route path="/barbeiro/login" element={<LoginBarbeiro />} />
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
           <Route path="/barbeiro/dashboard/:id" element={<BarbeiroDashboard />} />
@@ -72,7 +97,7 @@ export default function App() {
           <Route path="/barbeiro/configuracoes/:id" element={<BarbeiroConfiguracoes />} />
           <Route path="/barbeiro/calendario/:id" element={<BarbeiroCalendario />} />
 
-          {/* Rotas de Admin */}
+          {/* ROTAS ADMINISTRAÇÃO */}
           <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
           <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
@@ -80,7 +105,11 @@ export default function App() {
           <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
           <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
 
-          {/* Fallback */}
+          {/* 2. VITRINE DINÂMICA (CAPTURA O ID DA BARBEARIA PELA URL) */}
+          <Route path="/:idBarbearia" element={<PaginaBarbearia />} />
+
+          {/* REDIRECIONAMENTOS PADRÃO COM PRESERVAÇÃO DE PARÂMETROS */}
+          <Route path="/" element={<RootRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

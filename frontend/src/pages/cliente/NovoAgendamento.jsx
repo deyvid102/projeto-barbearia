@@ -7,18 +7,16 @@ import CustomAlert from '../../components/CustomAlert';
 import { 
   IoPricetagOutline, 
   IoTimeOutline, 
-  IoPersonOutline, 
   IoCalendarOutline, 
   IoChevronForward, 
   IoChevronBack,
   IoArrowBackOutline,
-  IoCheckmarkDoneOutline,
-  IoPersonCircleOutline,
   IoCheckmarkCircle
 } from 'react-icons/io5';
 
 export default function NovoAgendamento() {
-  const { id } = useParams(); 
+  // Pegamos o id da barbearia pela URL
+  const { idBarbearia } = useParams(); 
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   
@@ -28,14 +26,13 @@ export default function NovoAgendamento() {
   const [gradeMensal, setGradeMensal] = useState([]); 
   const [todosAgendamentos, setTodosAgendamentos] = useState([]); 
   const [loading, setLoading] = useState(true);
-  const [showSuccessScreen, setShowSuccessScreen] = useState(false);
   const [alertConfig, setAlertConfig] = useState({ show: false, title: '', message: '', type: 'error' });
   
   const [form, setForm] = useState({ 
     tipoCorte: '', 
     fk_barbeiro: '', 
     fk_barbeiroNome: '',
-    fk_barbearia: '', 
+    fk_barbearia: idBarbearia || '', 
     data: '', 
     hora: '', 
     valor: 0,
@@ -45,36 +42,41 @@ export default function NovoAgendamento() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
 
   useEffect(() => {
-    carregarDadosIniciais();
-  }, [currentMonth]);
+    if (idBarbearia) {
+        carregarDadosIniciais();
+    }
+  }, [currentMonth, idBarbearia]);
 
   const carregarDadosIniciais = async () => {
     try {
       setLoading(true);
+      
+      const resBarbearia = await api.get(`/barbearias/${idBarbearia}`);
+      const dadosB = resBarbearia.data || resBarbearia;
+      setTiposCorte(dadosB.servicos || []);
+
       const resB = await api.get('/barbeiros');
       const profissionais = resB.data || resB;
-      setListaCompletaProfissionais(Array.isArray(profissionais) ? profissionais : []);
+      const filtrados = (Array.isArray(profissionais) ? profissionais : []).filter(b => {
+        const fk = b.fk_barbearia?._id || b.fk_barbearia;
+        return String(fk) === String(idBarbearia);
+      });
+      setListaCompletaProfissionais(filtrados);
       
-      if (profissionais.length > 0) {
-        const bId = (profissionais[0].fk_barbearia?._id || profissionais[0].fk_barbearia);
-        const [resBarbearia, resAgendamentos, resAgendas] = await Promise.all([
-          api.get(`/barbearias/${bId}`),
-          api.get(`/agendamentos`),
-          api.get(`/agendas`) 
-        ]);
+      const [resAgendamentos, resAgendas] = await Promise.all([
+        api.get(`/agendamentos`),
+        api.get(`/agendas`) 
+      ]);
 
-        const dadosB = resBarbearia.data || resBarbearia;
-        setTiposCorte(dadosB.servicos || []);
-        
-        const agendasDB = resAgendas.data || resAgendas;
-        setGradeMensal(Array.isArray(agendasDB) ? agendasDB : []);
-        
-        setForm(prev => ({ ...prev, fk_barbearia: bId }));
-        const ags = resAgendamentos.data || resAgendamentos;
-        setTodosAgendamentos(Array.isArray(ags) ? ags.filter(a => a.status === 'A') : []);
-      }
+      const agendasDB = resAgendas.data || resAgendas;
+      setGradeMensal(Array.isArray(agendasDB) ? agendasDB : []);
+      
+      const ags = resAgendamentos.data || resAgendamentos;
+      setTodosAgendamentos(Array.isArray(ags) ? ags.filter(a => a.status === 'A') : []);
+
     } catch (err) {
-      console.error("Erro ao carregar:", err);
+      console.error("Erro ao carregar dados do agendamento:", err);
+      setAlertConfig({ show: true, title: 'Erro', message: 'Não foi possível carregar os dados da barbearia.', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -86,12 +88,13 @@ export default function NovoAgendamento() {
       const profissionaisNoDia = escalasDoDia.map(esc => {
         const idB = (esc.fk_barbeiro?._id || esc.fk_barbeiro).toString();
         const dadosProf = listaCompletaProfissionais.find(p => p._id.toString() === idB);
+        if(!dadosProf) return null;
         return {
           _id: idB,
-          nome: dadosProf?.nome || esc.fk_barbeiro?.nome || "Profissional",
-          foto: dadosProf?.foto // Assume que a foto vem do objeto do profissional
+          nome: dadosProf.nome,
+          foto: dadosProf.foto
         };
-      }).filter(p => p._id);
+      }).filter(p => p !== null);
       setBarbeiros(profissionaisNoDia);
     }
   }, [form.data, gradeMensal, listaCompletaProfissionais]);
@@ -170,45 +173,26 @@ export default function NovoAgendamento() {
   };
 
   const handleFinalizar = async () => {
-    try {
-      setLoading(true);
-      const dataInicio = new Date(`${form.data}T${form.hora}:00`);
-      const dataFim = new Date(dataInicio.getTime() + (form.tempo * 60000));
+    const dataInicio = new Date(`${form.data}T${form.hora}:00`);
+    const dataFim = new Date(dataInicio.getTime() + (form.tempo * 60000));
 
-      const payload = {
-        tipoCorte: form.tipoCorte,
-        fk_barbeiro: form.fk_barbeiro,
-        fk_barbearia: form.fk_barbearia,
-        datahora: dataInicio.toISOString(),
-        datahora_fim: dataFim.toISOString(),
-        fk_cliente: id, 
-        valor: Number(form.valor),
-        tempo_estimado: Number(form.tempo),
-        status: 'A'
-      };
+    const agendamentoTemporario = {
+      ...form,
+      datahora: dataInicio.toISOString(),
+      datahora_fim: dataFim.toISOString(),
+    };
 
-      await api.post('/agendamentos', payload);
-      setShowSuccessScreen(true);
-    } catch (err) {
-      setAlertConfig({ show: true, title: 'Erro', message: 'Erro ao agendar.', type: 'error' });
-    } finally {
-      setLoading(false);
-    }
+    // Salva no storage para recuperar após o cadastro
+    localStorage.setItem('pending_appointment', JSON.stringify(agendamentoTemporario));
+
+    // REDIRECIONAMENTO MODIFICADO PARA O LINK DO BARBEIRO
+    // Usamos o idBarbearia que veio da URL para garantir o vínculo correto
+    navigate(`/cliente/register?barbearia=${idBarbearia}`);
   };
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-[#070707] text-gray-100' : 'bg-gray-50 text-slate-900'} p-4 md:p-8`}>
       
-      {showSuccessScreen && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xl">
-          <div className={`max-w-md w-full p-10 rounded-[3rem] text-center space-y-6 shadow-2xl ${isDarkMode ? 'bg-[#0d0d0d] border border-white/10' : 'bg-white'}`}>
-            <IoCheckmarkDoneOutline size={60} className="mx-auto text-[#e6b32a]" />
-            <h2 className="text-2xl font-black italic">reserva.<span className="text-[#e6b32a]">confirmada</span></h2>
-            <button onClick={() => navigate(`/cliente/${id}`)} className="w-full py-5 bg-[#e6b32a] text-black rounded-2xl font-black uppercase text-[10px]">Ir para o Painel</button>
-          </div>
-        </div>
-      )}
-
       {loading && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center backdrop-blur-md bg-black/20">
           <div className="w-10 h-10 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
@@ -217,16 +201,25 @@ export default function NovoAgendamento() {
 
       <div className="max-w-6xl mx-auto">
         <header className="mb-8 flex items-center gap-4">
-          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl border flex items-center justify-center"><IoArrowBackOutline /></button>
-          <h1 className="text-xl font-black italic lowercase">agendar.<span className="text-[#e6b32a]">serviço</span></h1>
+          <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-xl border flex items-center justify-center border-white/10 hover:bg-white/5 transition-colors">
+            <IoArrowBackOutline />
+          </button>
+          <h1 className="text-xl font-black italic lowercase">agendar.<span className="text-[#e6b32a]">experiência</span></h1>
         </header>
 
         {!form.tipoCorte ? (
-          <div className="space-y-6 animate-in fade-in">
-             <div className="flex items-center gap-2 text-[#e6b32a]"><IoPricetagOutline /> <span className="text-xs font-black uppercase tracking-widest">O que vamos fazer hoje?</span></div>
+          <div className="space-y-6 animate-in fade-in duration-500">
+             <div className="flex items-center gap-2 text-[#e6b32a]">
+               <IoPricetagOutline /> 
+               <span className="text-xs font-black uppercase tracking-widest">O que vamos fazer hoje?</span>
+             </div>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {tiposCorte.map((t, idx) => (
-                    <div key={idx} onClick={() => setForm({...form, tipoCorte: t.nome, valor: t.valor, tempo: t.tempo})} className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all ${isDarkMode ? 'bg-white/5 border-white/5 hover:border-[#e6b32a]' : 'bg-white border-slate-100 hover:border-[#e6b32a]'}`}>
+                    <div 
+                      key={idx} 
+                      onClick={() => setForm({...form, tipoCorte: t.nome, valor: t.valor, tempo: t.tempo})} 
+                      className={`p-6 rounded-[2rem] border-2 cursor-pointer transition-all hover:scale-[1.02] active:scale-95 ${isDarkMode ? 'bg-white/5 border-white/5 hover:border-[#e6b32a]' : 'bg-white border-slate-100 hover:border-[#e6b32a]'}`}
+                    >
                         <p className="text-lg font-black lowercase">{t.nome}</p>
                         <p className="text-[#e6b32a] font-bold">R$ {t.valor.toFixed(2)}</p>
                         <span className="text-[10px] opacity-50">{t.tempo} min</span>
@@ -235,15 +228,15 @@ export default function NovoAgendamento() {
              </div>
           </div>
         ) : (
-          <div className={`rounded-[2.5rem] border shadow-2xl overflow-hidden flex flex-col md:flex-row ${isDarkMode ? 'bg-[#0d0d0d] border-white/5' : 'bg-white border-slate-100'}`}>
+          <div className={`rounded-[2.5rem] border shadow-2xl overflow-hidden flex flex-col md:flex-row transition-all duration-500 ${isDarkMode ? 'bg-[#0d0d0d] border-white/5' : 'bg-white border-slate-100'}`}>
             
             <div className="md:w-1/2 p-8 border-r border-white/5">
               <div className="flex justify-between items-center mb-6">
-                <button onClick={() => setForm({...form, tipoCorte: ''})} className="text-[10px] font-black uppercase text-[#e6b32a]">Alterar Serviço</button>
+                <button onClick={() => setForm({...form, tipoCorte: ''})} className="text-[10px] font-black uppercase text-[#e6b32a] hover:underline">Alterar Serviço</button>
                 <div className="flex items-center gap-4">
-                    <button onClick={() => mudarMes(-1)} className="p-1"><IoChevronBack /></button>
+                    <button onClick={() => mudarMes(-1)} className="p-1 hover:text-[#e6b32a]"><IoChevronBack /></button>
                     <span className="text-xs font-black uppercase tracking-widest">{currentMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</span>
-                    <button onClick={() => mudarMes(1)} className="p-1"><IoChevronForward /></button>
+                    <button onClick={() => mudarMes(1)} className="p-1 hover:text-[#e6b32a]"><IoChevronForward /></button>
                 </div>
               </div>
 
@@ -287,7 +280,6 @@ export default function NovoAgendamento() {
                 </div>
               ) : (
                 <div className="space-y-8 animate-in fade-in slide-in-from-right-4">
-                    {/* BARBEIROS AUMENTADOS COM FOTO */}
                     <div>
                         <span className="text-[10px] font-black uppercase tracking-widest opacity-50 block mb-4">Com quem você quer cortar?</span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -297,18 +289,16 @@ export default function NovoAgendamento() {
                                     onClick={() => setForm({...form, fk_barbeiro: b._id, fk_barbeiroNome: b.nome, hora: ''})}
                                     className={`relative p-5 rounded-[2rem] border-2 flex items-center gap-4 transition-all text-left ${form.fk_barbeiro === b._id ? 'border-[#e6b32a] bg-[#e6b32a]/10' : 'border-white/5 bg-white/5 hover:border-white/20'}`}
                                 >
-                                    <div className="w-16 h-16 rounded-2xl overflow-hidden bg-white/10 flex-shrink-0 border border-white/10">
-                                        {b.foto ? (
-                                            <img src={b.foto} alt={b.nome} className="w-full h-full object-cover" />
-                                        ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-gray-500">
-                                                <IoPersonCircleOutline size={32} />
-                                            </div>
-                                        )}
+                                    <div className="w-14 h-14 rounded-2xl overflow-hidden bg-white/10 flex-shrink-0 border border-white/10">
+                                        <img 
+                                          src={b.foto || `https://i.pravatar.cc/150?u=${b._id}`} 
+                                          alt={b.nome} 
+                                          className="w-full h-full object-cover" 
+                                        />
                                     </div>
                                     <div className="flex-1 overflow-hidden">
                                         <p className="font-black text-sm lowercase truncate">{b.nome}</p>
-                                        <p className="text-[9px] font-bold uppercase tracking-tighter opacity-50">Disponível hoje</p>
+                                        <p className="text-[9px] font-bold uppercase tracking-tighter opacity-50">Disponível</p>
                                     </div>
                                     {form.fk_barbeiro === b._id && (
                                         <div className="absolute top-3 right-3 text-[#e6b32a]">
@@ -320,12 +310,11 @@ export default function NovoAgendamento() {
                         </div>
                     </div>
 
-                    {/* HORÁRIOS */}
                     {form.fk_barbeiro && (
                         <div className="animate-in slide-in-from-bottom-4">
                              <div className="flex items-center gap-2 mb-4">
                                 <IoTimeOutline className="text-[#e6b32a]" />
-                                <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Horários para {form.data.split('-').reverse().slice(0,2).join('/')}</span>
+                                <span className="text-[10px] font-black uppercase tracking-widest opacity-50">Horários disponíveis</span>
                              </div>
                              <div className="grid grid-cols-4 gap-2">
                                 {gerarHorariosDisponiveis().length > 0 ? (
@@ -339,7 +328,7 @@ export default function NovoAgendamento() {
                                         </button>
                                     ))
                                 ) : (
-                                    <p className="col-span-4 text-[10px] font-bold uppercase opacity-40 py-4">Nenhum horário disponível para este profissional.</p>
+                                    <p className="col-span-4 text-[10px] font-bold uppercase opacity-40 py-4">Nenhum horário disponível para hoje.</p>
                                 )}
                              </div>
                         </div>
@@ -350,7 +339,7 @@ export default function NovoAgendamento() {
                         onClick={handleFinalizar}
                         className={`w-full py-5 rounded-[1.5rem] font-black uppercase text-[10px] tracking-[3px] mt-4 transition-all ${!form.hora ? 'bg-white/5 text-gray-600' : 'bg-[#e6b32a] text-black shadow-2xl shadow-[#e6b32a]/30 hover:scale-[1.02]'}`}
                     >
-                        {loading ? 'Processando...' : 'Finalizar Agendamento'}
+                        {loading ? 'Processando...' : 'Identificar-se e Reservar'}
                     </button>
                 </div>
               )}

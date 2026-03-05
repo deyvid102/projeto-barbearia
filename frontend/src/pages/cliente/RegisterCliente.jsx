@@ -32,13 +32,13 @@ export default function RegisterCliente() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const barbeariaId = params.get('barbearia');
+    // Ajustado para 'fk_barbearia' conforme enviado pelo componente de agendamento
+    const barbeariaId = params.get('fk_barbearia') || params.get('barbearia');
     if (barbeariaId) {
       setFormData(prev => ({ ...prev, fk_barbearia: barbeariaId }));
     }
   }, [location]);
 
-  // Função memoizada para evitar loops no Alerta
   const closeAlert = useCallback(() => {
     setAlertConfig(prev => ({ ...prev, show: false }));
   }, []);
@@ -58,11 +58,58 @@ export default function RegisterCliente() {
 
     setLoading(true);
     try {
-      await api.post('/clientes', formData);
+      // 1. Cria o perfil do cliente
+      const resCliente = await api.post('/clientes', formData);
+      const novoCliente = resCliente.data || resCliente;
+
+      // 2. Verifica se existe um agendamento pendente no localStorage
+      const pendingAppointment = localStorage.getItem('pending_appointment');
+
+      if (pendingAppointment) {
+        try {
+          const appointmentData = JSON.parse(pendingAppointment);
+          
+          // Prepara o payload final com o ID do cliente recém-criado
+          const finalPayload = {
+            tipoCorte: appointmentData.tipoCorte,
+            fk_barbeiro: appointmentData.fk_barbeiro,
+            fk_barbearia: appointmentData.fk_barbearia,
+            datahora: appointmentData.datahora,
+            datahora_fim: appointmentData.datahora_fim,
+            fk_cliente: novoCliente._id, // ID que acabou de ser gerado
+            valor: Number(appointmentData.valor),
+            tempo_estimado: Number(appointmentData.tempo),
+            status: 'A'
+          };
+
+          // Salva o agendamento automaticamente
+          await api.post('/agendamentos', finalPayload);
+          
+          // Limpa o agendamento pendente
+          localStorage.removeItem('pending_appointment');
+
+          setAlertConfig({
+            show: true,
+            titulo: 'sucesso total!',
+            mensagem: 'conta criada e horário reservado com sucesso!',
+            tipo: 'success'
+          });
+
+          setTimeout(() => {
+            navigate(`/cliente/${novoCliente._id}`);
+          }, 2000);
+          return; // Finaliza aqui para não seguir para o fluxo normal de login
+        } catch (errAppo) {
+          console.error("Erro ao finalizar agendamento automático:", errAppo);
+          // Se falhar o agendamento, ainda assim a conta foi criada, então seguimos para o login
+        }
+      }
+
+      // Fluxo normal (sem agendamento pendente)
       setAlertConfig({
         show: true,
         titulo: 'sucesso!',
-        mensagem: 'registro criado! redirecionando...',
+        mensagem: 'registro criado! redirecionando para login...',
         tipo: 'success'
       });
       
@@ -94,10 +141,9 @@ export default function RegisterCliente() {
       isDarkMode ? 'bg-[#0a0a0a]' : 'bg-slate-50'
     }`}>
       
-      {/* Coluna da Esquerda: Formulário */}
       <div className="flex items-center justify-center p-6 lg:p-20 order-2 lg:order-1 relative">
         <button 
-          onClick={() => navigate('/cliente/login')} 
+          onClick={() => navigate(-1)} 
           className={`absolute top-8 left-8 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 shadow-sm z-50 ${
             isDarkMode ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-black'
           }`}
@@ -162,7 +208,7 @@ export default function RegisterCliente() {
             }`}>
               <span className="w-1.5 h-1.5 bg-[#e6b32a] rounded-full animate-pulse" />
               <p className="text-[9px] text-[#e6b32a] uppercase font-black tracking-widest">
-                barbearia vinculada via link
+                vínculo ativo para agendamento
               </p>
             </div>
           )}
@@ -172,7 +218,7 @@ export default function RegisterCliente() {
             disabled={loading}
             className="w-full py-4 bg-[#e6b32a] text-black font-black uppercase text-xs rounded-2xl active:scale-95 transition-all shadow-lg shadow-[#e6b32a]/20 hover:brightness-110 disabled:opacity-50"
           >
-            {loading ? 'processando...' : 'finalizar registro'}
+            {loading ? 'processando...' : 'finalizar e agendar'}
           </button>
 
           <p className={`text-[11px] text-center font-bold lowercase ${isDarkMode ? 'text-gray-500' : 'text-slate-400'}`}>
@@ -187,7 +233,6 @@ export default function RegisterCliente() {
         </form>
       </div>
 
-      {/* Coluna da Direita: Imagem (Igual ao Login) */}
       <div className="hidden lg:block relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 bg-[#e6b32a]/10 z-10 mix-blend-overlay"></div>
         <img 

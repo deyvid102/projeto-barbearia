@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { IoChevronBackOutline } from 'react-icons/io5';
@@ -11,6 +11,7 @@ export default function LoginCliente() {
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fkBarbearia, setFkBarbearia] = useState(null);
   
   const [alertConfig, setAlertConfig] = useState({
     show: false,
@@ -20,29 +21,34 @@ export default function LoginCliente() {
   });
 
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-  }, []);
+    // Captura a barbearia da URL para manter o vínculo durante o login
+    const params = new URLSearchParams(location.search);
+    const id = params.get('barbearia') || params.get('fk_barbearia');
+    if (id) setFkBarbearia(id);
+  }, [location]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Enviamos o email, senha E a barbearia para o backend validar o vínculo
       const userData = await api.post('/clientes/login', { 
         email: email.toLowerCase().trim(), 
-        senha 
+        senha,
+        fk_barbearia: fkBarbearia 
       });
 
       const userId = userData?._id || userData?.id;
 
       if (userId) {
         localStorage.setItem('clienteId', userId);
+        if (fkBarbearia) localStorage.setItem('lastBarbearia', fkBarbearia);
+        
         navigate(`/cliente/${userId}`);
       } else {
         throw new Error("id do usuário não encontrado.");
@@ -53,7 +59,7 @@ export default function LoginCliente() {
       setAlertConfig({
         show: true,
         titulo: 'falha no acesso',
-        mensagem: error.response?.data?.message || 'e-mail ou senha incorretos.',
+        mensagem: error.response?.data?.message || 'E-mail ou senha incorretos para esta barbearia.',
         tipo: 'error'
       });
     } finally {
@@ -72,10 +78,9 @@ export default function LoginCliente() {
       isDarkMode ? 'bg-[#0a0a0a]' : 'bg-slate-50'
     }`}>
       
-      {/* Coluna da Esquerda: Formulario */}
       <div className="flex items-center justify-center p-8 lg:p-20 order-2 lg:order-1 relative">
         <button 
-          onClick={() => navigate('/')} 
+          onClick={() => navigate(-1)} 
           className={`absolute top-8 left-8 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 shadow-sm ${
             isDarkMode ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-black'
           }`}
@@ -90,7 +95,9 @@ export default function LoginCliente() {
             <h2 className={`text-3xl font-black italic lowercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               barber.<span className="text-[#e6b32a]">flow</span>
             </h2>
-            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[3px]">acesso do cliente</p>
+            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[3px]">
+               {fkBarbearia ? 'Acesso Barbearia Vinculada' : 'Acesso Geral'}
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -130,15 +137,23 @@ export default function LoginCliente() {
             {loading ? 'autenticando...' : 'entrar'}
           </button>
 
-          <div className="pt-4 border-t border-slate-100 dark:border-white/5 text-center">
-            <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest leading-relaxed">
-                as senhas são protegidas por bcrypt<br/>fale com seu barbeiro para o link
-            </p>
+          <div className="space-y-4 text-center">
+            {/* LINK DE CADASTRO COM O ID DA BARBEARIA NA URL */}
+            <button 
+              type="button"
+              onClick={() => navigate(`/cliente/register?barbearia=${fkBarbearia || ''}`)}
+              className="text-[10px] text-[#e6b32a] font-black uppercase tracking-widest hover:underline"
+            >
+              Não tem conta? Cadastre-se aqui
+            </button>
+            
+            <div className="pt-4 border-t border-slate-100 dark:border-white/5 text-center text-[9px] text-gray-400 uppercase font-black tracking-widest leading-relaxed">
+                Logando em: <span className="text-[#e6b32a]">{fkBarbearia || 'Unidade Geral'}</span>
+            </div>
           </div>
         </form>
       </div>
 
-      {/* Coluna da Direita: Imagem */}
       <div className="hidden lg:block relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 bg-[#e6b32a]/10 z-10 mix-blend-overlay"></div>
         <img 
