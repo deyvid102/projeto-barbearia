@@ -1,68 +1,69 @@
-import React, { useEffect } from 'react';
-import { FaCheckCircle, FaTimesCircle, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import React, { useEffect, useState, useRef } from 'react';
+import { IoCheckmarkCircle, IoCloseCircle, IoInformationCircle } from 'react-icons/io5';
 import { useTheme } from './ThemeContext';
 
 export default function CustomAlert({ titulo, message, type = 'success', onClose, duration = 3000 }) {
   const { isDarkMode } = useTheme();
+  const [visible, setVisible] = useState(false);
+  const onCloseRef = useRef(onClose);
+
+  // Mantém a referência da função sempre atualizada sem disparar o useEffect
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      onClose();
+    // 1. Entrada
+    const entryTimer = setTimeout(() => setVisible(true), 10);
+
+    // 2. Saída (Animação)
+    const exitTimer = setTimeout(() => {
+      setVisible(false);
+    }, duration - 500);
+
+    // 3. Fechamento Real
+    const closeTimer = setTimeout(() => {
+      if (onCloseRef.current) onCloseRef.current();
     }, duration);
 
-    return () => clearTimeout(timer);
-  }, [onClose, duration]);
+    return () => {
+      clearTimeout(entryTimer);
+      clearTimeout(exitTimer);
+      clearTimeout(closeTimer);
+    };
+  }, [duration]); // Removi onClose das dependências para evitar o loop!
 
   const config = {
-    success: {
-      icon: <FaCheckCircle className="text-[#e6b32a]" />,
-      border: isDarkMode ? 'border-[#e6b32a]/50' : 'border-[#e6b32a]/40',
-      bg: isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
-    },
-    error: {
-      // Alterado para FaTimesCircle para exibir o "X" de erro
-      icon: <FaTimesCircle className="text-red-500" />,
-      border: isDarkMode ? 'border-red-500/50' : 'border-red-500/40',
-      bg: isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
-    },
-    info: {
-      icon: <FaInfoCircle className="text-blue-400" />,
-      border: isDarkMode ? 'border-blue-400/50' : 'border-blue-400/40',
-      bg: isDarkMode ? 'bg-[#0d0d0d]' : 'bg-white'
-    }
+    success: { icon: <IoCheckmarkCircle className="text-[#e6b32a]" />, border: 'border-[#e6b32a]/20', text: 'text-[#e6b32a]' },
+    error: { icon: <IoCloseCircle className="text-red-500" />, border: 'border-red-500/20', text: 'text-red-500' },
+    info: { icon: <IoInformationCircle className="text-blue-400" />, border: 'border-blue-400/20', text: 'text-blue-400' }
   };
 
-  const { icon, border, bg } = config[type] || config.success;
+  const current = config[type] || config.success;
 
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 z-[9999] w-[92%] sm:w-max md:max-w-md animate-in fade-in slide-in-from-top-4 duration-300">
-      <div className={`${bg} ${border} border rounded-[1.8rem] p-4 pr-5 shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-4 transition-all duration-300 backdrop-blur-xl`}>
-        
-        <div className="text-xl shrink-0">
-          {icon}
-        </div>
-
-        <div className="flex-1 min-w-0">
+    <div className={`
+      fixed top-10 left-1/2 -translate-x-1/2 z-[10000]
+      transition-all duration-700 ease-in-out transform
+      ${visible ? 'opacity-100 translate-y-0 scale-100' : 'opacity-0 -translate-y-12 scale-90'}
+    `}>
+      <div className={`
+        flex items-center gap-3 px-6 py-2.5
+        ${isDarkMode ? 'bg-[#0a0a0a]/95 border-white/5' : 'bg-white/95 border-slate-200'}
+        ${current.border} border backdrop-blur-2xl
+        rounded-full shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]
+      `}>
+        <div className="text-xl shrink-0">{current.icon}</div>
+        <div className="flex flex-col min-w-0">
           {titulo && (
-            <h4 className={`text-[10px] font-black uppercase tracking-[2px] mb-1 ${type === 'error' ? 'text-red-500' : 'text-[#e6b32a]'}`}>
+            <span className={`text-[7px] font-black uppercase tracking-[0.25em] leading-none mb-0.5 ${current.text} opacity-80`}>
               {titulo}
-            </h4>
+            </span>
           )}
-          <p className={`text-[10px] md:text-[11px] font-black uppercase tracking-[2px] md:tracking-[3px] leading-snug whitespace-normal break-words ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
+          <span className={`text-[10px] font-bold uppercase tracking-[0.15em] whitespace-nowrap ${isDarkMode ? 'text-white/90' : 'text-slate-800'}`}>
             {message}
-          </p>
+          </span>
         </div>
-
-        <button 
-          onClick={onClose}
-          className={`shrink-0 w-8 h-8 rounded-full flex items-center justify-center transition-all ${
-            isDarkMode 
-            ? 'text-gray-500 hover:text-white hover:bg-white/5' 
-            : 'text-gray-400 hover:text-black hover:bg-black/5'
-          }`}
-        >
-          <FaTimes size={14} />
-        </button>
       </div>
     </div>
   );

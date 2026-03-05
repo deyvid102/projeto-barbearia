@@ -19,7 +19,6 @@ export default function AdministradorDashboard() {
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
   const [clientes, setClientes] = useState([]);
-  // Agora inicializamos com strings de horário vindas do banco
   const [configLimites, setConfigLimites] = useState({ abertura: "08:00", fechamento: "18:00" });
   const [loading, setLoading] = useState(true);
   
@@ -34,6 +33,7 @@ export default function AdministradorDashboard() {
   
   const selectRef = useRef();
 
+  // Restaurado para 20 para linhas finas
   const ALTURA_LINHA = 20; 
   const ALTURA_CABECALHO = 48;
 
@@ -71,7 +71,6 @@ export default function AdministradorDashboard() {
 
       const barbeariaIdReal = String(minhaBarbearia._id || minhaBarbearia.id);
 
-      // 🛠️ ATUALIZAÇÃO: Captura os horários fixos configurados pelo Admin na Sidebar
       setConfigLimites({
         abertura: minhaBarbearia.abertura || "08:00",
         fechamento: minhaBarbearia.fechamento || "18:00"
@@ -148,7 +147,6 @@ export default function AdministradorDashboard() {
     }
   };
 
-  // 🛠️ ATUALIZAÇÃO: Agora gera o escopo baseado exatamente no horário "08:00" a "18:00"
   const getEscopoHorarios = () => {
     const escopo = [];
     const hInicio = parseInt(configLimites.abertura.split(':')[0]);
@@ -192,7 +190,7 @@ export default function AdministradorDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-8 flex flex-col h-full">
+      <div className="p-4 md:p-8 flex flex-col min-h-screen">
         <header className="mb-8 space-y-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
@@ -200,17 +198,17 @@ export default function AdministradorDashboard() {
               <div className="flex items-center gap-2 mt-1">
                 <IoCalendarOutline className="text-[#e6b32a]" size={14} />
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
-                   {diaSemana}, {dataFormatada}
+                    {diaSemana}, {dataFormatada}
                 </p>
               </div>
             </div>
             
             <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
-               <IoSyncOutline className="animate-spin text-[#e6b32a]" size={18} />
-               <div className="text-right">
-                 <p className="text-[10px] font-black uppercase opacity-50 leading-none">Status do Sistema</p>
-                 <p className="text-xs font-black">Sincronizado</p>
-               </div>
+                <IoSyncOutline className="animate-spin text-[#e6b32a]" size={18} />
+                <div className="text-right">
+                  <p className="text-[10px] font-black uppercase opacity-50 leading-none">Status do Sistema</p>
+                  <p className="text-xs font-black">Sincronizado</p>
+                </div>
             </div>
           </div>
 
@@ -234,8 +232,9 @@ export default function AdministradorDashboard() {
           </div>
         </header>
 
-        <div className={`relative flex-1 rounded-[2rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-          <div className="overflow-x-auto h-[calc(100vh-380px)] custom-scrollbar">
+        {/* Removido o h-calc fixo para permitir crescimento vertical natural, mantendo min-h-fit */}
+        <div className={`relative flex-1 rounded-[2rem] border overflow-hidden mb-10 ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
+          <div className="overflow-x-auto min-h-fit custom-scrollbar">
             <table className="w-full border-collapse min-w-[1200px] table-fixed">
               <thead>
                 <tr style={{ height: `${ALTURA_CABECALHO}px` }}>
@@ -301,10 +300,10 @@ export default function AdministradorDashboard() {
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-1 text-right">
-                                           <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
+                                            <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
                                               {getNomeBarbeiro(ag)}
-                                           </p>
-                                           <IoPersonOutline size={9} className="opacity-50"/>
+                                            </p>
+                                            <IoPersonOutline size={9} className="opacity-50"/>
                                         </div>
                                       </div>
                                     </div>

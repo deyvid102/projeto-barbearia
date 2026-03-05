@@ -11,12 +11,10 @@ const ModelCliente = new mongoose.Schema({
     },
     email: {
         type: String,
-        required: true,
         unique: true 
     },
     senha: {
         type: String,
-        required: true
     },
     
         fk_barbearia: {

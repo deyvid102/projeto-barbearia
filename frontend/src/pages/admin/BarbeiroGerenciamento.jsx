@@ -1,12 +1,44 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
+import ModalFoto from '../../components/modais/ModalFoto'; // Importando o novo modal
 import CustomAlert from '../../components/CustomAlert';
 import AdminLayout from '../../layout/layout';
 import { useTheme } from '../../components/ThemeContext';
 import { IoAdd, IoTrashOutline, IoClose, IoEyeOutline, IoEyeOffOutline, IoCameraOutline, IoPersonOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
+
+// Função auxiliar para processar o recorte final da imagem
+const getCroppedImg = (imageSrc, pixelCrop) => {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.src = imageSrc;
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Definimos o tamanho final do avatar como 400x400 para manter performance e qualidade
+      canvas.width = 400;
+      canvas.height = 400;
+
+      ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        400,
+        400
+      );
+      
+      // Retorna em JPEG com compressão de 80% (estilo Instagram)
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+  });
+};
 
 export default function BarbeiroGerenciamento() {
   const { id } = useParams(); 
@@ -18,6 +50,9 @@ export default function BarbeiroGerenciamento() {
   const [barbeariaId, setBarbeariaId] = useState(null); 
   
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false); // Novo estado para o modal de foto
+  const [tempPhotoUrl, setTempPhotoUrl] = useState(null); // URL temporária para o Cropper
+  
   const [modalConfig, setModalConfig] = useState({ tipo: '', mensagem: '', acao: null });
   const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: '' });
   
@@ -68,74 +103,31 @@ export default function BarbeiroGerenciamento() {
     if (id) fetchDados();
   }, [id]);
 
-  // FUNÇÃO MÁGICA DE OTIMIZAÇÃO (ESTILO INSTAGRAM)
-  const otimizarEConverterParaBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.readAsDataURL(file);
-      reader.onerror = reject;
-      reader.onload = (event) => {
-        const img = new Image();
-        img.src = event.target.result;
-        img.onerror = reject;
-        img.onload = () => {
-          // 1. Criar Canvas
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-
-          // 2. Definir tamanho final (Padrão Avatar: 400x400)
-          const MAX_WIDTH = 400;
-          const MAX_HEIGHT = 400;
-
-          // 3. Lógica de Corte (Crop) Centralizado para Quadrado 1:1
-          let sourceX = 0;
-          let sourceY = 0;
-          let sourceWidth = img.width;
-          let sourceHeight = img.height;
-
-          if (img.width > img.height) {
-            // Imagem Paisagem: corta as laterais
-            sourceWidth = img.height;
-            sourceX = (img.width - img.height) / 2;
-          } else {
-            // Imagem Retrato: corta o topo e fundo
-            sourceHeight = img.width;
-            sourceY = (img.height - img.width) / 2;
-          }
-
-          // 4. Setar tamanho do canvas
-          canvas.width = MAX_WIDTH;
-          canvas.height = MAX_HEIGHT;
-
-          // 5. Desenhar imagem cortada e redimensionada no canvas
-          ctx.drawImage(
-            img, 
-            sourceX, sourceY, sourceWidth, sourceHeight, // Onde cortar na imagem original
-            0, 0, MAX_WIDTH, MAX_HEIGHT // Onde desenhar no canvas final
-          );
-
-          // 6. Converter para Base64 (JPEG com 80% de qualidade para compressão)
-          // Isso diminui drasticamente o tamanho do arquivo mantendo boa aparência
-          const base64Otimizado = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(base64Otimizado);
-        };
-      };
-    });
-  };
-
-  const handleFileChange = async (e) => {
+  // Abre o modal de ajuste assim que o arquivo é selecionado
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      try {
-        setLoading(true); // Mostra loader rápido
-        const fotoOtimizada = await otimizarEConverterParaBase64(file);
-        setFormData({ ...formData, foto: fotoOtimizada });
-      } catch (error) {
-        console.error("Erro ao processar imagem:", error);
-        setAlertConfig({ show: true, message: 'Falha ao processar a imagem. Tente outra.', type: 'error' });
-      } finally {
-        setLoading(false);
-      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        setTempPhotoUrl(reader.result);
+        setIsPhotoModalOpen(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Processa o recorte final vindo do ModalFoto
+  const handleConfirmCrop = async (pixelCrop) => {
+    try {
+      setLoading(true);
+      const croppedImage = await getCroppedImg(tempPhotoUrl, pixelCrop);
+      setFormData({ ...formData, foto: croppedImage });
+      setIsPhotoModalOpen(false);
+    } catch (error) {
+      console.error("Erro ao recortar imagem:", error);
+      setAlertConfig({ show: true, message: 'Erro ao processar imagem.', type: 'error' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -185,7 +177,7 @@ export default function BarbeiroGerenciamento() {
       const payload = {
         nome: formData.nome,
         email: formData.email,
-        foto: formData.foto, // Envia o Base64 já comprimido e cortado
+        foto: formData.foto,
         admin: editingBarbeiro ? editingBarbeiro.admin : false,
         fk_barbearia: barbeariaId 
       };
@@ -280,7 +272,6 @@ export default function BarbeiroGerenciamento() {
                   }`}
                 >
                   <div className="flex justify-between items-start">
-                    {/* AVATAR CIRCULAR NO GRID */}
                     <div className={`w-16 h-16 rounded-full flex items-center justify-center text-2xl font-black border transition-colors overflow-hidden shrink-0 ${
                       isMe ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : (isDarkMode ? 'bg-black/40 text-[#e6b32a] border-white/10 group-hover:bg-[#e6b32a] group-hover:text-black' : 'bg-white text-[#e6b32a] border-black/5 group-hover:bg-[#e6b32a] group-hover:text-black')
                     }`}>
@@ -356,7 +347,7 @@ export default function BarbeiroGerenciamento() {
               </div>
             </div>
 
-            {/* SEÇÃO DE FOTO CIRCULAR COM CROP PADRÃO */}
+            {/* SEÇÃO DE FOTO COM TRIGGER PARA O CROPPER PROFISSIONAL */}
             <div className="flex flex-col items-center gap-4 py-2 relative">
               <div 
                 onClick={() => fileInputRef.current.click()}
@@ -379,7 +370,9 @@ export default function BarbeiroGerenciamento() {
                   </div>
                 )}
               </div>
-              <p className="text-[8px] font-black uppercase opacity-30 tracking-widest">Toque para upload (padrão circular)</p>
+              <p className="text-[8px] font-black uppercase opacity-30 tracking-widest text-center px-4">
+                Toque para ajustar foto (zoom e posição)
+              </p>
               
               <input 
                 type="file" 
@@ -467,6 +460,15 @@ export default function BarbeiroGerenciamento() {
             </button>
           </form>
         </div>
+      )}
+
+      {/* MODAL DE CROP/ZOOM PROFISSIONAL */}
+      {isPhotoModalOpen && (
+        <ModalFoto 
+          image={tempPhotoUrl} 
+          onClose={() => setIsPhotoModalOpen(false)} 
+          onCropComplete={handleConfirmCrop}
+        />
       )}
 
       <ModalConfirmacao 
