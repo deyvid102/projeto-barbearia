@@ -17,28 +17,30 @@ const ModelLogs = new mongoose.Schema({
         ref: 'agendamento',
         required: true
     },
+    // ALTERADO: Removido required: true pois o cliente agora é um objeto no agendamento
+    // Mantemos o campo caso você ainda use para clientes cadastrados no futuro
     fk_cliente: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'cliente',
-        required: true
+        required: false 
     },
-    // Aqui capturamos o status ('A', 'F' ou 'C') vindo do agendamento
+    // NOVO: Para salvar o nome do cliente que vem do objeto simples do agendamento
+    cliente_nome: {
+        type: String
+    },
     status_acao: {
         type: String,
         enum: ['A', 'F', 'C'],
         required: true
     },
-    // NOVO: Armazena quem realizou o cancelamento (Ex: 'Administrador', 'Cliente', 'Barbeiro')
     canceladoPor: {
         type: String,
         default: null
     },
-    // NOVO: Armazena quem finalizou o serviço
     finalizadoPor: {
         type: String,
         default: null
     },
-    // Data e hora exata em que a ação ocorreu
     data_log: {
         type: Date,
         default: Date.now,

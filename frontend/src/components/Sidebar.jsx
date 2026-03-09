@@ -12,12 +12,11 @@ import {
   IoArrowBack,
   IoSettingsOutline,
   IoCloseOutline,
-  IoTimeOutline
 } from 'react-icons/io5';
 import { MdContentCut } from 'react-icons/md';
 
 export default function Sidebar() {
-  const { id } = useParams(); 
+  const { id } = useParams(); // ID do admin vindo da URL
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode } = useTheme();
@@ -32,6 +31,7 @@ export default function Sidebar() {
     fechamento: '18:00'
   });
 
+  // CAMINHOS AJUSTADOS PARA /admin/
   const menuItems = [
     { label: 'Painel Admin', icon: <IoGridOutline size={22} />, path: `/admin/dashboard/${id}` },
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
@@ -41,10 +41,13 @@ export default function Sidebar() {
     { label: 'Analytics', icon: <IoStatsChartOutline size={22} />, path: `/admin/analytics/${id}` },
   ];
 
-  const backItem = {
-    label: 'Voltar para barbeiro',
-    icon: <IoArrowBack size={20} />,
-    path: `/barbeiro/dashboard/${id}`,
+  const handleVoltar = () => {
+    const barbeiroId = localStorage.getItem('barbeiroId');
+    if (barbeiroId) {
+      navigate(`/barbeiro/dashboard/${barbeiroId}`);
+    } else {
+      navigate('/select-profile');
+    }
   };
 
   const abrirConfig = async () => {
@@ -77,7 +80,6 @@ export default function Sidebar() {
     setLoading(true);
     
     try {
-      // Enviando campos simples conforme o novo Model
       await api.put(`/barbearias/${config.barbeariaId}`, {
         abertura: config.abertura,
         fechamento: config.fechamento
@@ -97,6 +99,12 @@ export default function Sidebar() {
     }
   };
 
+  const Tooltip = ({ text }) => (
+    <span className="absolute left-16 scale-0 transition-all rounded-lg bg-gray-900 px-3 py-2 text-[10px] text-white group-hover:scale-100 font-black uppercase tracking-widest z-[60] whitespace-nowrap shadow-2xl border border-white/10">
+      {text}
+    </span>
+  );
+
   return (
     <>
       <aside 
@@ -104,25 +112,24 @@ export default function Sidebar() {
           isDarkMode ? 'bg-[#0a0a0a] border-white/5' : 'bg-white border-slate-100'
         }`}
       >
-        {/* Botão de Voltar */}
         <div className="w-full px-3 mb-6">
           <div className="relative group flex justify-center">
             <button
-              onClick={() => navigate(backItem.path)}
+              onClick={handleVoltar}
               className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border shadow-sm active:scale-90 ${
                 isDarkMode 
                   ? 'bg-white/5 border-white/10 text-gray-400 hover:text-[#e6b32a]' 
                   : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-[#e6b32a]'
               }`}
             >
-              {backItem.icon}
+              <IoArrowBack size={20} />
             </button>
+            <Tooltip text="Painel Barbeiro" />
           </div>
         </div>
 
         <div className={`w-8 h-[1px] mb-6 ${isDarkMode ? 'bg-white/10' : 'bg-slate-100'}`} />
 
-        {/* Navegação */}
         <nav className="flex-1 flex flex-col gap-4 w-full px-3">
           {menuItems.map((item) => {
             const isActive = location.pathname === item.path;
@@ -140,12 +147,12 @@ export default function Sidebar() {
                 >
                   {item.icon}
                 </button>
+                <Tooltip text={item.label} />
               </div>
             );
           })}
         </nav>
 
-        {/* Engrenagem */}
         <div className="w-full px-3 mt-auto">
           <div className="relative group flex justify-center">
             <button
@@ -158,19 +165,18 @@ export default function Sidebar() {
             >
               <IoSettingsOutline size={22} />
             </button>
+            <Tooltip text="Configurações" />
           </div>
         </div>
       </aside>
 
-      {/* Modal Simples */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl ${isDarkMode ? 'bg-[#0d0d0d] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-            
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="text-xl font-black italic tracking-tighter lowercase">horario.<span className="text-[#e6b32a]">casa</span></h3>
-                <p className="text-[9px] font-bold uppercase opacity-40 tracking-widest mt-1">Horário de funcionamento fixo</p>
+                <p className="text-[9px] font-bold uppercase opacity-40 tracking-widest mt-1">Definir horário fixo</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-full transition-colors"><IoCloseOutline size={24} /></button>
             </div>
@@ -206,7 +212,7 @@ export default function Sidebar() {
                 disabled={loading}
                 className="w-full py-4 bg-[#e6b32a] text-black rounded-2xl font-black uppercase text-[10px] tracking-[2px] hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50"
               >
-                {loading ? 'Salvando...' : 'Salvar Horário'}
+                {loading ? 'Salvando...' : 'Salvar Alterações'}
               </button>
             </div>
 

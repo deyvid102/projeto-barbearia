@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import { useTheme } from '../../components/ThemeContext';
 import { FaWhatsapp, FaTrashAlt, FaCheck } from 'react-icons/fa';
-import { IoChevronBackOutline } from 'react-icons/io5';
+import { IoChevronBackOutline, IoCutOutline } from 'react-icons/io5';
 
 export default function BarbeiroCalendario() {
   const { id } = useParams();
@@ -41,11 +41,17 @@ export default function BarbeiroCalendario() {
         const mes = dataAg.toLocaleDateString('pt-BR', { month: 'long' });
         const dia = dataAg.toLocaleDateString('pt-BR', { day: '2-digit', weekday: 'short' });
         
+        // MAPEAMENTO DINÂMICO DE NOME E TELEFONE
+        const nomeFinal = ag.cliente?.nome || ag.fk_cliente?.nome || ag.nomeCliente || "Cliente Externo";
+        const telefoneFinal = ag.cliente?.telefone || ag.fk_cliente?.telefone || ag.telefone || ag.contato || "";
+
         if (!agrupado[mes]) agrupado[mes] = {};
         if (!agrupado[mes][dia]) agrupado[mes][dia] = [];
         
         agrupado[mes][dia].push({ 
           ...ag, 
+          clienteNome: nomeFinal,
+          clienteTelefone: telefoneFinal,
           horaFormatada: dataAg.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) 
         });
       });
@@ -135,10 +141,12 @@ export default function BarbeiroCalendario() {
                                 <div className="flex items-center gap-4">
                                    <span className="font-mono font-black text-xl">{item.horaFormatada}</span>
                                    <div className={`w-[1px] h-4 ${isSelected ? 'bg-white/20 dark:bg-black/20' : 'bg-black/10 dark:white/10'}`}></div>
-                                   <span className="text-[11px] font-black lowercase tracking-tighter opacity-80">
-                                      {/* Correção aqui: exibe a string do serviço diretamente */}
-                                      {item.tipoCorte || 'serviço'}
-                                   </span>
+                                   <div className="flex items-center gap-2">
+                                     <IoCutOutline size={12} className={isSelected ? 'text-white/60 dark:text-black/60' : 'text-[#e6b32a]'} />
+                                     <span className="text-[11px] font-black lowercase tracking-tighter opacity-80">
+                                       {item.tipoCorte || 'serviço'}
+                                     </span>
+                                   </div>
                                 </div>
                                 <span className="text-[10px] font-black opacity-60">R$ {(parseFloat(item.valor) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
                               </div>
@@ -148,7 +156,7 @@ export default function BarbeiroCalendario() {
                                   <div className="mb-6">
                                     <p className="text-[9px] uppercase font-black mb-1 opacity-50 tracking-widest">cliente</p>
                                     <p className="font-black text-2xl lowercase tracking-tighter italic">
-                                      {item.fk_cliente?.nome || item.nomeCliente || 'cliente externo'}
+                                      {item.clienteNome}
                                     </p>
                                   </div>
                                   
@@ -184,8 +192,12 @@ export default function BarbeiroCalendario() {
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
-                                        const fone = item.fk_cliente?.telefone?.replace(/\D/g, '');
-                                        window.open(`https://wa.me/55${fone}`, '_blank'); 
+                                        const fone = item.clienteTelefone.replace(/\D/g, '');
+                                        if (fone) {
+                                          window.open(`https://wa.me/55${fone}`, '_blank');
+                                        } else {
+                                          alert("Telefone não cadastrado para este cliente.");
+                                        }
                                       }} 
                                       className={`py-4 rounded-2xl flex flex-col items-center gap-2 transition-all active:scale-95 ${
                                         isDarkMode ? 'bg-black/40 text-white' : 'bg-white/20 text-black'

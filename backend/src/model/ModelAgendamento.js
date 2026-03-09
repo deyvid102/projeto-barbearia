@@ -1,58 +1,66 @@
 import mongoose from "mongoose";
+import ModelBarbeiro from "./ModelBarbeiro.js"; // Importe o model do barbeiro
+import ModelFinanceiro from "./ModelFinanceiro.js"; // Importe o model financeiro
 
 const ModelAgendamento = new mongoose.Schema({
-    tipoCorte: {
-        type: String,
-        required: true
+    tipoCorte: { type: String, required: true },
+    // Cliente agora é um objeto simples
+    cliente: {
+        nome: { type: String, required: true },
+        numero: { type: String}
     },
-    // Data e hora de INÍCIO do agendamento
-    datahora: {
-        type: Date,
-        required: true,
-        index: true
-    },
-    // Data e hora de FIM (importante para evitar sobreposição)
-    datahora_fim: {
-        type: Date,
-        required: true
-    },
-    // Tempo estimado para o serviço (em minutos)
-    tempo_estimado: {
+    datahora: { type: Date, required: true, index: true },
+    datahora_fim: { type: Date, required: true },
+    tempo_estimado: { type: Number, required: true },
+    valor: { 
         type: Number, 
-        required: true
-    },
-    valor: {
-        type: Number,
-        max: 999.99, 
+        required: true,
         set: v => parseFloat(v.toFixed(2)) 
     },
-    // Status sincronizado com o ModelLogs (A: Agendado, F: Finalizado, C: Cancelado)
     status: {
         type: String,
-        enum: ['A', 'F', 'C'], 
+        enum: ['A', 'F', 'C'], // A: Agendado, F: Finalizado, C: Cancelado
         default: 'A',
     },
-    fk_cliente: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "cliente",
-        required: true
-    },
-    fk_barbeiro: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "barbeiro",
-        required: true
-    },
-    fk_barbearia: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'barbearia',
-        required: true
-    }
+    fk_barbeiro: { type: mongoose.Schema.Types.ObjectId, ref: "barbeiro", required: true },
+    fk_barbearia: { type: mongoose.Schema.Types.ObjectId, ref: 'barbearia', required: true }
 }, { 
     timestamps: true,
     collection: 'agendamentos'
 });
 
-// Índice para busca rápida de conflitos e agenda
-ModelAgendamento.index({ fk_barbeiro: 1, datahora: 1 });
+// MIDDLEWARE POST-SAVE: Dispara quando o agendamento é atualizado
+ModelAgendamento.post('save', async function (doc) {
+    // Só cria o financeiro se o status for 'F' (Finalizado)
+    if (doc.status === 'F') {
+        try {
+            // 1. Busca os dados do barbeiro para pegar a porcentagem
+            const barbeiro = await mongoose.model('barbeiro').findById(doc.fk_barbeiro);
+            
+            if (barbeiro) {
+                const porcentagem = barbeiro.porcentagem_comissao || 0;
+                const valorBarbeiro = parseFloat((doc.valor * (porcentagem / 100)).toFixed(2));
+                const valorBarbearia = parseFloat((doc.valor - valorBarbeiro).toFixed(2));
+
+                // 2. Verifica se já não existe um registro financeiro para este agendamento (evita duplicidade)
+                const jaExiste = await mongoose.model('financeiro').findOne({ fk_agendamento: doc._id });
+
+                if (!jaExiste) {
+                    await mongoose.model('financeiro').create({
+                        fk_agendamento: doc._id,
+                        fk_barbeiro: doc.fk_barbeiro,
+                        fk_barbearia: doc.fk_barbearia,
+                        valor_total: doc.valor,
+                        porcentagem_aplicada: porcentagem,
+                        valor_barbeiro: valorBarbeiro,
+                        valor_barbearia: valorBarbearia
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("Erro ao gerar registro financeiro:", error);
+        }
+    }
+});
 
 export default mongoose.model('agendamento', ModelAgendamento);

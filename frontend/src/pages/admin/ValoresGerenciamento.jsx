@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
@@ -9,8 +9,7 @@ import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from
 import { FaEdit } from 'react-icons/fa';
 
 export default function ValoresGerenciamento() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id } = useParams(); // Assumindo que este ID é o da barbearia (fk_barbearia)
   const { isDarkMode } = useTheme();
 
   const [servicos, setServicos] = useState([]);
@@ -23,59 +22,62 @@ export default function ValoresGerenciamento() {
   const [modalConfig, setModalConfig] = useState({ tipo: '', mensagem: '', acao: null });
   const [alertConfig, setAlertConfig] = useState({ show: false, message: '', type: '' });
 
-  const [formData, setFormData] = useState({ nome: '', valor: '', tempo: '' });
+  const [formData, setFormData] = useState({ nome: '', valor: '', tempo: '30' });
 
-  const carregarDados = async () => {
+  const carregarDados = useCallback(async () => {
     try {
       setLoading(true);
-      const resBarbeiro = await api.get(`/barbeiros/${id}`);
-      const barbeiroData = resBarbeiro.data || resBarbeiro;
-      const bId = barbeiroData.fk_barbearia?._id || barbeiroData.fk_barbearia;
+      // Busca direta pela barbearia para evitar o erro 404 de /barbeiros
+      const response = await api.get(`/barbearias/${id}`);
+      const barbeariaData = response.data || response;
 
-      if (!bId) {
+      if (!barbeariaData) {
         setAlertConfig({ show: true, message: 'unidade não encontrada', type: 'error' });
         return;
       }
-      setBarbeariaId(bId);
 
-      const resBarbearia = await api.get(`/barbearias/${bId}`);
-      const barbeariaData = resBarbearia.data || resBarbearia;
+      setBarbeariaId(barbeariaData._id);
 
       const servicosFormatados = (barbeariaData.servicos || []).map(s => ({
         ...s,
-        tempo: s.tempo || 30
+        valor: Number(s.valor || 0),
+        tempo: Number(s.tempo || 30)
       }));
 
       setServicos(servicosFormatados);
     } catch (error) {
-      console.error(error);
-      setAlertConfig({ show: true, message: 'erro ao conectar com o servidor', type: 'error' });
+      console.error("Erro ao carregar serviços:", error);
+      setAlertConfig({ show: true, message: 'erro ao carregar dados da barbearia', type: 'error' });
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     if (id) carregarDados();
-  }, [id]);
+  }, [id, carregarDados]);
 
   const handleOpenForm = (index = null) => {
     if (index !== null) {
       setEditingIndex(index);
       setFormData({
         nome: servicos[index].nome,
-        valor: servicos[index].valor.toString().replace('.', ','),
-        tempo: servicos[index].tempo || '30'
+        valor: servicos[index].valor.toFixed(2).replace('.', ','),
+        tempo: servicos[index].tempo.toString()
       });
     } else {
       setEditingIndex(null);
-      setFormData({ nome: '', valor: '', tempo: '' });
+      setFormData({ nome: '', valor: '', tempo: '30' });
     }
     setIsFormOpen(true);
   };
 
   const preSubmit = (e) => {
     e.preventDefault();
+    if (!formData.nome || !formData.valor) {
+      setAlertConfig({ show: true, message: 'preencha todos os campos', type: 'error' });
+      return;
+    }
     setModalConfig({
       tipo: 'confirmar',
       mensagem: editingIndex !== null ? `salvar alterações em "${formData.nome}"?` : `adicionar "${formData.nome}" à tabela?`,
@@ -86,8 +88,9 @@ export default function ValoresGerenciamento() {
 
   const salvarAlteracoes = async () => {
     try {
+      // Limpa a lista para enviar apenas o necessário ao backend
       let novaListaServicos = servicos.map(s => ({
-        nome: s.nome,
+        nome: s.nome.toLowerCase(),
         valor: Number(s.valor),
         tempo: Number(s.tempo || 30)
       }));
@@ -111,7 +114,8 @@ export default function ValoresGerenciamento() {
       setIsConfirmModalOpen(false);
       carregarDados();
     } catch (error) {
-      setAlertConfig({ show: true, message: 'erro ao salvar: verifique os campos', type: 'error' });
+      console.error("Erro ao salvar:", error);
+      setAlertConfig({ show: true, message: 'erro ao salvar: verifique os valores', type: 'error' });
       setIsConfirmModalOpen(false);
     }
   };
@@ -148,13 +152,12 @@ export default function ValoresGerenciamento() {
     <AdminLayout>
       <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
 
-        {/* HEADER PADRONIZADO */}
         <header className="mb-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div>
             <h1 className="text-3xl font-black italic lowercase tracking-tighter leading-none">
               tabela<span className="text-[#e6b32a]">.preços</span>
             </h1>
-            <p className="text-[10px] uppercase tracking-[3px] font-bold opacity-40 mt-2">Ajuste de serviços e valores</p>
+            <p className="text-[10px] uppercase tracking-[3px] font-bold opacity-40 mt-2">Ajuste de serviços e valores da unidade</p>
           </div>
 
           <button
@@ -218,7 +221,7 @@ export default function ValoresGerenciamento() {
 
                   <div className="text-right flex items-center gap-6">
                     <span className={`text-xl font-mono font-black ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
-                      R$ {parseFloat(serv.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {serv.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                     <div className="w-10 h-10 rounded-xl bg-[#e6b32a] text-black flex items-center justify-center shadow-lg shadow-[#e6b32a]/20 opacity-0 group-hover:opacity-100 transition-opacity">
                       <FaEdit size={16} />
@@ -231,7 +234,6 @@ export default function ValoresGerenciamento() {
         )}
       </div>
 
-      {/* MODAL FORMULÁRIO PADRONIZADO */}
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
           <div className="absolute inset-0" onClick={() => setIsFormOpen(false)} />

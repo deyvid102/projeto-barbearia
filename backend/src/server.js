@@ -4,14 +4,13 @@ import mongoose from "mongoose";
 import cors from "cors";
 
 // Importação das Rotas
-import rotaClientes from "./routes/RouteCliente.js";
 import rotaAgendamento from "./routes/RouteAgendamento.js";
 import rotaBarbeiro from "./routes/routeBarbeiro.js";
 import RouteBarbearia from "./routes/RouteBarbearia.js";
 import RouteLogs from "./routes/RouteLogs.js"; 
-import RouteAgenda from "./routes/RouteAgenda.js"; // 1. Nova importação da rota de Agenda
+import RouteAgenda from "./routes/RouteAgenda.js";
+import RouteFinanceiro from "./routes/RouteFinanceiro.js";
 
-// Carrega as variáveis do .env
 dotenv.config();
 
 const app = express();
@@ -21,13 +20,13 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Configuração das Rotas no Express
-app.use("/", rotaClientes);
+// Configuração das Rotas
 app.use("/", rotaBarbeiro);
 app.use("/", rotaAgendamento);
 app.use("/", RouteBarbearia);
 app.use("/", RouteLogs);
-app.use("/", RouteAgenda); // 2. Registro da nova rota de Agenda
+app.use("/", RouteAgenda);
+app.use("/", RouteFinanceiro);
 
 // Conexão com o banco
 const connectDB = async () => {
@@ -47,7 +46,7 @@ const connectDB = async () => {
 connectDB();
 
 app.get("/", (req, res) => {
-    res.send("servidor da barbearia rodando corretamente via pasta src!");
+    res.send("servidor da barbearia rodando corretamente!");
 });
 
 app.listen(PORT, () => {

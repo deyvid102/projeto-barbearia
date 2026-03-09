@@ -2,35 +2,29 @@ import mongoose from "mongoose";
 import bcrypt from "bcrypt";
 
 const ModelBarbeiro = new mongoose.Schema({
-    nome: {
-        type: String,
-        required: true,
-        trim: true
-    },
+    nome: { type: String, required: true, trim: true },
     email: {
         type: String,
         required: true,
         unique: true,
-        lowercase: true, // Garante consistência no banco
+        lowercase: true,
         trim: true,
         match: [/^\S+@\S+\.\S+$/, 'Por favor, insira um email válido']
     },
-    senha: {
-        type: String,
+    senha: { type: String, required: true, select: false },
+    foto: { type: String, default: null },
+    admin: { type: Boolean, default: false },
+    // Adicionado: Porcentagem de comissão (ex: 40 para 40%)
+    porcentagem_comissao: {
+        type: Number,
         required: true,
-        select: false // Evita que a senha seja retornada em buscas comuns por padrão
-    },
-    foto: {
-        type: String, // Armazenará a string Base64
-        default: null
-    },
-    admin: {
-        type: Boolean,
-        default: false,
+        min: 0,
+        max: 100,
+        default: 0
     },
     status: {
         type: String,
-        enum: ['A', 'S', 'C'], // A: Ativo, S: Suspenso, C: Cancelado
+        enum: ['A', 'S', 'C'],
         default: 'A',
     },
     fk_barbearia: {
@@ -43,12 +37,8 @@ const ModelBarbeiro = new mongoose.Schema({
     collection: 'barbeiros' 
 });
 
-// Middleware: Criptografa a senha usando bcrypt antes de salvar
 ModelBarbeiro.pre('save', async function (next) {
-    if (!this.isModified('senha')) {
-        return next();
-    }
-
+    if (!this.isModified('senha')) return next();
     try {
         const salt = await bcrypt.genSalt(10);
         this.senha = await bcrypt.hash(this.senha, salt);
@@ -58,7 +48,6 @@ ModelBarbeiro.pre('save', async function (next) {
     }
 });
 
-// Método para comparar senhas durante o login
 ModelBarbeiro.methods.compararSenha = async function (senhaDigitada) {
     return await bcrypt.compare(senhaDigitada, this.senha);
 };

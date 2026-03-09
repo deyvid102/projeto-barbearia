@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { IoChevronBackOutline } from 'react-icons/io5';
@@ -11,6 +11,7 @@ export default function LoginBarbeiro() {
   const [senha, setSenha] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [fkBarbearia, setFkBarbearia] = useState(null);
   
   const [alertConfig, setAlertConfig] = useState({ 
     show: false, 
@@ -20,14 +21,28 @@ export default function LoginBarbeiro() {
   });
   
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const id = params.get('barbearia') || params.get('fk_barbearia');
+    if (id) setFkBarbearia(id);
+
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
       document.documentElement.classList.add('dark');
     }
-  }, []);
+  }, [location]);
+
+  // Função para voltar à Home mantendo o ID da barbearia na URL
+  const handleVoltar = () => {
+  if (fkBarbearia) {
+    navigate(`/select-profile?barbearia=${fkBarbearia}`);
+  } else {
+    navigate('/select-profile');
+  }
+};
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -36,32 +51,25 @@ export default function LoginBarbeiro() {
     try {
       const response = await api.post('/barbeiros/login', { 
         email: email.toLowerCase().trim(), 
-        senha 
+        senha,
+        fk_barbearia: fkBarbearia 
       });
 
-      // O seu Api.js já retorna o body transformado em JSON
       const user = response;
 
-      console.log("Resposta do servidor:", user); // Log para debug
-
-      // Verificando se o ID existe (o MongoDB usa _id)
       if (user && (user._id || user.id)) {
         const idFinal = user._id || user.id;
         localStorage.setItem('barbeiroId', idFinal);
-        
-        // Opcional: Salvar outros dados se necessário
         localStorage.setItem('barbeiroNome', user.nome);
+        
+        if (fkBarbearia) localStorage.setItem('lastBarbearia', fkBarbearia);
 
         navigate(`/barbeiro/dashboard/${idFinal}`);
       } else {
-        // Se cair aqui, o log acima vai mostrar o que o servidor mandou de "errado"
-        console.error("Estrutura de usuário inesperada:", user);
         throw new Error('falha ao processar dados do perfil profissional.');
       }
     } catch (error) {
       console.error("erro na autenticação:", error);
-      
-      // Captura a mensagem vinda da API ou usa uma padrão
       const msg = error.response?.data?.mensagem || error.message || 'credenciais inválidas.';
 
       setAlertConfig({ 
@@ -89,7 +97,7 @@ export default function LoginBarbeiro() {
       <div className="flex items-center justify-center p-8 lg:p-20 order-2 lg:order-1 relative">
         <button 
           type="button"
-          onClick={() => navigate('/')} 
+          onClick={handleVoltar} 
           className={`absolute top-8 left-8 w-12 h-12 rounded-2xl flex items-center justify-center border transition-all active:scale-90 shadow-sm ${
             isDarkMode ? 'bg-white/5 border-white/10 text-gray-400 hover:text-white' : 'bg-white border-slate-200 text-slate-600 hover:text-black'
           }`}
@@ -104,7 +112,9 @@ export default function LoginBarbeiro() {
             <h2 className={`text-3xl font-black italic lowercase tracking-tighter ${isDarkMode ? 'text-white' : 'text-slate-900'}`}>
               barber.<span className="text-[#e6b32a]">flow</span>
             </h2>
-            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[3px]">acesso profissional</p>
+            <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[3px]">
+              {fkBarbearia ? 'Acesso Profissional Vinculado' : 'Acesso Profissional'}
+            </p>
           </div>
 
           <div className="space-y-3">
@@ -148,10 +158,13 @@ export default function LoginBarbeiro() {
             {loading ? 'autenticando...' : 'entrar no painel'}
           </button>
 
-          <div className="pt-4 border-t border-slate-100 dark:border-white/5 text-center">
+          <div className="pt-4 border-t border-slate-100 dark:border-white/5 text-center space-y-2">
             <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest leading-relaxed">
                 acesso restrito a profissionais<br/>cadastrados pelo administrador
             </p>
+            <div className="text-[9px] text-[#e6b32a] uppercase font-black tracking-widest">
+                Unidade: {fkBarbearia || 'Não Identificada'}
+            </div>
           </div>
         </form>
       </div>

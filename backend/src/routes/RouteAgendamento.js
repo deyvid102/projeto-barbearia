@@ -3,25 +3,29 @@ import {
     criarAgendamento, 
     listarAgendamento, 
     listarAgendamentoPorId, 
-    listarAgendamentoPorBarbearia, // Nova função importada
+    listarAgendamentoPorBarbearia, 
     atualizarAgendamento, 
     excluirAgendamento 
 } from "../controllers/ControlAgendamento.js";
 
 const router = express.Router();
 
-// CREATE
+// Rota para criar um novo agendamento (Agora com objeto cliente no body)
 router.post("/agendamentos", criarAgendamento);
 
-// READ
-router.get("/agendamentos", listarAgendamento); // Suporta query params: ?fk_barbearia=ID&data=YYYY-MM-DD
-router.get("/agendamentos/:id", listarAgendamentoPorId);
-router.get("/agendamentos/barbearia/:id", listarAgendamentoPorBarbearia); // Rota específica para o Admin
+// Lista todos (aceita query params ?fk_barbearia=ID&data=YYYY-MM-DD)
+router.get("/agendamentos", listarAgendamento); 
 
-// UPDATE
+// Lista um agendamento específico
+router.get("/agendamentos/:id", listarAgendamentoPorId);
+
+// Lista todos os agendamentos de uma barbearia específica
+router.get("/agendamentos/barbearia/:id", listarAgendamentoPorBarbearia);
+
+// Atualiza dados ou status (dispara o financeiro se o status for para 'F')
 router.put("/agendamentos/:id", atualizarAgendamento);
 
-// DELETE
+// Deleta o agendamento
 router.delete("/agendamentos/:id", excluirAgendamento);
 
 export default router;

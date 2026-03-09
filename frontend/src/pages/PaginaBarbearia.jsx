@@ -12,7 +12,7 @@ import barbearia3 from '../assets/barbearia3.jpg';
 import { 
   IoStar, IoLocationOutline, IoChevronForwardOutline,
   IoLogInOutline, IoChatbubbleEllipsesOutline,
-  IoLogoWhatsapp, IoLogoInstagram, IoMailOutline
+  IoLogoWhatsapp, IoLogoInstagram
 } from 'react-icons/io5';
 
 // Importações do Swiper
@@ -28,7 +28,7 @@ import 'swiper/css/effect-fade';
 const brandYellow = '#EAB308'; 
 
 export default function PaginaBarbearia() {
-  const { idBarbearia } = useParams(); 
+  const { nomeBarbearia } = useParams(); 
   const navigate = useNavigate();
   const { isDarkMode } = useTheme();
   
@@ -47,22 +47,20 @@ export default function PaginaBarbearia() {
   const fotosLugar = [barbearia1, barbearia2, barbearia3];
 
   const handleLoginClick = () => {
-    if (idBarbearia) {
-      navigate(`/select-profile?barbearia=${idBarbearia}`);
-    } else {
-      navigate('/select-profile');
-    }
+    navigate('/barbeiro/login');
   };
 
   const handleAgendarClick = () => {
-    if (idBarbearia && idBarbearia.length === 24) {
-      navigate(`/agendar/${idBarbearia}`);
+    if (nomeBarbearia) {
+      navigate(`/agendar/${nomeBarbearia}`);
     }
   };
 
   useEffect(() => {
     async function fetchData() {
-      if (!idBarbearia || idBarbearia.length !== 24) {
+      console.log("🔍 URL Param capturado:", nomeBarbearia);
+
+      if (!nomeBarbearia) {
         setLoading(false);
         setError(true);
         return;
@@ -72,28 +70,38 @@ export default function PaginaBarbearia() {
         setLoading(true);
         setError(false);
 
-        const dadosBarbearia = await api.get(`/barbearias/${idBarbearia}`);
+        // Tentativa de busca pelo perfil (slug/nome)
+        console.log(`🚀 Chamando API: /barbearias/perfil/${nomeBarbearia}`);
+        const res = await api.get(`/barbearias/perfil/${nomeBarbearia}`);
         
-        if (!dadosBarbearia) {
+        const dadosB = res.data || res;
+        console.log("✅ Dados da barbearia carregados:", dadosB);
+        
+        if (!dadosB) {
           setError(true);
         } else {
-          setBarbearia(dadosBarbearia);
+          setBarbearia(dadosB);
 
+          // Buscar barbeiros vinculados a esta barbearia
           try {
-            const listaBarbeiros = await api.get('/barbeiros');
-            const lista = Array.isArray(listaBarbeiros) ? listaBarbeiros : (listaBarbeiros.data || []);
+            const resBarbeiros = await api.get('/barbeiros');
+            const lista = Array.isArray(resBarbeiros) ? resBarbeiros : (resBarbeiros.data || []);
             
             const filtrados = lista.filter(b => {
               const fk = b.fk_barbearia?._id || b.fk_barbearia;
-              return String(fk) === String(idBarbearia);
+              return String(fk) === String(dadosB._id);
             });
             setBarbeiros(filtrados);
           } catch (errBar) {
-            console.error("Erro ao carregar barbeiros:", errBar);
+            console.error("❌ Erro ao filtrar barbeiros:", errBar);
           }
         }
       } catch (err) {
-        console.error("Erro na requisição:", err.message);
+        console.error("❌ Erro na requisição:", err.message);
+        if (err.response) {
+            console.error("Status do erro no servidor:", err.response.status);
+            console.error("Mensagem do servidor:", err.response.data);
+        }
         setError(true);
       } finally {
         setLoading(false);
@@ -101,7 +109,7 @@ export default function PaginaBarbearia() {
     }
 
     fetchData();
-  }, [idBarbearia]);
+  }, [nomeBarbearia]);
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a]">
@@ -112,7 +120,7 @@ export default function PaginaBarbearia() {
   if (error || !barbearia) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center">
       <h1 className="text-6xl font-black italic lowercase tracking-tighter mb-4">404.</h1>
-      <p className="text-gray-400 max-w-md mb-8 italic">Barbearia não encontrada ou link inválido.</p>
+      <p className="text-gray-400 max-w-md mb-8 italic">Barbearia "{nomeBarbearia}" não encontrada. Verifique se a rota no backend existe.</p>
       <button onClick={() => navigate('/')} className="px-8 py-3 rounded-full font-black uppercase text-xs tracking-widest bg-white text-black hover:bg-yellow-500 transition-colors">
         voltar ao início
       </button>
@@ -122,16 +130,15 @@ export default function PaginaBarbearia() {
   return (
     <div className={`min-h-screen font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'}`}>
       
-      {/* BOTÃO LOGIN */}
       <button 
         onClick={handleLoginClick}
+        title="Área do Profissional"
         className="fixed top-8 right-8 z-[100] p-4 rounded-full transition-all duration-300 border backdrop-blur-md shadow-2xl hover:scale-110 active:scale-90 group"
         style={{ backgroundColor: `${brandYellow}ee`, borderColor: 'rgba(255,255,255,0.3)', boxShadow: `0 10px 25px ${brandYellow}40` }}
       >
         <IoLogInOutline size={26} color="#000" className="group-hover:translate-x-0.5 transition-transform" />
       </button>
 
-      {/* HERO SECTION */}
       <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
           <Swiper
@@ -157,7 +164,7 @@ export default function PaginaBarbearia() {
             {barbearia?.nome}.<span style={{ color: brandYellow }}>flow</span>
           </h1>
           <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] opacity-90 text-white">
-            estética masculina premium • {barbearia?.endereco?.cidade || 'recife'}, {barbearia?.endereco?.estado || 'pe'}
+            estética masculina premium • {barbearia?.endereco?.cidade || 'Recife'}, {barbearia?.endereco?.estado || 'PE'}
           </p>
           <div className="pt-8">
             <button 
@@ -171,7 +178,6 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      {/* SERVIÇOS */}
       <section className={`py-24 ${isDarkMode ? 'bg-[#0e0e0e]' : 'bg-gray-50'}`}>
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="mb-16 text-center lg:text-left">
@@ -199,7 +205,6 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      {/* BARBEIROS COM ELOGIOS */}
       <section className="max-w-[1400px] mx-auto px-6 py-24">
         <div className="mb-16 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: brandYellow }}>especialistas</p>
@@ -233,17 +238,13 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      {/* FOOTER - ATUALIZADO COM WHATSAPP E INSTAGRAM */}
       <footer className={`pt-24 pb-12 transition-all ${isDarkMode ? 'bg-[#050505]' : 'bg-[#121212] text-white'}`}>
         <div className="max-w-[1400px] mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-20">
-            
-            {/* Esquerda: Branding e Contatos */}
             <div className="space-y-12 flex flex-col items-center lg:items-start">
               <h1 className="text-5xl font-black italic lowercase tracking-tighter">barber.<span style={{ color: brandYellow }}>flow</span></h1>
               
               <div className="space-y-6 w-full max-w-md">
-                {/* Localização */}
                 <div className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center text-black flex-shrink-0" style={{ backgroundColor: brandYellow }}>
                     <IoLocationOutline size={24} />
@@ -254,7 +255,6 @@ export default function PaginaBarbearia() {
                   </div>
                 </div>
 
-                {/* WhatsApp */}
                 <a href={`https://wa.me/55${barbearia?.contato?.whatsapp || ''}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[#25D366] text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <IoLogoWhatsapp size={24} />
@@ -265,7 +265,6 @@ export default function PaginaBarbearia() {
                   </div>
                 </a>
 
-                {/* Instagram */}
                 <a href={`https://instagram.com/${barbearia?.contato?.instagram || ''}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
                   <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
                     <IoLogoInstagram size={24} />
@@ -278,18 +277,13 @@ export default function PaginaBarbearia() {
               </div>
             </div>
 
-            {/* Direita: Mapa */}
             <div className="h-[400px] rounded-[3.5rem] overflow-hidden border-8 border-white/5 grayscale brightness-75 hover:grayscale-0 transition-all duration-700">
-              <iframe title="Mapa" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3950.39058514239!2d-34.9035227!3d-8.0615823!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zOMKwMDMnNDEuNyJTIDM0wrA1NCcxMi43Ilc!5e0!3m2!1spt-BR!2sbr!4v1620000000000!5m2!1spt-BR!2sbr" width="100%" height="100%" style={{ border: 0 }} allowFullScreen />
+              <iframe title="Mapa" src={`https://maps.google.com/maps?q=${encodeURIComponent(barbearia?.endereco?.logradouro + ' ' + barbearia?.endereco?.cidade)}&t=&z=13&ie=UTF8&iwloc=&output=embed`} width="100%" height="100%" style={{ border: 0 }} allowFullScreen />
             </div>
           </div>
 
           <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
             <p className="text-[9px] font-black uppercase tracking-[5px] opacity-20 text-center">© 2026 BarberFlow Technology</p>
-            <div className="flex gap-6 opacity-30 text-[9px] font-black uppercase tracking-[2px]">
-              <span className="hover:opacity-100 cursor-pointer">Termos</span>
-              <span className="hover:opacity-100 cursor-pointer">Privacidade</span>
-            </div>
           </div>
         </div>
       </footer>

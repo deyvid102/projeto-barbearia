@@ -11,6 +11,7 @@ import {
   IoCloseCircleOutline, IoChevronDownOutline, IoOptionsOutline,
   IoCutOutline, IoCashOutline, IoCalendarOutline, IoStatsChartOutline
 } from 'react-icons/io5';
+import { FaWhatsapp } from 'react-icons/fa';
 
 export default function AdministradorDashboard() {
   const { id } = useParams(); 
@@ -18,7 +19,6 @@ export default function AdministradorDashboard() {
   
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
-  const [clientes, setClientes] = useState([]);
   const [configLimites, setConfigLimites] = useState({ abertura: "08:00", fechamento: "18:00" });
   const [loading, setLoading] = useState(true);
   
@@ -33,7 +33,6 @@ export default function AdministradorDashboard() {
   
   const selectRef = useRef();
 
-  // Restaurado para 20 para linhas finas
   const ALTURA_LINHA = 20; 
   const ALTURA_CABECALHO = 48;
 
@@ -76,19 +75,17 @@ export default function AdministradorDashboard() {
         fechamento: minhaBarbearia.fechamento || "18:00"
       });
 
-      const [resB, resA, resC] = await Promise.all([
-        api.get('/barbeiros'),
-        api.get(`/agendamentos/barbearia/${barbeariaIdReal}`).catch(() => api.get('/agendamentos')),
-        api.get('/clientes')
+      // Removida a rota de clientes - Busca apenas Barbeiros e Agendamentos
+      const [resB, resA] = await Promise.all([
+        api.get('/barbeiros').catch(() => ({ data: [] })),
+        api.get(`/agendamentos/barbearia/${barbeariaIdReal}`).catch(() => api.get('/agendamentos')).catch(() => ({ data: [] }))
       ]);
 
       const todosBarbeiros = resB.data || resB || [];
       const todosAgs = resA.data || resA || [];
-      const todosClientes = resC.data || resC || [];
 
       setBarbeiros(todosBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === barbeariaIdReal));
       setAgendamentos(todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === barbeariaIdReal));
-      setClientes(todosClientes);
       
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
@@ -112,15 +109,25 @@ export default function AdministradorDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Busca o nome diretamente dos campos do agendamento
   const getNomeExibicao = (ag) => {
-    if (ag.nomeCliente) return ag.nomeCliente;
-    const idCliente = ag.fk_cliente?._id || ag.fk_cliente;
-    const clienteEncontrado = clientes.find(c => String(c._id) === String(idCliente));
-    return clienteEncontrado ? clienteEncontrado.nome : 'Cliente';
+    return ag.nome || ag.nomeCliente || "Cliente";
+  };
+
+  const handleWhatsApp = (ag) => {
+    // Busca o número diretamente dos campos do agendamento
+    const telefone = ag.numero || ag.telefone || ag.telefoneCliente || "";
+    const foneLimpo = telefone.replace(/\D/g, '');
+    if (foneLimpo) {
+      window.open(`https://wa.me/55${foneLimpo}`, '_blank');
+    } else {
+      setAlertConfig({ show: true, titulo: 'Atenção', mensagem: 'Número não disponível neste agendamento.', tipo: 'error' });
+    }
   };
 
   const getNomeBarbeiro = (ag) => {
-    const barbeiro = barbeiros.find(b => String(b._id) === String(ag.fk_barbeiro?._id || ag.fk_barbeiro));
+    const barbeiroId = String(ag.fk_barbeiro?._id || ag.fk_barbeiro || "");
+    const barbeiro = barbeiros.find(b => String(b._id) === barbeiroId);
     return barbeiro ? barbeiro.nome.split(' ')[0] : 'Barbeiro';
   };
 
@@ -151,7 +158,6 @@ export default function AdministradorDashboard() {
     const escopo = [];
     const hInicio = parseInt(configLimites.abertura.split(':')[0]);
     const hFim = parseInt(configLimites.fechamento.split(':')[0]);
-
     for (let i = hInicio; i <= hFim; i++) {
       escopo.push(`${i < 10 ? '0' + i : i}:00`);
     }
@@ -169,7 +175,7 @@ export default function AdministradorDashboard() {
     return null;
   };
 
-  const agendamentosHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr));
+  const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
   
   const stats = {
     total: agendamentosHoje.length,
@@ -232,7 +238,6 @@ export default function AdministradorDashboard() {
           </div>
         </header>
 
-        {/* Removido o h-calc fixo para permitir crescimento vertical natural, mantendo min-h-fit */}
         <div className={`relative flex-1 rounded-[2rem] border overflow-hidden mb-10 ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
           <div className="overflow-x-auto min-h-fit custom-scrollbar">
             <table className="w-full border-collapse min-w-[1200px] table-fixed">
@@ -323,7 +328,6 @@ export default function AdministradorDashboard() {
         </div>
       </div>
 
-      {/* MODAL DE AÇÕES */}
       {isAcoesModalOpen && selectedAg && (
         <div className="fixed inset-0 z-[120] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md">
           <div className={`w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0f0f0f] border-white/10' : 'bg-white border-slate-200'} animate-in slide-in-from-bottom md:zoom-in duration-300`}>
@@ -338,15 +342,24 @@ export default function AdministradorDashboard() {
                 <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><IoCloseOutline size={28}/></button>
               </div>
               <div className="space-y-6">
-                <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <div className={`p-4 rounded-2xl border relative ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
                     <p className="text-[10px] font-black uppercase text-gray-500 mb-1 tracking-wider">Cliente / Profissional</p>
-                    <p className="text-sm font-black uppercase text-[#e6b32a]">{getNomeExibicao(selectedAg)}</p>
+                    <p className="text-sm font-black uppercase text-[#e6b32a] pr-10">{getNomeExibicao(selectedAg)}</p>
                     <p className="text-xs font-bold opacity-70 italic">Atendido por: {getNomeBarbeiro(selectedAg)}</p>
+                    
+                    <button 
+                      onClick={() => handleWhatsApp(selectedAg)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all"
+                    >
+                      <FaWhatsapp size={20} />
+                    </button>
+
                     <div className="mt-3 pt-3 border-t border-white/10 flex items-center gap-2">
                         <IoCutOutline size={14} className="text-[#e6b32a]" />
                         <p className="text-xs font-black uppercase">{selectedAg.tipoCorte || 'Corte/Serviço'}</p>
                     </div>
                 </div>
+
                 <div className={`p-5 rounded-[2rem] border transition-colors ${isDarkMode ? 'bg-white/5 border-white/10 focus-within:border-[#e6b32a]/50' : 'bg-slate-50 border-slate-200 focus-within:border-black/30'}`}>
                   <label className="text-[9px] font-black uppercase text-[#e6b32a] mb-2 block tracking-widest ml-1">valor do serviço</label>
                   <div className="flex items-center relative">
@@ -354,6 +367,7 @@ export default function AdministradorDashboard() {
                       <input type="number" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} className="w-full bg-transparent border-none focus:ring-0 pl-7 font-black text-3xl py-1 outline-none" />
                   </div>
                 </div>
+
                 <div className="space-y-2 relative" ref={selectRef}>
                   <label className="text-[9px] font-black uppercase text-gray-500 tracking-widest ml-1">atualizar status</label>
                   <button onClick={() => setIsSelectOpen(!isSelectOpen)} className={`w-full p-4 rounded-2xl border flex items-center justify-between transition-all ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'} ${isSelectOpen ? 'border-[#e6b32a] ring-2 ring-[#e6b32a]/10' : ''}`}>
