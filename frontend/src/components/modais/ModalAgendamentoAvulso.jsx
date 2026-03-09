@@ -1,284 +1,312 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '../../services/Api';
 import { 
-  IoCloseOutline, IoPersonOutline, IoCutOutline, 
-  IoCashOutline, IoTimeOutline, IoCheckmarkCircleOutline,
-  IoChevronDownOutline, IoSearchOutline, IoPersonAddOutline
+  IoCloseOutline, IoCutOutline, IoTimeOutline, 
+  IoCalendarOutline, IoPersonOutline, IoChevronForward, 
+  IoChevronBack, IoLogoWhatsapp, IoCheckmarkCircleOutline,
+  IoArrowBackOutline
 } from 'react-icons/io5';
 
-export default function ModalAgendamentoAvulso({ isOpen, onClose, onSave, isDarkMode }) {
+export default function ModalAgendamentoCompleto({ isOpen, onClose, onSave, isDarkMode }) {
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [servicos, setServicos] = useState([]);
-  const [clientes, setClientes] = useState([]);
-  const [clientesFiltrados, setClientesFiltrados] = useState([]);
-  const [horariosDisponiveis, setHorariosDisponiveis] = useState([]);
-  const [barbeariaId, setBarbeariaId] = useState(null);
-  
-  const [isSelectServicoOpen, setIsSelectServicoOpen] = useState(false);
-  const [isSelectClienteOpen, setIsSelectClienteOpen] = useState(false);
-  
-  const [formData, setFormData] = useState({
-    nomeCliente: '',
-    fk_cliente: '',
+  const [barbeiroId, setBarbeiroId] = useState(null);
+  const [barbeiroNome, setBarbeiroNome] = useState('');
+  const [gradeMensal, setGradeMensal] = useState([]);
+  const [todosAgendamentos, setTodosAgendamentos] = useState([]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  const [form, setForm] = useState({
     tipoCorte: '',
-    valor: '',
+    valor: 0,
+    tempo: 30,
+    data: '',
     hora: '',
-    tempo: 30
+    cliente: { nome: '', numero: '' }
   });
 
-  const carregarDadosBase = useCallback(async () => {
+  const carregarDadosIniciais = useCallback(async () => {
     try {
-      const barbeiroId = localStorage.getItem('barbeiroId');
-      const [resB, resC] = await Promise.all([
+      setLoading(true);
+      const idBarbeiroLogado = localStorage.getItem('barbeiroId');
+      
+      const [resB, resA, resG] = await Promise.all([
         api.get('/barbeiros'),
-        api.get('/clientes')
+        api.get('/agendamentos'),
+        api.get('/agendas')
       ]);
 
       const barbeirosData = resB.data || resB;
-      const barbeiro = barbeirosData.find(b => String(b._id) === String(barbeiroId));
-      setClientes(resC.data || resC || []);
+      const meuPerfil = barbeirosData.find(b => String(b._id) === String(idBarbeiroLogado));
 
-      if (barbeiro) {
-        const idBarb = barbeiro.fk_barbearia?._id || barbeiro.fk_barbearia;
-        setBarbeariaId(idBarb);
+      if (meuPerfil) {
+        setBarbeiroId(meuPerfil._id);
+        setBarbeiroNome(meuPerfil.nome);
+        const idBarb = meuPerfil.fk_barbearia?._id || meuPerfil.fk_barbearia;
+        
         const resBarb = await api.get(`/barbearias/${idBarb}`);
         const barbeariaData = resBarb.data || resBarb;
         setServicos(barbeariaData.servicos || []);
+        
+        // Filtra agendas e agendamentos apenas deste barbeiro e barbearia
+        setGradeMensal((resG.data || resG || []).filter(g => String(g.fk_barbeiro?._id || g.fk_barbeiro) === String(idBarbeiroLogado)));
+        setTodosAgendamentos((resA.data || resA || []).filter(a => a.status === 'A'));
       }
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error);
-    }
-  }, []);
-
-  const carregarHorariosDisponiveis = useCallback(async () => {
-    try {
-      const barbeiroId = localStorage.getItem('barbeiroId');
-      if (!barbeiroId) return;
-
-      const hojeStr = new Date().toISOString().split('T')[0];
-      const [resAgendas, resAgendamentos] = await Promise.all([
-        api.get('/agendas'),
-        api.get('/agendamentos')
-      ]);
-
-      const agendasData = resAgendas.data || resAgendas;
-      const agendamentosData = resAgendamentos.data || resAgendamentos;
-
-      const escala = agendasData.find(g => 
-        g.data?.startsWith(hojeStr) && 
-        String(g.fk_barbeiro?._id || g.fk_barbeiro) === String(barbeiroId)
-      );
-
-      if (!escala) return;
-
-      const timeToMin = (s) => (s ? s.split(':').reduce((h, m) => h * 60 + +m, 0) : 0);
-      const inicio = timeToMin(escala.abertura);
-      const fim = timeToMin(escala.fechamento);
-      
-      const agendamentosHoje = agendamentosData.filter(a => 
-        a.datahora?.startsWith(hojeStr) && 
-        String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(barbeiroId) &&
-        a.status === 'A'
-      );
-
-      const slots = [];
-      const agora = new Date();
-      const agoraMin = agora.getHours() * 60 + agora.getMinutes();
-
-      for (let curr = inicio; curr + formData.tempo <= fim; curr += 20) {
-        if (curr <= agoraMin + 10) continue;
-        const colide = agendamentosHoje.some(ag => {
-          const horaParte = ag.datahora.split('T')[1].substring(0, 5);
-          const agInicio = timeToMin(horaParte);
-          return curr < agInicio + (ag.tempo_estimado || 30) && (curr + formData.tempo) > agInicio;
-        });
-        if (!colide) {
-          const h = Math.floor(curr / 60).toString().padStart(2, '0');
-          const m = (curr % 60).toString().padStart(2, '0');
-          slots.push(`${h}:${m}`);
-        }
-      }
-      setHorariosDisponiveis(slots);
-    } catch (error) { console.error(error); }
-  }, [formData.tempo]);
-
-  useEffect(() => {
-    if (isOpen) {
-      carregarDadosBase();
-      carregarHorariosDisponiveis();
-    }
-  }, [isOpen, carregarDadosBase, carregarHorariosDisponiveis]);
-
-  const handleBuscaCliente = (e) => {
-    const termo = e.target.value;
-    setFormData(prev => ({ ...prev, nomeCliente: termo, fk_cliente: '' }));
-    if (termo.length > 0) {
-      const filtrados = clientes.filter(c => c.nome.toLowerCase().includes(termo.toLowerCase()));
-      setClientesFiltrados(filtrados);
-      setIsSelectClienteOpen(true);
-    } else {
-      setIsSelectClienteOpen(false);
-    }
-  };
-
-  const criarClienteAvulso = async () => {
-    if (!barbeariaId || !formData.nomeCliente) return;
-    try {
-      setLoading(true);
-      const timestamp = Date.now();
-      const payload = {
-        nome: formData.nomeCliente,
-        // Envia email vazio; o Controller que ajustamos vai gerar o avulso_timestamp@sistema.com
-        email: "", 
-        numero: "00000000000", // Bate com o ModelCliente
-        fk_barbearia: barbeariaId
-      };
-      const res = await api.post('/clientes', payload);
-      const novoCliente = res.data || res;
-      setFormData(prev => ({ ...prev, fk_cliente: novoCliente._id }));
-      setIsSelectClienteOpen(false);
-      setClientes(prev => [...prev, novoCliente]);
-    } catch (error) {
-      console.error("Erro ao criar cliente:", error.response?.data || error);
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      carregarDadosIniciais();
+      setStep(1);
+    }
+  }, [isOpen, carregarDadosIniciais]);
+
+  const getDiasCalendario = () => {
+    const ano = currentMonth.getFullYear();
+    const mes = currentMonth.getMonth();
+    const dias = [];
+    for (let i = 0; i < new Date(ano, mes, 1).getDay(); i++) dias.push(null);
+    for (let i = 1; i <= new Date(ano, mes + 1, 0).getDate(); i++) dias.push(new Date(ano, mes, i));
+    return dias;
   };
 
-  const selecionarCliente = (cliente) => {
-    setFormData(prev => ({ ...prev, nomeCliente: cliente.nome, fk_cliente: cliente._id }));
-    setIsSelectClienteOpen(false);
-  };
-
-  const selecionarServico = (s) => {
-    setFormData(prev => ({ ...prev, tipoCorte: s.nome, valor: s.valor, tempo: s.tempo }));
-    setIsSelectServicoOpen(false);
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.hora || !formData.fk_cliente || !formData.tipoCorte) return;
-
-    const barbeiroId = localStorage.getItem('barbeiroId');
+  const gerarHorariosDisponiveis = () => {
+    if (!form.data || !barbeiroId || !form.tempo) return [];
     
-    // 1. Calcular Data Início
-    const dataInicio = new Date();
-    const [horas, minutos] = formData.hora.split(':');
-    dataInicio.setHours(parseInt(horas), parseInt(minutos), 0, 0);
+    const escala = gradeMensal.find(g => g.data?.startsWith(form.data));
+    if (!escala) return [];
 
-    // 2. Calcular Data Fim (Obrigatório no seu Model)
-    const dataFim = new Date(dataInicio.getTime() + (formData.tempo * 60000));
+    const agora = new Date();
+    const hojeStr = agora.toLocaleDateString('en-CA');
+    const minutosAgora = (agora.getHours() * 60) + agora.getMinutes();
 
-    const payloadFinal = {
-      tipoCorte: formData.tipoCorte, // Ajustado para bater com camelCase do Model
-      datahora: dataInicio.toISOString(),
-      datahora_fim: dataFim.toISOString(), // Campo NOVO para bater com ModelAgendamento
-      tempo_estimado: Number(formData.tempo),
-      valor: Number(formData.valor),
+    const toMin = (s) => s.split(':').map(Number).reduce((h, m) => h * 60 + m);
+    const inicio = toMin(escala.abertura);
+    const fim = toMin(escala.fechamento);
+    
+    const ocupados = todosAgendamentos
+      .filter(a => String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(barbeiroId) && a.datahora.startsWith(form.data))
+      .map(a => {
+        const start = toMin(a.datahora.split('T')[1].substring(0, 5));
+        return { start, end: start + (a.tempo_estimado || 30) };
+      });
+
+    const slots = [];
+    for (let c = inicio; c + form.tempo <= fim; c += 20) {
+      if (form.data === hojeStr && c <= minutosAgora + 10) continue;
+      if (!ocupados.some(o => c < o.end && (c + form.tempo) > o.start)) {
+        slots.push(`${Math.floor(c/60).toString().padStart(2,'0')}:${(c%60).toString().padStart(2,'0')}`);
+      }
+    }
+    return slots;
+  };
+
+  const handleFinalizar = () => {
+    const start = new Date(`${form.data}T${form.hora}:00`);
+    const end = new Date(start.getTime() + (form.tempo * 60000));
+
+    const payload = {
+      tipoCorte: form.tipoCorte,
+      cliente: { nome: form.cliente.nome, numero: form.cliente.numero },
+      datahora: start.toISOString(),
+      datahora_fim: end.toISOString(),
+      tempo_estimado: form.tempo,
+      valor: form.valor,
       status: 'A',
-      fk_cliente: formData.fk_cliente,
       fk_barbeiro: barbeiroId,
-      fk_barbearia: barbeariaId
+      fk_barbearia: gradeMensal[0]?.fk_barbearia?._id || gradeMensal[0]?.fk_barbearia
     };
 
-    onSave(payloadFinal);
-    setFormData({ nomeCliente: '', fk_cliente: '', tipoCorte: '', valor: '', hora: '', tempo: 30 });
+    onSave(payload);
     onClose();
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-      <div className={`w-full max-w-lg rounded-[2.5rem] border shadow-2xl overflow-visible ${isDarkMode ? 'bg-[#0f0f0f] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
-        <div className="p-8 pb-0 flex justify-between items-center">
-          <div>
-            <h3 className="text-xl font-black italic">novo.<span className="text-[#e6b32a]">agendamento</span></h3>
-            <p className="text-[10px] font-bold uppercase opacity-40 tracking-widest mt-1">Balcão</p>
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-xl p-4">
+      <div className={`w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-[3rem] border shadow-2xl ${isDarkMode ? 'bg-[#0a0a0a] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
+        
+        {/* HEADER MODAL */}
+        <header className="p-8 flex items-center justify-between sticky top-0 z-10 bg-inherit">
+          <button 
+            onClick={() => step === 1 ? onClose() : setStep(step - 1)}
+            className="group flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-[#e6b32a]/10 transition-all"
+          >
+            <IoArrowBackOutline size={20} className="group-hover:-translate-x-1 transition-transform" />
+            <span className="font-black text-[10px] uppercase tracking-widest">{step === 1 ? 'Cancelar' : 'Voltar'}</span>
+          </button>
+          
+          <div className="flex gap-2">
+            {[1, 2, 3].map(s => (
+              <div key={s} className={`h-1.5 w-10 rounded-full transition-all duration-500 ${step >= s ? 'bg-[#e6b32a]' : 'bg-gray-800'}`} />
+            ))}
           </div>
-          <button onClick={onClose} type="button" className="p-2 hover:text-red-500 transition-colors"><IoCloseOutline size={28} /></button>
-        </div>
+          
+          <button onClick={onClose} className="p-2 opacity-40 hover:opacity-100 transition-opacity">
+            <IoCloseOutline size={30} />
+          </button>
+        </header>
 
-        <form onSubmit={handleSubmit} className="p-8 space-y-5">
-          {/* CLIENTE */}
-          <div className="relative">
-            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-              <label className="text-[9px] font-black uppercase text-[#e6b32a] mb-1 block">Identificar Cliente</label>
-              <div className="flex items-center gap-3">
-                <input 
-                  autoComplete="off"
-                  type="text" 
-                  placeholder="Nome do cliente..."
-                  className="bg-transparent border-none focus:ring-0 w-full font-bold text-sm outline-none text-inherit"
-                  value={formData.nomeCliente}
-                  onChange={handleBuscaCliente}
-                />
-                {formData.fk_cliente && <IoCheckmarkCircleOutline className="text-emerald-500" size={20} />}
+        <main className="p-8 pt-0">
+          {/* STEP 1: SERVIÇOS */}
+          {step === 1 && (
+            <div className="space-y-6 animate-in fade-in zoom-in-95">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-black lowercase">O que vamos fazer?</h2>
+                <p className="text-[10px] uppercase tracking-[4px] opacity-40 mt-2">Selecione o serviço</p>
               </div>
-            </div>
-
-            {isSelectClienteOpen && (
-              <div className={`absolute left-0 right-0 mt-2 border rounded-2xl shadow-2xl z-[200] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
-                <div className="max-h-56 overflow-y-auto">
-                  {clientesFiltrados.map((c) => (
-                    <button key={c._id} type="button" onClick={() => selecionarCliente(c)} className="w-full p-4 flex items-center gap-3 hover:bg-[#e6b32a]/10 border-b last:border-none border-white/5">
-                      <p className="text-[11px] font-black uppercase">{c.nome}</p>
-                    </button>
-                  ))}
-                  {!formData.fk_cliente && (
-                    <button type="button" onClick={criarClienteAvulso} className="w-full p-5 flex items-center justify-center gap-3 bg-[#e6b32a] text-black font-black uppercase text-[10px]">
-                      {loading ? 'Criando...' : <><IoPersonAddOutline size={16} /> Criar "{formData.nomeCliente}"</>}
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* SERVIÇO */}
-          <div className={`relative ${!formData.fk_cliente ? 'opacity-30 pointer-events-none' : ''}`}>
-            <label className="text-[9px] font-black uppercase text-gray-500 mb-2 block">Serviço</label>
-            <button 
-              type="button"
-              onClick={() => setIsSelectServicoOpen(!isSelectServicoOpen)}
-              className={`w-full p-4 rounded-2xl border flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}
-            >
-              <span className="text-sm font-bold uppercase">{formData.tipoCorte || 'Selecionar'}</span>
-              <IoChevronDownOutline size={16} />
-            </button>
-
-            {isSelectServicoOpen && (
-              <div className={`absolute left-0 right-0 mt-2 border rounded-2xl shadow-2xl z-[190] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {servicos.map((s, idx) => (
-                  <button key={idx} type="button" onClick={() => selecionarServico(s)} className="w-full p-4 flex items-center justify-between hover:bg-[#e6b32a]/10 border-b border-white/5">
-                    <span className="text-[11px] font-black uppercase">{s.nome}</span>
-                    <span className="text-xs font-black">R$ {s.valor}</span>
+                  <button 
+                    key={idx}
+                    onClick={() => { setForm({...form, tipoCorte: s.nome, valor: s.valor, tempo: s.tempo}); setStep(2); }}
+                    className={`p-6 rounded-[2rem] border-2 flex justify-between items-center transition-all hover:border-[#e6b32a] ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100 shadow-sm'}`}
+                  >
+                    <div className="text-left">
+                      <p className="font-black text-lg lowercase">{s.nome}</p>
+                      <p className="text-[10px] uppercase opacity-50 font-bold">{s.tempo} min</p>
+                    </div>
+                    <p className="text-[#e6b32a] font-black text-xl">R$ {s.valor}</p>
                   </button>
                 ))}
               </div>
-            )}
-          </div>
-
-          {/* HORÁRIOS */}
-          <div className={!formData.tipoCorte ? 'opacity-30' : ''}>
-            <p className="text-[9px] font-black uppercase opacity-40 mb-2 tracking-widest">Horário Disponível</p>
-            <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto pr-1">
-              {horariosDisponiveis.map(h => (
-                <button key={h} type="button" onClick={() => setFormData({...formData, hora: h})} className={`py-2 rounded-xl border text-[10px] font-black transition-all ${formData.hora === h ? 'bg-[#e6b32a] text-black border-[#e6b32a]' : 'bg-white/5 border-white/10'}`}>
-                  {h}
-                </button>
-              ))}
             </div>
-          </div>
+          )}
 
-          <button 
-            type="submit"
-            disabled={!formData.hora || !formData.fk_cliente}
-            className={`w-full py-5 rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all ${(!formData.hora || !formData.fk_cliente) ? 'bg-white/5 text-gray-600' : 'bg-[#e6b32a] text-black shadow-lg shadow-[#e6b32a]/20'}`}
-          >
-            Confirmar no Balcão
-          </button>
-        </form>
+          {/* STEP 2: CALENDÁRIO E HORAS */}
+          {step === 2 && (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 animate-in fade-in slide-in-from-right-4">
+              {/* Calendário */}
+              <div className={`p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                <div className="flex items-center justify-between mb-8">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#e6b32a]">Calendário</span>
+                  <div className="flex items-center gap-4 bg-black/20 p-2 rounded-xl">
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))}><IoChevronBack /></button>
+                    <span className="text-[10px] font-black uppercase w-20 text-center">{currentMonth.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' })}</span>
+                    <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))}><IoChevronForward /></button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {['D','S','T','Q','Q','S','S'].map((d, i) => <div key={i} className="text-center text-[9px] font-black opacity-30 py-2">{d}</div>)}
+                  {getDiasCalendario().map((dia, i) => {
+                    if (!dia) return <div key={i} />;
+                    const dStr = dia.toLocaleDateString('en-CA');
+                    const isPassado = dStr < new Date().toLocaleDateString('en-CA');
+                    const temEscala = gradeMensal.some(g => g.data?.startsWith(dStr));
+                    const disp = temEscala && !isPassado;
+                    return (
+                      <button 
+                        key={i} disabled={!disp}
+                        onClick={() => setForm({...form, data: dStr, hora: ''})}
+                        className={`aspect-square rounded-2xl flex items-center justify-center text-xs font-black transition-all ${
+                          form.data === dStr ? 'bg-[#e6b32a] text-black scale-110' : disp ? 'bg-white/10 hover:bg-[#e6b32a]/20' : 'opacity-10'
+                        }`}
+                      >
+                        {dia.getDate()}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Horários */}
+              <div className="space-y-6">
+                {!form.data ? (
+                  <div className="h-full flex flex-col items-center justify-center border-2 border-dashed border-white/10 rounded-[2.5rem] opacity-30 text-[10px] font-black uppercase p-10 text-center">
+                    <IoCalendarOutline size={40} className="mb-4" />
+                    Selecione um dia para ver os horários
+                  </div>
+                ) : (
+                  <div className="space-y-8 animate-in fade-in duration-500">
+                    <div>
+                      <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4">Horários Disponíveis</h4>
+                      <div className="grid grid-cols-4 gap-2">
+                        {gerarHorariosDisponiveis().map(h => (
+                          <button 
+                            key={h} onClick={() => setForm({...form, hora: h})}
+                            className={`py-4 rounded-2xl text-[10px] font-black border-2 transition-all ${form.hora === h ? 'bg-[#e6b32a] border-[#e6b32a] text-black' : 'bg-transparent border-white/5 hover:border-[#e6b32a]'}`}
+                          >
+                            {h}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <button 
+                      disabled={!form.hora}
+                      onClick={() => setStep(3)}
+                      className="w-full py-6 rounded-[2rem] bg-[#e6b32a] text-black font-black uppercase text-xs tracking-[4px] shadow-xl shadow-[#e6b32a]/20 disabled:opacity-20 transition-all"
+                    >
+                      Confirmar Horário
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: DADOS DO CLIENTE */}
+          {step === 3 && (
+            <div className="max-w-xl mx-auto space-y-8 animate-in fade-in slide-in-from-right-4">
+              <div className="text-center">
+                <h2 className="text-3xl font-black lowercase">Quem é o cliente?</h2>
+                <p className="text-[10px] uppercase tracking-[4px] opacity-40 mt-2">Identificação para o balcão</p>
+              </div>
+
+              <div className={`p-8 rounded-[3rem] border-2 space-y-6 ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-xl'}`}>
+                <div className="space-y-4">
+                  <div className="relative">
+                    <IoPersonOutline className="absolute left-5 top-1/2 -translate-y-1/2 text-[#e6b32a]" />
+                    <input 
+                      type="text" placeholder="Nome do cliente"
+                      className={`w-full p-5 pl-14 rounded-2xl border-2 outline-none text-sm transition-all ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-slate-50 border-slate-200'} focus:border-[#e6b32a]`}
+                      value={form.cliente.nome}
+                      onChange={e => setForm({...form, cliente: {...form.cliente, nome: e.target.value}})}
+                    />
+                  </div>
+                  <div className="relative">
+                    <IoLogoWhatsapp className="absolute left-5 top-1/2 -translate-y-1/2 text-emerald-500" />
+                    <input 
+                      type="tel" placeholder="WhatsApp (Opcional)"
+                      className={`w-full p-5 pl-14 rounded-2xl border-2 outline-none text-sm transition-all ${isDarkMode ? 'bg-black/40 border-white/10' : 'bg-slate-50 border-slate-200'} focus:border-[#e6b32a]`}
+                      value={form.cliente.numero}
+                      onChange={e => setForm({...form, cliente: {...form.cliente, numero: e.target.value}})}
+                    />
+                  </div>
+                </div>
+
+                <div className={`p-6 rounded-3xl space-y-3 ${isDarkMode ? 'bg-black/40' : 'bg-slate-50'}`}>
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="opacity-40">Serviço:</span>
+                    <span className="text-[#e6b32a]">{form.tipoCorte}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                    <span className="opacity-40">Data/Hora:</span>
+                    <span>{form.data} às {form.hora}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest border-t border-white/5 pt-3">
+                    <span className="opacity-40">Profissional:</span>
+                    <span>{barbeiroNome}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button 
+                disabled={!form.cliente.nome}
+                onClick={handleFinalizar}
+                className="w-full py-8 rounded-[2.5rem] bg-emerald-600 text-white font-black uppercase text-xs tracking-[5px] shadow-2xl shadow-emerald-900/40 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-20"
+              >
+                Finalizar no Balcão
+              </button>
+            </div>
+          )}
+        </main>
       </div>
     </div>
   );

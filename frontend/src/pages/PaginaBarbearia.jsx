@@ -17,12 +17,10 @@ import {
 
 // Importações do Swiper
 import { Swiper, SwiperSlide } from 'swiper/react';
-import { Navigation, Pagination, Autoplay, EffectFade } from 'swiper/modules';
+import { Autoplay, EffectFade } from 'swiper/modules';
 
 // Estilos do Swiper
 import 'swiper/css';
-import 'swiper/css/navigation';
-import 'swiper/css/pagination';
 import 'swiper/css/effect-fade';
 
 const brandYellow = '#EAB308'; 
@@ -46,68 +44,31 @@ export default function PaginaBarbearia() {
 
   const fotosLugar = [barbearia1, barbearia2, barbearia3];
 
-  const handleLoginClick = () => {
-    navigate('/barbeiro/login');
-  };
-
-  const handleAgendarClick = () => {
-    if (nomeBarbearia) {
-      navigate(`/agendar/${nomeBarbearia}`);
-    }
-  };
+  const handleLoginClick = () => navigate('/barbeiro/login');
+  const handleAgendarClick = () => nomeBarbearia && navigate(`/agendar/${nomeBarbearia}`);
 
   useEffect(() => {
     async function fetchData() {
-      console.log("🔍 URL Param capturado:", nomeBarbearia);
-
-      if (!nomeBarbearia) {
-        setLoading(false);
-        setError(true);
-        return;
-      }
-
+      if (!nomeBarbearia) { setLoading(false); setError(true); return; }
       try {
         setLoading(true);
-        setError(false);
-
-        // Tentativa de busca pelo perfil (slug/nome)
-        console.log(`🚀 Chamando API: /barbearias/perfil/${nomeBarbearia}`);
         const res = await api.get(`/barbearias/perfil/${nomeBarbearia}`);
-        
         const dadosB = res.data || res;
-        console.log("✅ Dados da barbearia carregados:", dadosB);
         
         if (!dadosB) {
           setError(true);
         } else {
           setBarbearia(dadosB);
-
-          // Buscar barbeiros vinculados a esta barbearia
-          try {
-            const resBarbeiros = await api.get('/barbeiros');
-            const lista = Array.isArray(resBarbeiros) ? resBarbeiros : (resBarbeiros.data || []);
-            
-            const filtrados = lista.filter(b => {
-              const fk = b.fk_barbearia?._id || b.fk_barbearia;
-              return String(fk) === String(dadosB._id);
-            });
-            setBarbeiros(filtrados);
-          } catch (errBar) {
-            console.error("❌ Erro ao filtrar barbeiros:", errBar);
-          }
+          const resBarbeiros = await api.get('/barbeiros');
+          const lista = Array.isArray(resBarbeiros) ? resBarbeiros : (resBarbeiros.data || []);
+          setBarbeiros(lista.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === String(dadosB._id)));
         }
       } catch (err) {
-        console.error("❌ Erro na requisição:", err.message);
-        if (err.response) {
-            console.error("Status do erro no servidor:", err.response.status);
-            console.error("Mensagem do servidor:", err.response.data);
-        }
         setError(true);
       } finally {
         setLoading(false);
       }
     }
-
     fetchData();
   }, [nomeBarbearia]);
 
@@ -119,57 +80,53 @@ export default function PaginaBarbearia() {
 
   if (error || !barbearia) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-[#0a0a0a] text-white p-6 text-center">
-      <h1 className="text-6xl font-black italic lowercase tracking-tighter mb-4">404.</h1>
-      <p className="text-gray-400 max-w-md mb-8 italic">Barbearia "{nomeBarbearia}" não encontrada. Verifique se a rota no backend existe.</p>
-      <button onClick={() => navigate('/')} className="px-8 py-3 rounded-full font-black uppercase text-xs tracking-widest bg-white text-black hover:bg-yellow-500 transition-colors">
-        voltar ao início
-      </button>
+      <h1 className="text-4xl font-black italic mb-4">404.</h1>
+      <p className="text-gray-400 mb-8">Barbearia não encontrada.</p>
+      <button onClick={() => navigate('/')} className="px-8 py-3 rounded-full font-black uppercase text-xs bg-white text-black">voltar ao início</button>
     </div>
   );
 
   return (
-    <div className={`min-h-screen font-sans transition-colors duration-500 ${isDarkMode ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'}`}>
+    <div className={`min-h-screen font-sans transition-colors duration-500 overflow-x-hidden ${isDarkMode ? 'bg-[#0a0a0a] text-white' : 'bg-white text-black'}`}>
       
+      {/* Botão Login Profissional */}
       <button 
         onClick={handleLoginClick}
-        title="Área do Profissional"
-        className="fixed top-8 right-8 z-[100] p-4 rounded-full transition-all duration-300 border backdrop-blur-md shadow-2xl hover:scale-110 active:scale-90 group"
-        style={{ backgroundColor: `${brandYellow}ee`, borderColor: 'rgba(255,255,255,0.3)', boxShadow: `0 10px 25px ${brandYellow}40` }}
+        className="fixed top-4 right-4 md:top-8 md:right-8 z-[100] p-3 md:p-4 rounded-full transition-all border backdrop-blur-md shadow-2xl hover:scale-110 active:scale-90"
+        style={{ backgroundColor: `${brandYellow}ee`, borderColor: 'rgba(255,255,255,0.3)' }}
       >
-        <IoLogInOutline size={26} color="#000" className="group-hover:translate-x-0.5 transition-transform" />
+        <IoLogInOutline size={22} color="#000" className="md:w-[26px] md:h-[26px]" />
       </button>
 
-      <section className="relative h-[90vh] flex items-center justify-center overflow-hidden">
+      {/* Hero Section */}
+      <section className="relative h-[85vh] md:h-[90vh] flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <Swiper
-            modules={[Autoplay, EffectFade]}
-            effect="fade"
-            autoplay={{ delay: 5000, disableOnInteraction: false }}
-            loop={true}
-            className="w-full h-full"
-          >
+          <Swiper modules={[Autoplay, EffectFade]} effect="fade" autoplay={{ delay: 5000 }} loop={true} className="w-full h-full">
             {fotosLugar.map((foto, i) => (
               <SwiperSlide key={i}>
                 <div className="relative w-full h-full">
-                  <img src={foto} className="w-full h-full object-cover" alt={`Slide ${i}`} />
-                  <div className="absolute inset-0 bg-black/60" />
+                  <img src={foto} className="w-full h-full object-cover" alt="Ambiente" />
+                  <div className="absolute inset-0 bg-black/70" />
                 </div>
               </SwiperSlide>
             ))}
           </Swiper>
         </div>
         
-        <div className="relative z-10 text-center space-y-4 px-6 animate-in fade-in zoom-in duration-1000">
-          <h1 className="text-6xl md:text-9xl font-black italic lowercase tracking-tighter leading-none text-white">
-            {barbearia?.nome}.<span style={{ color: brandYellow }}>flow</span>
+        <div className="relative z-10 text-center space-y-4 px-6 max-w-5xl animate-in fade-in zoom-in duration-1000">
+          {/* Nome da Barbearia Dinâmico e Responsivo */}
+          <h1 className="font-black italic lowercase tracking-tighter leading-[0.9] text-white break-words
+                         text-4xl sm:text-6xl md:text-7xl lg:text-9xl">
+            {barbearia?.nome}
           </h1>
-          <p className="text-[10px] md:text-xs font-black uppercase tracking-[0.5em] opacity-90 text-white">
+          
+          <p className="text-[9px] md:text-xs font-black uppercase tracking-[0.3em] md:tracking-[0.5em] opacity-90 text-white">
             estética masculina premium • {barbearia?.endereco?.cidade || 'Recife'}, {barbearia?.endereco?.estado || 'PE'}
           </p>
-          <div className="pt-8">
+          <div className="pt-6">
             <button 
               onClick={handleAgendarClick}
-              className="px-10 py-5 text-black font-black uppercase text-xs tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-2xl"
+              className="w-full md:w-auto px-8 md:px-12 py-4 md:py-5 text-black font-black uppercase text-[10px] md:text-xs tracking-widest rounded-full hover:scale-105 active:scale-95 transition-all shadow-2xl"
               style={{ backgroundColor: brandYellow, boxShadow: `0 0 30px ${brandYellow}40` }}
             >
               agendar experiência
@@ -178,26 +135,27 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      <section className={`py-24 ${isDarkMode ? 'bg-[#0e0e0e]' : 'bg-gray-50'}`}>
+      {/* Serviços */}
+      <section className={`py-16 md:py-24 ${isDarkMode ? 'bg-[#0e0e0e]' : 'bg-gray-50'}`}>
         <div className="max-w-[1400px] mx-auto px-6">
-          <div className="mb-16 text-center lg:text-left">
+          <div className="mb-10 md:mb-16 text-center lg:text-left">
             <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: brandYellow }}>menu</p>
-            <h2 className="text-5xl font-black italic lowercase tracking-tighter">nossos <span style={{ color: brandYellow }}>serviços</span></h2>
+            <h2 className="text-4xl md:text-5xl font-black italic lowercase tracking-tighter">nossos <span style={{ color: brandYellow }}>serviços</span></h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             {(barbearia?.servicos || []).map((s, i) => (
-              <div key={i} className={`p-8 rounded-[2.5rem] border-2 transition-all hover:scale-[1.02] ${isDarkMode ? 'bg-[#121212] border-white/5 hover:border-[#e6b32a]' : 'bg-white border-gray-100 shadow-xl hover:border-black'}`}>
-                <p className="font-black italic text-xl mb-1">{s.nome}</p>
-                <p className="text-2xl font-bold mb-4" style={{ color: brandYellow }}>R$ {s.valor?.toFixed(2)}</p>
-                <div className="flex items-center gap-2 mb-6 opacity-60 text-xs font-bold uppercase tracking-widest">
+              <div key={i} className={`p-6 md:p-8 rounded-[2rem] border-2 transition-all ${isDarkMode ? 'bg-[#121212] border-white/5 hover:border-[#e6b32a]' : 'bg-white border-gray-100 shadow-xl hover:border-black'}`}>
+                <p className="font-black italic text-lg md:text-xl mb-1">{s.nome}</p>
+                <p className="text-xl md:text-2xl font-bold mb-3 md:mb-4" style={{ color: brandYellow }}>R$ {s.valor?.toFixed(2)}</p>
+                <div className="flex items-center gap-2 mb-5 md:mb-6 opacity-60 text-[9px] md:text-xs font-bold uppercase tracking-widest">
                   <span>{s.tempo} min</span>
                 </div>
                 <button 
                   onClick={handleAgendarClick}
-                  className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 group transition-all" 
-                  style={{ border: `1px solid ${brandYellow}40`, color: brandYellow }}
+                  className="w-full py-3 rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 border transition-all" 
+                  style={{ borderColor: `${brandYellow}40`, color: brandYellow }}
                 >
-                  selecionar <IoChevronForwardOutline className="group-hover:translate-x-1 transition-transform" />
+                  selecionar <IoChevronForwardOutline />
                 </button>
               </div>
             ))}
@@ -205,31 +163,30 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      <section className="max-w-[1400px] mx-auto px-6 py-24">
-        <div className="mb-16 text-center">
+      {/* Equipe */}
+      <section className="max-w-[1400px] mx-auto px-6 py-16 md:py-24">
+        <div className="mb-12 md:mb-16 text-center">
           <p className="text-[10px] font-black uppercase tracking-[0.3em] mb-2" style={{ color: brandYellow }}>especialistas</p>
-          <h2 className="text-5xl font-black italic lowercase tracking-tighter">nossa <span style={{ color: brandYellow }}>equipe</span></h2>
+          <h2 className="text-4xl md:text-5xl font-black italic lowercase tracking-tighter">nossa <span style={{ color: brandYellow }}>equipe</span></h2>
         </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-12">
           {barbeiros.map((b, i) => (
-            <div key={i} className={`group flex flex-col sm:flex-row items-center gap-8 p-8 rounded-[3rem] border transition-all duration-500 ${isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-gray-100 shadow-2xl hover:border-gray-200'}`}>
-              <div className="relative w-40 h-40 flex-shrink-0">
-                <img src={b.foto || `https://i.pravatar.cc/400?u=${b._id}`} className="w-full h-full object-cover rounded-[2rem] grayscale group-hover:grayscale-0 transition-all duration-700" alt={b.nome} />
-                <div className="absolute -bottom-3 -right-3 w-12 h-12 rounded-2xl flex items-center justify-center bg-[#e6b32a] text-black shadow-lg">
-                  <IoStar size={20} />
+            <div key={i} className={`flex flex-col md:flex-row items-center gap-6 md:gap-8 p-6 md:p-8 rounded-[2rem] border transition-all ${isDarkMode ? 'bg-[#111] border-white/5 hover:bg-[#161616]' : 'bg-white border-gray-100 shadow-2xl hover:border-gray-200'}`}>
+              <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
+                <img src={b.foto || `https://i.pravatar.cc/400?u=${b._id}`} className="w-full h-full object-cover rounded-3xl grayscale hover:grayscale-0 transition-all duration-700" alt={b.nome} />
+                <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-xl flex items-center justify-center bg-[#e6b32a] text-black shadow-lg">
+                  <IoStar size={18} />
                 </div>
               </div>
-              <div className="flex-1 space-y-4 text-center sm:text-left">
+              <div className="flex-1 space-y-3 text-center md:text-left w-full">
                 <div>
-                  <h3 className="text-3xl font-black italic lowercase tracking-tighter">{b.nome}</h3>
-                  <p className="text-[10px] font-bold uppercase tracking-widest opacity-60" style={{ color: brandYellow }}>{b.especialidade || 'barbeiro master'}</p>
+                  <h3 className="text-2xl md:text-3xl font-black italic lowercase tracking-tighter">{b.nome}</h3>
+                  <p className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest opacity-60" style={{ color: brandYellow }}>{b.especialidade || 'barbeiro master'}</p>
                 </div>
-                <div className={`p-4 rounded-2xl border-l-4 italic text-sm ${isDarkMode ? 'bg-white/5 border-[#e6b32a]' : 'bg-gray-50 border-black'}`}>
-                  <IoChatbubbleEllipsesOutline size={16} className="mb-2 opacity-40" />
+                <div className={`p-4 rounded-xl border-l-4 italic text-xs md:text-sm ${isDarkMode ? 'bg-white/5 border-[#e6b32a]' : 'bg-gray-50 border-black'}`}>
                   <p className="leading-relaxed opacity-80">"{elogiosMock[i % elogiosMock.length]}"</p>
                 </div>
-                <button onClick={handleAgendarClick} className="text-[10px] font-black uppercase tracking-[2px] underline decoration-[#e6b32a] decoration-2 underline-offset-4 hover:opacity-70 transition-opacity">
+                <button onClick={handleAgendarClick} className="text-[9px] md:text-[10px] font-black uppercase underline decoration-[#e6b32a] decoration-2 underline-offset-4">
                   ver agenda de {b.nome.split(' ')[0]}
                 </button>
               </div>
@@ -238,52 +195,39 @@ export default function PaginaBarbearia() {
         </div>
       </section>
 
-      <footer className={`pt-24 pb-12 transition-all ${isDarkMode ? 'bg-[#050505]' : 'bg-[#121212] text-white'}`}>
+      {/* Footer */}
+      <footer className={`pt-16 md:pt-24 pb-8 transition-all ${isDarkMode ? 'bg-[#050505]' : 'bg-[#121212] text-white'}`}>
         <div className="max-w-[1400px] mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-20">
-            <div className="space-y-12 flex flex-col items-center lg:items-start">
-              <h1 className="text-5xl font-black italic lowercase tracking-tighter">barber.<span style={{ color: brandYellow }}>flow</span></h1>
-              
-              <div className="space-y-6 w-full max-w-md">
-                <div className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center text-black flex-shrink-0" style={{ backgroundColor: brandYellow }}>
-                    <IoLocationOutline size={24} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20">
+            <div className="space-y-8 flex flex-col items-center lg:items-start text-center lg:text-left">
+              <h1 className="text-4xl md:text-5xl font-black italic lowercase tracking-tighter">{barbearia?.nome}</h1>
+              <div className="space-y-4 w-full max-w-md">
+                <div className="flex flex-row items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 border border-white/5">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center text-black flex-shrink-0" style={{ backgroundColor: brandYellow }}>
+                    <IoLocationOutline size={20} />
                   </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">localização</p>
-                    <p className="text-base font-bold italic leading-tight">{barbearia?.endereco?.logradouro || 'Endereço não informado'}</p>
+                  <div className="text-left">
+                    <p className="text-[8px] md:text-[9px] font-black uppercase opacity-40">localização</p>
+                    <p className="text-sm md:text-base font-bold italic leading-tight">{barbearia?.endereco?.logradouro}</p>
                   </div>
                 </div>
-
-                <a href={`https://wa.me/55${barbearia?.contato?.whatsapp || ''}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-[#25D366] text-white flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <IoLogoWhatsapp size={24} />
+                <a href={`https://wa.me/55${barbearia?.contato?.whatsapp || ''}`} className="flex flex-row items-center gap-4 p-4 rounded-[1.5rem] bg-white/5 border border-white/5 group">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#25D366] text-white flex-shrink-0 group-hover:scale-110 transition-transform">
+                    <IoLogoWhatsapp size={20} />
                   </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">fale conosco</p>
-                    <p className="text-base font-bold italic leading-tight">{barbearia?.contato?.whatsapp || '(81) 99999-9999'}</p>
-                  </div>
-                </a>
-
-                <a href={`https://instagram.com/${barbearia?.contato?.instagram || ''}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-6 p-5 rounded-[2rem] bg-white/5 border border-white/5 hover:bg-white/10 transition-colors group">
-                  <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white flex-shrink-0 group-hover:scale-110 transition-transform">
-                    <IoLogoInstagram size={24} />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase opacity-40 tracking-widest">nos acompanhe</p>
-                    <p className="text-base font-bold italic leading-tight">@{barbearia?.contato?.instagram || barbearia?.nome?.toLowerCase()}</p>
+                  <div className="text-left">
+                    <p className="text-[8px] md:text-[9px] font-black uppercase opacity-40">fale conosco</p>
+                    <p className="text-sm md:text-base font-bold italic leading-tight">{barbearia?.contato?.whatsapp || '(81) 99999-9999'}</p>
                   </div>
                 </a>
               </div>
             </div>
-
-            <div className="h-[400px] rounded-[3.5rem] overflow-hidden border-8 border-white/5 grayscale brightness-75 hover:grayscale-0 transition-all duration-700">
-              <iframe title="Mapa" src={`https://maps.google.com/maps?q=${encodeURIComponent(barbearia?.endereco?.logradouro + ' ' + barbearia?.endereco?.cidade)}&t=&z=13&ie=UTF8&iwloc=&output=embed`} width="100%" height="100%" style={{ border: 0 }} allowFullScreen />
+            <div className="h-[300px] rounded-[2rem] overflow-hidden border-4 border-white/5 grayscale brightness-75">
+               <iframe title="Mapa" src={`https://maps.google.com/maps?q=${encodeURIComponent(barbearia?.endereco?.logradouro || 'Recife')}&t=&z=15&ie=UTF8&iwloc=&output=embed`} width="100%" height="100%" style={{ border: 0 }} allowFullScreen />
             </div>
           </div>
-
-          <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-[9px] font-black uppercase tracking-[5px] opacity-20 text-center">© 2026 BarberFlow Technology</p>
+          <div className="mt-12 pt-8 border-t border-white/5 flex justify-center items-center">
+            <p className="text-[8px] font-black uppercase tracking-[3px] opacity-20">© 2026 BarberFlow Technology</p>
           </div>
         </div>
       </footer>

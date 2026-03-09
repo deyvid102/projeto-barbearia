@@ -12,6 +12,7 @@ export default function LoginBarbeiro() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fkBarbearia, setFkBarbearia] = useState(null);
+  const [nomeBarbearia, setNomeBarbearia] = useState(''); // Estado para o nome/slug
   
   const [alertConfig, setAlertConfig] = useState({ 
     show: false, 
@@ -27,7 +28,11 @@ export default function LoginBarbeiro() {
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const id = params.get('barbearia') || params.get('fk_barbearia');
-    if (id) setFkBarbearia(id);
+    if (id) {
+      setFkBarbearia(id);
+      // Busca o nome da barbearia para construir a URL de volta
+      fetchBarbeariaInfo(id);
+    }
 
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'dark') {
@@ -35,14 +40,30 @@ export default function LoginBarbeiro() {
     }
   }, [location]);
 
-  // Função para voltar à Home mantendo o ID da barbearia na URL
+  // Função para buscar os dados da barbearia e pegar o nome
+  const fetchBarbeariaInfo = async (id) => {
+    try {
+      const response = await api.get(`/barbearias/${id}`);
+      // Supõe-se que a API retorne o objeto da barbearia com a propriedade 'nome'
+      const dados = response.data || response;
+      if (dados.nome) {
+        setNomeBarbearia(dados.nome.toLowerCase().replace(/\s+/g, ''));
+      }
+    } catch (error) {
+      console.error("Erro ao buscar info da barbearia:", error);
+    }
+  };
+
+  // Função para voltar à Home da barbearia específica
   const handleVoltar = () => {
-  if (fkBarbearia) {
-    navigate(`/select-profile?barbearia=${fkBarbearia}`);
-  } else {
-    navigate('/select-profile');
-  }
-};
+    if (nomeBarbearia) {
+      // Redireciona para localhost:5173/:nomebarbearia
+      window.location.href = `http://localhost:5173/${nomeBarbearia}`;
+    } else {
+      // Fallback caso não tenha o nome ainda
+      navigate('/');
+    }
+  };
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -55,7 +76,7 @@ export default function LoginBarbeiro() {
         fk_barbearia: fkBarbearia 
       });
 
-      const user = response;
+      const user = response.data || response;
 
       if (user && (user._id || user.id)) {
         const idFinal = user._id || user.id;
@@ -158,14 +179,7 @@ export default function LoginBarbeiro() {
             {loading ? 'autenticando...' : 'entrar no painel'}
           </button>
 
-          <div className="pt-4 border-t border-slate-100 dark:border-white/5 text-center space-y-2">
-            <p className="text-[9px] text-gray-400 uppercase font-black tracking-widest leading-relaxed">
-                acesso restrito a profissionais<br/>cadastrados pelo administrador
-            </p>
-            <div className="text-[9px] text-[#e6b32a] uppercase font-black tracking-widest">
-                Unidade: {fkBarbearia || 'Não Identificada'}
-            </div>
-          </div>
+          
         </form>
       </div>
 
