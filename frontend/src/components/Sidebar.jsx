@@ -31,7 +31,6 @@ export default function Sidebar() {
     fechamento: '18:00'
   });
 
-  // CAMINHOS AJUSTADOS PARA /admin/
   const menuItems = [
     { label: 'Painel Admin', icon: <IoGridOutline size={22} />, path: `/admin/dashboard/${id}` },
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
@@ -42,6 +41,7 @@ export default function Sidebar() {
   ];
 
   const handleVoltar = () => {
+    // Busca o ID do barbeiro salvo no login para voltar ao painel dele
     const barbeiroId = localStorage.getItem('barbeiroId');
     if (barbeiroId) {
       navigate(`/barbeiro/dashboard/${barbeiroId}`);
@@ -51,15 +51,21 @@ export default function Sidebar() {
   };
 
   const abrirConfig = async () => {
+    if (!id) return;
     setIsModalOpen(true);
+    
     try {
-      const res = await api.get('/barbeiros');
-      const lista = Array.isArray(res.data) ? res.data : res;
-      const admin = lista.find(b => String(b._id) === String(id));
+      // Busca os dados do admin atual para encontrar a qual barbearia ele pertence
+      const res = await api.get(`/barbeiros/${id}`);
+      const admin = res.data || res;
       
-      const bId = admin?.fk_barbearia?._id || admin?.fk_barbearia || admin?.barbearia_id;
+      // Tenta encontrar o ID da barbearia em diferentes formatos de retorno da API
+      const bId = admin?.fk_barbearia?._id || admin?.fk_barbearia || admin?.barbearia_id || admin?.barbearia;
       
-      if (!bId) return;
+      if (!bId) {
+        console.error("ID da barbearia não encontrado nos dados do admin.");
+        return;
+      }
 
       const resBarb = await api.get(`/barbearias/${bId}`);
       const dadosBarb = resBarb.data || resBarb;
@@ -71,7 +77,7 @@ export default function Sidebar() {
       });
 
     } catch (e) {
-      console.error("Erro ao carregar dados da barbearia.");
+      console.error("Erro ao carregar dados da barbearia:", e);
     }
   };
 

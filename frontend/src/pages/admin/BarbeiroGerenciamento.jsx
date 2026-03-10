@@ -4,7 +4,7 @@ import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import ModalFoto from '../../components/modais/ModalFoto'; 
 import CustomAlert from '../../components/CustomAlert';
-import AdminLayout from '../../layout/layout';
+import AdminLayout from '../../layout/AdminLayout.jsx';
 import { useTheme } from '../../components/ThemeContext';
 import { IoAdd, IoTrashOutline, IoClose, IoCameraOutline, IoPersonOutline, IoPieChartOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';

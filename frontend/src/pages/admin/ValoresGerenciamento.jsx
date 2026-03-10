@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
 import CustomAlert from '../../components/CustomAlert';
-import AdminLayout from '../../layout/layout';
+import AdminLayout from '../../layout/AdminLayout.jsx';
 import { useTheme } from '../../components/ThemeContext';
 import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';

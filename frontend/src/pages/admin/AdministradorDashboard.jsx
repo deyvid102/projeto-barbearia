@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert'; 
-import AdminLayout from '../../layout/layout';
+import AdminLayout from '../../layout/AdminLayout.jsx';
 
 import { 
   IoSaveOutline, IoCloseOutline, IoSyncOutline, 

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js'; 
 import { useTheme } from '../../components/ThemeContext';
-import AdminLayout from '../../layout/layout';
+import AdminLayout from '../../layout/AdminLayout.jsx';
 import SelectPersonalizado from '../../components/SelectPersonalizado';
 import Pagination from '../../components/Pagination'; 
 import { IoPrintOutline } from 'react-icons/io5';

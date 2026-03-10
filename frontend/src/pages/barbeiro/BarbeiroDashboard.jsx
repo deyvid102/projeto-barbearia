@@ -233,14 +233,22 @@ export default function BarbeiroDashboard() {
               <div className="flex items-center gap-2 md:gap-3">
                 {/* BOTÃO ADMIN - VISÍVEL APENAS NO DESKTOP AO LADO DO MENU */}
                 {barbeiroLogado?.admin && (
-                  <NavButton 
-                    className="hidden md:flex"
-                    icon={IoShieldCheckmarkOutline} 
-                    label="Painel Administrativo" 
-                    onClick={() => navigate(`/admin/dashboard/${getSafeId()}`)}
-                    colorClass={`bg-blue-600/10 border-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white`}
-                  />
-                )}
+  <NavButton 
+    className="hidden md:flex"
+    icon={IoShieldCheckmarkOutline} 
+    label="Painel Administrativo" 
+    onClick={() => {
+      // Extrai o ID da barbearia do objeto do barbeiro
+      const idBarbearia = barbeiroLogado.fk_barbearia?._id || barbeiroLogado.fk_barbearia;
+      if (idBarbearia) {
+        navigate(`/admin/dashboard/${idBarbearia}`);
+      } else {
+        setAlertConfig({ show: true, titulo: 'Erro', mensagem: 'ID da barbearia não encontrado.', tipo: 'error' });
+      }
+    }}
+    colorClass={`bg-blue-600/10 border-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white`}
+  />
+)}
 
                 <div className="relative" ref={menuRef}>
                   <button 
