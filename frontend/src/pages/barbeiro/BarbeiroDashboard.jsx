@@ -80,18 +80,30 @@ export default function BarbeiroDashboard() {
       }
 
       const barbeariaId = logado?.fk_barbearia?._id || logado?.fk_barbearia;
+      
+      // Filtra barbeiros e agendamentos da mesma barbearia
       setBarbeiros(listaBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === String(barbeariaId)));
       const todosAgs = resA.data || resA || [];
       setAgendamentos(todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === String(barbeariaId)));
       
-      const minhaBarbearia = (resBarbearias.data || resBarbearias).find(b => String(b._id) === String(barbeariaId));
+      // Busca dados da barbearia específica para configurar limites e o SLUG de logout
+      const listaBarbearias = resBarbearias.data || resBarbearias;
+      const minhaBarbearia = listaBarbearias.find(b => String(b._id) === String(barbeariaId));
+      
       if (minhaBarbearia) {
+        // Configura limites de horário
         let abertura = minhaBarbearia.abertura || "08:00";
         let fechamento = minhaBarbearia.fechamento || "19:00";
         setConfigLimites({ 
           inicio: parseInt(abertura.split(':')[0]), 
           fim: parseInt(fechamento.split(':')[0]) 
         });
+
+        // SALVA O SLUG PARA O LOGOUT FUNCIONAR
+        if (minhaBarbearia.nome) {
+          const slug = minhaBarbearia.nome.toLowerCase().trim().replace(/\s+/g, '-');
+          localStorage.setItem('lastBarbeariaSlug', slug);
+        }
       }
     } catch (error) { console.error(error); } finally { if (!isAutoRefresh) setLoading(false); }
   }, [getSafeId, selectedProfessionalId]);
@@ -105,20 +117,28 @@ export default function BarbeiroDashboard() {
 
   useEffect(() => {
     function handleClickOutside(event) {
-      if (profSelectRef.current && !profSelectRef.current.contains(event.target)) {
-        setIsSelectProfMobileOpen(false);
-      }
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsProfileOpen(false);
-      }
+      if (profSelectRef.current && !profSelectRef.current.contains(event.target)) setIsSelectProfMobileOpen(false);
+      if (menuRef.current && !menuRef.current.contains(event.target)) setIsProfileOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // FUNÇÃO DE LOGOUT CORRIGIDA PARA /barbeiro/login/:nomeBarbearia
   const handleLogout = () => {
+    // 1. Tenta pegar o nome da barbearia do objeto logado
+    const nomeBruto = barbeiroLogado?.fk_barbearia?.nome;
+    
+    // 2. Se não tiver no objeto (ex: populate não funcionou), pega do localStorage que salvamos no fetchData
+    const slugFinal = nomeBruto 
+      ? nomeBruto.toLowerCase().trim().replace(/\s+/g, '-') 
+      : (localStorage.getItem('lastBarbeariaSlug') || 'admin');
+
+    // 3. Limpa tudo
     localStorage.clear();
-    window.location.href = "/barbeiro/login";
+    
+    // 4. Navega para a rota dinâmica
+    navigate(`/barbeiro/login/${slugFinal}`);
   };
 
   const handleSalvarAvulso = async (payload) => {
@@ -170,7 +190,7 @@ export default function BarbeiroDashboard() {
 
   const getNomeExibicao = (ag) => ag.cliente?.nome || ag.nomeCliente || 'Cliente';
   
-  const agendamentosHoje = agendamentos.filter(a => a.datahora.startsWith(hojeStr));
+  const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
   const stats = { 
     total: agendamentosHoje.length, 
     agendados: agendamentosHoje.filter(a => a.status === 'A').length, 
@@ -224,31 +244,24 @@ export default function BarbeiroDashboard() {
                 <div className="hidden md:block">
                     <NavButton icon={IoAddOutline} label="Novo Agendamento" variant="primary" onClick={() => setIsAvulsoModalOpen(true)} />
                 </div>
-                
                 <NavButton icon={IoCalendarOutline} label="Calendário" onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)} />
                 <NavButton icon={IoFileTrayFullOutline} label="Histórico" onClick={() => navigate(`/barbeiro/historico/${getSafeId()}`)} />
                 <NavButton icon={IoStatsChartOutline} label="Estatísticas" onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)} />
               </div>
 
               <div className="flex items-center gap-2 md:gap-3">
-                {/* BOTÃO ADMIN - VISÍVEL APENAS NO DESKTOP AO LADO DO MENU */}
                 {barbeiroLogado?.admin && (
-  <NavButton 
-    className="hidden md:flex"
-    icon={IoShieldCheckmarkOutline} 
-    label="Painel Administrativo" 
-    onClick={() => {
-      // Extrai o ID da barbearia do objeto do barbeiro
-      const idBarbearia = barbeiroLogado.fk_barbearia?._id || barbeiroLogado.fk_barbearia;
-      if (idBarbearia) {
-        navigate(`/admin/dashboard/${idBarbearia}`);
-      } else {
-        setAlertConfig({ show: true, titulo: 'Erro', mensagem: 'ID da barbearia não encontrado.', tipo: 'error' });
-      }
-    }}
-    colorClass={`bg-blue-600/10 border-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white`}
-  />
-)}
+                  <NavButton 
+                    className="hidden md:flex"
+                    icon={IoShieldCheckmarkOutline} 
+                    label="Painel Administrativo" 
+                    onClick={() => {
+                      const idBarbearia = barbeiroLogado.fk_barbearia?._id || barbeiroLogado.fk_barbearia;
+                      navigate(`/admin/dashboard/${idBarbearia}`);
+                    }}
+                    colorClass={`bg-blue-600/10 border-blue-600/20 text-blue-500 hover:bg-blue-600 hover:text-white`}
+                  />
+                )}
 
                 <div className="relative" ref={menuRef}>
                   <button 
@@ -265,17 +278,11 @@ export default function BarbeiroDashboard() {
                           <p className="text-[9px] font-black uppercase opacity-40">Barbeiro</p>
                           <p className="text-xs font-black truncate">{barbeiroLogado?.nome}</p>
                       </div>
-
-                      {/* BOTÃO ADMIN - DENTRO DO MENU NO MOBILE */}
                       {barbeiroLogado?.admin && (
-                        <button 
-                          onClick={() => navigate(`/admin/dashboard/${getSafeId()}`)} 
-                          className="md:hidden w-full flex items-center gap-3 p-4 text-[10px] font-black uppercase bg-blue-600/10 text-blue-500 hover:bg-blue-600 hover:text-white transition-colors border-b border-black/5 dark:border-white/5"
-                        >
+                        <button onClick={() => navigate(`/admin/dashboard/${barbeiroLogado.fk_barbearia?._id || barbeiroLogado.fk_barbearia}`)} className="md:hidden w-full flex items-center gap-3 p-4 text-[10px] font-black uppercase bg-blue-600/10 text-blue-500 border-b border-black/5 dark:border-white/5">
                           <IoShieldCheckmarkOutline size={16} /> Painel Admin
                         </button>
                       )}
-
                       <button onClick={() => navigate(`/barbeiro/configuracoes/${getSafeId()}`)} className="w-full flex items-center gap-3 p-4 text-[10px] font-black uppercase hover:bg-[#e6b32a] hover:text-black transition-colors border-b border-black/5 dark:border-white/5">
                         <IoSettingsOutline size={16} /> meu perfil
                       </button>
@@ -290,12 +297,8 @@ export default function BarbeiroDashboard() {
           </div>
 
           <div className="block md:hidden">
-            <button 
-              onClick={() => setIsAvulsoModalOpen(true)}
-              className="w-full h-12 rounded-xl bg-[#e6b32a] text-black flex items-center justify-center gap-3 shadow-lg shadow-[#e6b32a]/20 active:scale-[0.98] transition-all"
-            >
-              <IoAddOutline size={20} />
-              <span className="text-[11px] font-black uppercase tracking-widest">Novo Agendamento</span>
+            <button onClick={() => setIsAvulsoModalOpen(true)} className="w-full h-12 rounded-xl bg-[#e6b32a] text-black flex items-center justify-center gap-3 shadow-lg shadow-[#e6b32a]/20 active:scale-[0.98]">
+              <IoAddOutline size={20} /><span className="text-[11px] font-black uppercase tracking-widest">Novo Agendamento</span>
             </button>
           </div>
 
@@ -306,7 +309,7 @@ export default function BarbeiroDashboard() {
               { label: 'Finalizados', value: stats.finalizados, icon: IoCheckmarkCircleOutline, color: 'text-emerald-500', bg: 'bg-emerald-500/10' }, 
               { label: 'Cancelados', value: stats.cancelados, icon: IoCloseCircleOutline, color: 'text-red-500', bg: 'bg-red-500/10' } 
             ].map((stat, i) => (
-              <div key={i} className={`p-3 md:p-4 rounded-[1.2rem] md:rounded-[1.5rem] border transition-all ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+              <div key={i} className={`p-3 md:p-4 rounded-[1.2rem] md:rounded-[1.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
                 <div className="flex justify-between items-start mb-1 md:mb-2">
                   <div className={`p-1.5 md:p-2 rounded-xl ${stat.bg} ${stat.color}`}><stat.icon size={16} /></div>
                   <span className="text-xl md:text-2xl font-black">{stat.value}</span>
@@ -317,37 +320,21 @@ export default function BarbeiroDashboard() {
           </div>
         </header>
 
-        {/* SELECT MOBILE DE PROFISSIONAIS */}
+        {/* SELETOR MOBILE */}
         <div className="md:hidden space-y-2 mb-2">
           <label className="text-[9px] font-black uppercase opacity-50 tracking-widest ml-1">Exibir Profissional</label>
           <div className="relative" ref={profSelectRef}>
-            <button 
-              onClick={() => setIsSelectProfMobileOpen(!isSelectProfMobileOpen)}
-              className={`w-full p-4 h-12 rounded-xl border flex items-center justify-between transition-all active:scale-[0.98] ${
-                isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-200 shadow-sm'
-              }`}
-            >
+            <button onClick={() => setIsSelectProfMobileOpen(!isSelectProfMobileOpen)} className={`w-full p-4 h-12 rounded-xl border flex items-center justify-between ${isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-200 shadow-sm'}`}>
               <div className="flex items-center gap-3">
                 <IoPersonOutline size={18} className="text-[#e6b32a]" />
-                <span className="text-[10px] font-black uppercase tracking-wider">
-                  {barbeiros.find(b => String(b._id) === selectedProfessionalId)?.nome || 'Selecionar Barbeiro'}
-                </span>
+                <span className="text-[10px] font-black uppercase">{barbeiros.find(b => String(b._id) === selectedProfessionalId)?.nome || 'Selecionar Barbeiro'}</span>
               </div>
-              <IoChevronDownOutline size={16} className={`transition-transform duration-300 ${isSelectProfMobileOpen ? 'rotate-180' : ''}`} />
+              <IoChevronDownOutline size={16} className={`transition-transform ${isSelectProfMobileOpen ? 'rotate-180' : ''}`} />
             </button>
-
             {isSelectProfMobileOpen && (
-              <div className={`absolute top-full mt-2 w-full border rounded-xl shadow-2xl z-[130] overflow-hidden ${
-                isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'
-              }`}>
+              <div className={`absolute top-full mt-2 w-full border rounded-xl shadow-2xl z-[130] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
                 {barbeiros.map((b) => (
-                  <button 
-                    key={b._id} 
-                    onClick={() => { setSelectedProfessionalId(String(b._id)); setIsSelectProfMobileOpen(false); }}
-                    className={`w-full p-4 flex items-center gap-3 hover:bg-[#e6b32a] hover:text-black transition-colors border-b last:border-none text-[10px] font-black uppercase ${
-                      isDarkMode ? 'border-white/5' : 'border-slate-50'
-                    }`}
-                  >
+                  <button key={b._id} onClick={() => { setSelectedProfessionalId(String(b._id)); setIsSelectProfMobileOpen(false); }} className={`w-full p-4 flex items-center gap-3 hover:bg-[#e6b32a] hover:text-black transition-colors border-b last:border-none text-[10px] font-black uppercase ${isDarkMode ? 'border-white/5' : 'border-slate-50'}`}>
                     <IoPersonOutline size={16} /> {b.nome}
                   </button>
                 ))}
@@ -356,7 +343,7 @@ export default function BarbeiroDashboard() {
           </div>
         </div>
 
-        {/* TABELA / DASHBOARD */}
+        {/* TABELA DASHBOARD */}
         <div className={`relative rounded-[1.5rem] md:rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
           <div className="overflow-x-auto min-h-fit custom-scrollbar">
             <table className="w-full border-collapse md:min-w-[1200px] table-fixed">
@@ -425,7 +412,7 @@ export default function BarbeiroDashboard() {
               <div className="p-6 md:p-8">
                 <div className="flex justify-between items-center mb-6">
                    <h3 className="text-xl font-black italic">registro.<span className="text-[#e6b32a]">detalhes</span></h3>
-                   <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500 transition-colors"><IoCloseOutline size={28}/></button>
+                   <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500"><IoCloseOutline size={28}/></button>
                 </div>
                 <div className="space-y-5">
                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
@@ -441,7 +428,7 @@ export default function BarbeiroDashboard() {
                     {isSelectStatusOpen && (
                      <div className={`absolute bottom-full mb-2 w-full border rounded-2xl shadow-2xl z-[210] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
                        {statusOptions.map((opt) => (
-                         <button key={opt.id} onClick={() => { setNovoStatus(opt.id); setIsSelectStatusOpen(false); }} className={`w-full p-4 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 transition-colors border-b last:border-none ${isDarkMode ? 'border-white/5' : 'border-slate-50'}`}><opt.icon size={18} className={opt.color} /><span className="text-[11px] font-black uppercase">{opt.label}</span></button>
+                         <button key={opt.id} onClick={() => { setNovoStatus(opt.id); setIsSelectStatusOpen(false); }} className={`w-full p-4 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b last:border-none ${isDarkMode ? 'border-white/5' : 'border-slate-50'} text-[11px] font-black uppercase`}><opt.icon size={18} className={opt.color} />{opt.label}</button>
                        ))}
                      </div>
                     )}

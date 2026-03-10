@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { FaEye, FaEyeSlash } from 'react-icons/fa';
 import { IoChevronBackOutline } from 'react-icons/io5';
@@ -12,7 +12,7 @@ export default function LoginBarbeiro() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [fkBarbearia, setFkBarbearia] = useState(null);
-  const [nomeBarbearia, setNomeBarbearia] = useState(''); // Estado para o nome/slug
+  const [dadosBarbearia, setDadosBarbearia] = useState(null);
   
   const [alertConfig, setAlertConfig] = useState({ 
     show: false, 
@@ -22,51 +22,68 @@ export default function LoginBarbeiro() {
   });
   
   const navigate = useNavigate();
-  const location = useLocation();
+  const { nomeBarbearia } = useParams(); // Pega 'barbeariateste' da URL
   const { isDarkMode } = useTheme();
 
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    const id = params.get('barbearia') || params.get('fk_barbearia');
-    if (id) {
-      setFkBarbearia(id);
-      // Busca o nome da barbearia para construir a URL de volta
-      fetchBarbeariaInfo(id);
+    if (nomeBarbearia) {
+      fetchBarbeariaInfo(nomeBarbearia);
     }
+  }, [nomeBarbearia]);
 
-    const savedTheme = localStorage.getItem('theme');
-    if (savedTheme === 'dark') {
-      document.documentElement.classList.add('dark');
-    }
-  }, [location]);
-
-  // Função para buscar os dados da barbearia e pegar o nome
-  const fetchBarbeariaInfo = async (id) => {
+  // Busca as informações usando a rota /perfil/:perfil que você definiu no backend
+  const fetchBarbeariaInfo = async (slug) => {
     try {
-      const response = await api.get(`/barbearias/${id}`);
-      // Supõe-se que a API retorne o objeto da barbearia com a propriedade 'nome'
+      // AJUSTADO: Agora batendo na rota exata do seu backend
+      const response = await api.get(`/barbearias/perfil/${slug}`);
       const dados = response.data || response;
-      if (dados.nome) {
-        setNomeBarbearia(dados.nome.toLowerCase().replace(/\s+/g, ''));
+      
+      if (dados && (dados._id || dados.id)) {
+        setDadosBarbearia(dados);
+        setFkBarbearia(dados._id || dados.id);
+        console.log("✅ Barbearia carregada via perfil:", dados.nome);
       }
     } catch (error) {
-      console.error("Erro ao buscar info da barbearia:", error);
+      console.error("❌ Barbearia não encontrada na rota /perfil");
+      // Fallback caso a rota de perfil falhe (busca manual)
+      tentarBuscaManual(slug);
     }
   };
 
-  // Função para voltar à Home da barbearia específica
-  const handleVoltar = () => {
-    if (nomeBarbearia) {
-      // Redireciona para localhost:5173/:nomebarbearia
-      window.location.href = `http://localhost:5173/${nomeBarbearia}`;
-    } else {
-      // Fallback caso não tenha o nome ainda
-      navigate('/');
+  const tentarBuscaManual = async (slug) => {
+    try {
+      const resGeral = await api.get('/barbearias');
+      const lista = resGeral.data || resGeral || [];
+      const encontrada = lista.find(b => 
+        b.nome.toLowerCase().trim().replace(/\s+/g, '-') === slug.toLowerCase().trim()
+      );
+
+      if (encontrada) {
+        setDadosBarbearia(encontrada);
+        setFkBarbearia(encontrada._id || encontrada.id);
+      }
+    } catch (err) {
+      console.error("Falha na busca manual");
     }
+  };
+
+  const handleVoltar = () => {
+    navigate(nomeBarbearia ? `/${nomeBarbearia}` : '/');
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    
+    if (!fkBarbearia) {
+      setAlertConfig({ 
+        show: true, 
+        titulo: 'Acesso Restrito', 
+        mensagem: 'Não foi possível identificar a barbearia através deste link.', 
+        tipo: 'error' 
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -79,23 +96,34 @@ export default function LoginBarbeiro() {
       const user = response.data || response;
 
       if (user && (user._id || user.id)) {
+        
+        // VALIDAÇÃO DE SEGURANÇA: Bloqueia login se o barbeiro for de outra barbearia
+        const idBarbeariaUsuario = user.fk_barbearia?._id || user.fk_barbearia;
+        
+        if (String(idBarbeariaUsuario).trim() !== String(fkBarbearia).trim()) {
+          setAlertConfig({ 
+            show: true, 
+            titulo: 'Acesso Negado', 
+            mensagem: `Este profissional está vinculado a outra unidade e não pode acessar o painel de ${dadosBarbearia?.nome}.`, 
+            tipo: 'error' 
+          });
+          setLoading(false);
+          return;
+        }
+
+        // Se passou, salva e redireciona
         const idFinal = user._id || user.id;
         localStorage.setItem('barbeiroId', idFinal);
         localStorage.setItem('barbeiroNome', user.nome);
-        
-        if (fkBarbearia) localStorage.setItem('lastBarbearia', fkBarbearia);
+        localStorage.setItem('lastBarbearia', fkBarbearia);
 
         navigate(`/barbeiro/dashboard/${idFinal}`);
-      } else {
-        throw new Error('falha ao processar dados do perfil profissional.');
       }
     } catch (error) {
-      console.error("erro na autenticação:", error);
-      const msg = error.response?.data?.mensagem || error.message || 'credenciais inválidas.';
-
+      const msg = error.response?.data?.mensagem || 'E-mail ou senha inválidos.';
       setAlertConfig({ 
         show: true, 
-        titulo: 'falha no acesso', 
+        titulo: 'Falha no Login', 
         mensagem: msg, 
         tipo: 'error' 
       });
@@ -134,7 +162,7 @@ export default function LoginBarbeiro() {
               barber.<span className="text-[#e6b32a]">flow</span>
             </h2>
             <p className="text-[10px] text-[#e6b32a] uppercase font-black tracking-[3px]">
-              {fkBarbearia ? 'Acesso Profissional Vinculado' : 'Acesso Profissional'}
+              {dadosBarbearia?.nome ? `Acesso: ${dadosBarbearia.nome}` : 'Acesso Profissional'}
             </p>
           </div>
 
@@ -178,15 +206,13 @@ export default function LoginBarbeiro() {
           >
             {loading ? 'autenticando...' : 'entrar no painel'}
           </button>
-
-          
         </form>
       </div>
 
       <div className="hidden lg:block relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 bg-[#e6b32a]/10 z-10 mix-blend-overlay"></div>
         <img 
-          src="https://images.unsplash.com/photo-1517832606299-7ae9b720a186?auto=format&fit=crop&q=80&w=1000" 
+          src="https://images.pexels.com/photos/3993323/pexels-photo-3993323.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1" 
           alt="Professional" 
           className="absolute inset-0 w-full h-full object-cover grayscale-[20%] brightness-[0.7]"
         />

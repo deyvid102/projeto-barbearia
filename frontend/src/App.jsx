@@ -45,7 +45,7 @@ export default function App() {
           <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
 
           {/* --- ROTAS BARBEIRO --- */}
-          <Route path="/barbeiro/login" element={<LoginBarbeiro />} />
+          <Route path="/barbeiro/login/:nomeBarbearia" element={<LoginBarbeiro />} />
           <Route path="/barbeiro/dashboard/:id" element={<BarbeiroDashboard />} />
           <Route path="/barbeiro/historico/:id" element={<BarbeiroHistorico />} />
           <Route path="/barbeiro/estatisticas/:id" element={<BarbeiroEstatisticas />} />
