@@ -12,6 +12,7 @@ import {
   IoArrowBack,
   IoSettingsOutline,
   IoCloseOutline,
+  IoBrushOutline, // Ícone para Personalização
 } from 'react-icons/io5';
 import { MdContentCut } from 'react-icons/md';
 
@@ -36,12 +37,12 @@ export default function Sidebar() {
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
     { label: 'Barbeiros', icon: <IoPeopleOutline size={22} />, path: `/admin/barbeiros/${id}` },
     { label: 'Serviços', icon: <MdContentCut size={22} />, path: `/admin/valores/${id}` },
+    { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` }, // Novo Item
     { label: 'Logs', icon: <IoReaderOutline size={22} />, path: `/admin/logs/${id}` },
     { label: 'Analytics', icon: <IoStatsChartOutline size={22} />, path: `/admin/analytics/${id}` },
   ];
 
   const handleVoltar = () => {
-    // Busca o ID do barbeiro salvo no login para voltar ao painel dele
     const barbeiroId = localStorage.getItem('barbeiroId');
     if (barbeiroId) {
       navigate(`/barbeiro/dashboard/${barbeiroId}`);
@@ -55,15 +56,13 @@ export default function Sidebar() {
     setIsModalOpen(true);
     
     try {
-      // Busca os dados do admin atual para encontrar a qual barbearia ele pertence
       const res = await api.get(`/barbeiros/${id}`);
       const admin = res.data || res;
       
-      // Tenta encontrar o ID da barbearia em diferentes formatos de retorno da API
       const bId = admin?.fk_barbearia?._id || admin?.fk_barbearia || admin?.barbearia_id || admin?.barbearia;
       
       if (!bId) {
-        console.error("ID da barbearia não encontrado nos dados do admin.");
+        console.error("ID da barbearia não encontrado.");
         return;
       }
 
@@ -77,7 +76,7 @@ export default function Sidebar() {
       });
 
     } catch (e) {
-      console.error("Erro ao carregar dados da barbearia:", e);
+      console.error("Erro ao carregar dados:", e);
     }
   };
 

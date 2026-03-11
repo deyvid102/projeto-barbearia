@@ -23,6 +23,7 @@ import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import BarbeariaAgenda from './pages/admin/BarbeariaAgenda';
+import Personalizacao from './pages/admin/Personalizacao'; // Importação da nova página
 
 // Componente para Log de Rotas (Debug)
 function RouteLogger() {
@@ -45,7 +46,7 @@ export default function App() {
       <Router>
         <RouteLogger />
         <Routes>
-          {/* 1. ROTAS FIXAS (Devem vir primeiro para não serem capturadas pelo :nomeBarbearia) */}
+          {/* 1. ROTAS FIXAS */}
           
           {/* --- AREA DO BARBEIRO --- */}
           <Route path="/barbeiro/login/:nomeBarbearia" element={<LoginBarbeiro />} />
@@ -54,7 +55,6 @@ export default function App() {
           <Route path="/barbeiro/estatisticas/:id" element={<BarbeiroEstatisticas />} />
           <Route path="/barbeiro/configuracoes/:id" element={<BarbeiroConfiguracoes />} />
           <Route path="/barbeiro/calendario/:id" element={<BarbeiroCalendario />} />
-          {/* Alias para dashboard */}
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
 
           {/* --- AREA DO ADMIN --- */}
@@ -64,22 +64,17 @@ export default function App() {
           <Route path="/admin/logs/:id" element={<AdminLogs />} />
           <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
           <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
+          <Route path="/admin/personalizacao/:id" element={<Personalizacao />} /> {/* Nova Rota */}
 
           {/* --- AGENDAMENTO PÚBLICO --- */}
           <Route path="/agendar/:nomeBarbearia" element={<NovoAgendamento />} />
-          
-          {/* Rota legada (Fallback) */}
           <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
 
-          {/* 2. ROTAS DINÂMICAS (Capturam qualquer coisa após a barra) */}
-          
-          {/* Vitrine da Barbearia (ex: /vintage-barber) */}
+          {/* 2. ROTAS DINÂMICAS */}
           <Route path="/:nomeBarbearia" element={<PaginaBarbearia />} />
 
           {/* 3. REDIRECIONAMENTOS E ERROS */}
           <Route path="/" element={<RootRedirect />} />
-          
-          {/* 404 - Se nada acima bater, volta para a home padrão */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>

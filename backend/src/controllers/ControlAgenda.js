@@ -1,10 +1,9 @@
 import Agenda from "../model/ModelAgenda.js";
 
 const ControlAgenda = {
-    // 1. Criar um registro individual (chamado pelo clique no calendário)
+    // 1. Criar um registro individual
     async criar(req, res) {
         try {
-            // O frontend agora envia fk_barbearia dentro do body
             const novaAgenda = await Agenda.create(req.body);
             return res.status(201).json(novaAgenda);
         } catch (error) {
@@ -42,11 +41,9 @@ const ControlAgenda = {
                 return res.status(400).json({ error: "Dados incompletos para sincronização." });
             }
 
-            // Define o intervalo do mês em UTC para evitar problemas de fuso
             const dataInicio = new Date(Date.UTC(ano, mes, 1, 0, 0, 0));
             const dataFim = new Date(Date.UTC(ano, parseInt(mes) + 1, 0, 23, 59, 59));
 
-            // Limpa apenas a agenda daquela barbearia específica no período
             await Agenda.deleteMany({
                 fk_barbearia,
                 data: { $gte: dataInicio, $lte: dataFim }
@@ -63,7 +60,7 @@ const ControlAgenda = {
         }
     },
 
-    // 4. Busca agendas com filtros dinâmicos via Query Params
+    // 4. Busca agendas com filtros dinâmicos
     async listar(req, res) {
         try {
             const { fk_barbearia, mes, ano, fk_barbeiro } = req.query;
@@ -86,7 +83,7 @@ const ControlAgenda = {
         }
     },
 
-    // 5. NOVA: Busca específica por barbearia (usada pela rota /agendas/barbearia/:id)
+    // 5. Busca específica por barbearia
     async listarPorBarbearia(req, res) {
         try {
             const { id } = req.params;
@@ -95,6 +92,31 @@ const ControlAgenda = {
         } catch (error) {
             console.error("Erro ao listar por barbearia:", error);
             return res.status(500).json({ error: "Erro ao buscar dados da barbearia." });
+        }
+    },
+
+    // 6. Função que faltava: Limpar agenda por período
+    async limparPeriodo(req, res) {
+        try {
+            const { id } = req.params; // ID da barbearia
+            const { inicio, fim } = req.query; // Espera datas no formato YYYY-MM-DD
+
+            if (!inicio || !fim) {
+                return res.status(400).json({ error: "Datas de início e fim são obrigatórias." });
+            }
+
+            await Agenda.deleteMany({
+                fk_barbearia: id,
+                data: { 
+                    $gte: new Date(inicio), 
+                    $lte: new Date(fim) 
+                }
+            });
+
+            return res.status(200).json({ message: "Agenda do período limpa com sucesso." });
+        } catch (error) {
+            console.error("Erro ao limpar período:", error);
+            return res.status(500).json({ error: "Erro interno ao limpar agenda." });
         }
     }
 };
