@@ -81,17 +81,14 @@ export default function BarbeiroDashboard() {
 
       const barbeariaId = logado?.fk_barbearia?._id || logado?.fk_barbearia;
       
-      // Filtra barbeiros e agendamentos da mesma barbearia
       setBarbeiros(listaBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === String(barbeariaId)));
       const todosAgs = resA.data || resA || [];
       setAgendamentos(todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === String(barbeariaId)));
       
-      // Busca dados da barbearia específica para configurar limites e o SLUG de logout
       const listaBarbearias = resBarbearias.data || resBarbearias;
       const minhaBarbearia = listaBarbearias.find(b => String(b._id) === String(barbeariaId));
       
       if (minhaBarbearia) {
-        // Configura limites de horário
         let abertura = minhaBarbearia.abertura || "08:00";
         let fechamento = minhaBarbearia.fechamento || "19:00";
         setConfigLimites({ 
@@ -99,7 +96,6 @@ export default function BarbeiroDashboard() {
           fim: parseInt(fechamento.split(':')[0]) 
         });
 
-        // SALVA O SLUG PARA O LOGOUT FUNCIONAR
         if (minhaBarbearia.nome) {
           const slug = minhaBarbearia.nome.toLowerCase().trim().replace(/\s+/g, '-');
           localStorage.setItem('lastBarbeariaSlug', slug);
@@ -124,21 +120,13 @@ export default function BarbeiroDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // FUNÇÃO DE LOGOUT CORRIGIDA PARA /barbeiro/login/:nomeBarbearia
   const handleLogout = () => {
-    // 1. Tenta pegar o nome da barbearia do objeto logado
     const nomeBruto = barbeiroLogado?.fk_barbearia?.nome;
-    
-    // 2. Se não tiver no objeto (ex: populate não funcionou), pega do localStorage que salvamos no fetchData
     const slugFinal = nomeBruto 
       ? nomeBruto.toLowerCase().trim().replace(/\s+/g, '-') 
       : (localStorage.getItem('lastBarbeariaSlug') || 'admin');
-
-    // 3. Limpa tudo
     localStorage.clear();
-    
-    // 4. Navega para a rota dinâmica
-    navigate(`/barbeiro/login/${slugFinal}`);
+    navigate(`/barbeiro/login/${slugFinal}`, { replace: true });
   };
 
   const handleSalvarAvulso = async (payload) => {
@@ -190,7 +178,9 @@ export default function BarbeiroDashboard() {
 
   const getNomeExibicao = (ag) => ag.cliente?.nome || ag.nomeCliente || 'Cliente';
   
+  // CORREÇÃO: Filtragem hoje também deve considerar a string da data UTC
   const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
+  
   const stats = { 
     total: agendamentosHoje.length, 
     agendados: agendamentosHoje.filter(a => a.status === 'A').length, 
@@ -320,7 +310,6 @@ export default function BarbeiroDashboard() {
           </div>
         </header>
 
-        {/* SELETOR MOBILE */}
         <div className="md:hidden space-y-2 mb-2">
           <label className="text-[9px] font-black uppercase opacity-50 tracking-widest ml-1">Exibir Profissional</label>
           <div className="relative" ref={profSelectRef}>
@@ -343,7 +332,6 @@ export default function BarbeiroDashboard() {
           </div>
         </div>
 
-        {/* TABELA DASHBOARD */}
         <div className={`relative rounded-[1.5rem] md:rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
           <div className="overflow-x-auto min-h-fit custom-scrollbar">
             <table className="w-full border-collapse md:min-w-[1200px] table-fixed">
@@ -358,7 +346,10 @@ export default function BarbeiroDashboard() {
               <tbody>
                 {getEscopoHorarios().map(({ hora, hInt }) => {
                   const posLinha = getTimelinePositionPercentage(hora);
-                  const temAlgumAgendamentoNaLinha = agendamentosHoje.some(a => new Date(a.datahora).getHours() === hInt);
+                  
+                  // CORREÇÃO: Usar getUTCHours() para comparar com hInt
+                  const temAlgumAgendamentoNaLinha = agendamentosHoje.some(a => new Date(a.datahora).getUTCHours() === hInt);
+                  
                   return (
                     <tr key={hora} className="relative group/row" style={{ height: temAlgumAgendamentoNaLinha ? 'auto' : ALTURA_LINHA_VAZIA }}>
                       <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[9px] md:text-[10px] font-black ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
@@ -370,7 +361,8 @@ export default function BarbeiroDashboard() {
                         )}
                       </td>
                       {barbeirosExibidos.map(b => {
-                        const ags = agendamentosHoje.filter(a => String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(b._id) && new Date(a.datahora).getHours() === hInt);
+                        // CORREÇÃO: Usar getUTCHours() aqui também
+                        const ags = agendamentosHoje.filter(a => String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(b._id) && new Date(a.datahora).getUTCHours() === hInt);
                         const isMeu = String(b._id) === String(getSafeId());
                         const temAgendamento = ags.length > 0;
                         return (
@@ -381,7 +373,11 @@ export default function BarbeiroDashboard() {
                                   <div className="flex flex-col">
                                     <div className="flex justify-between items-start gap-1">
                                       <p className="text-[8px] md:text-[9px] font-black uppercase truncate leading-tight">{getNomeExibicao(ag)}</p>
-                                      <span className="text-[7px] md:text-[8px] font-black opacity-70">{new Date(ag.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                                      {/* CORREÇÃO: Mostrar horário formatado como UTC para bater com a grade */}
+                                      <span className="text-[7px] md:text-[8px] font-black opacity-70">
+                                        {new Date(ag.datahora).getUTCHours().toString().padStart(2, '0')}:
+                                        {new Date(ag.datahora).getUTCMinutes().toString().padStart(2, '0')}
+                                      </span>
                                     </div>
                                     <div className="mt-1 border-t border-black/5 pt-1">
                                         <p className="text-[7px] md:text-[8px] font-black uppercase truncate">{ag.tipoCorte || 'serviço'}</p>
@@ -405,35 +401,34 @@ export default function BarbeiroDashboard() {
 
       <ModalAgendamentoAvulso isOpen={isAvulsoModalOpen} onClose={() => setIsAvulsoModalOpen(false)} onSave={handleSalvarAvulso} isDarkMode={isDarkMode} />
 
-      {/* MODAL DE AÇÕES */}
       {isAcoesModalOpen && selectedAg && (
         <div className="fixed inset-0 z-[200] flex items-end md:items-center justify-center p-0 md:p-4 bg-black/80 backdrop-blur-md">
             <div className={`w-full max-w-md rounded-t-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl border ${isDarkMode ? 'bg-[#0f0f0f] border-white/10' : 'bg-white border-slate-200'}`}>
               <div className="p-6 md:p-8">
                 <div className="flex justify-between items-center mb-6">
-                   <h3 className="text-xl font-black italic">registro.<span className="text-[#e6b32a]">detalhes</span></h3>
-                   <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500"><IoCloseOutline size={28}/></button>
+                    <h3 className="text-xl font-black italic">registro.<span className="text-[#e6b32a]">detalhes</span></h3>
+                    <button onClick={() => setIsAcoesModalOpen(false)} className="p-2 text-gray-500 hover:text-red-500"><IoCloseOutline size={28}/></button>
                 </div>
                 <div className="space-y-5">
-                   <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
-                       <p className="text-sm font-black uppercase text-[#e6b32a]">{getNomeExibicao(selectedAg)}</p>
-                       <p className="text-[10px] font-black uppercase opacity-50">{selectedAg.tipoCorte}</p>
-                   </div>
-                   <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
-                    <label className="text-[9px] font-black uppercase text-[#e6b32a] mb-1 block">valor</label>
-                    <input type="number" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} className="w-full bg-transparent font-black text-2xl outline-none" />
-                   </div>
-                   <div className="relative">
-                    <button onClick={() => setIsSelectStatusOpen(!isSelectStatusOpen)} className={`w-full p-4 rounded-2xl border flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}><div className="flex items-center gap-3"><currentStatusObj.icon size={18} className={currentStatusObj.color} /><span className="text-xs font-black uppercase">{currentStatusObj.label}</span></div><IoChevronDownOutline size={16} /></button>
-                    {isSelectStatusOpen && (
-                     <div className={`absolute bottom-full mb-2 w-full border rounded-2xl shadow-2xl z-[210] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
-                       {statusOptions.map((opt) => (
-                         <button key={opt.id} onClick={() => { setNovoStatus(opt.id); setIsSelectStatusOpen(false); }} className={`w-full p-4 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b last:border-none ${isDarkMode ? 'border-white/5' : 'border-slate-50'} text-[11px] font-black uppercase`}><opt.icon size={18} className={opt.color} />{opt.label}</button>
-                       ))}
-                     </div>
-                    )}
-                   </div>
-                   <button onClick={handleSalvarAcoes} className="w-full py-5 rounded-[2rem] bg-[#e6b32a] text-black font-black uppercase text-[11px] tracking-widest shadow-lg flex items-center justify-center gap-3"><IoSaveOutline size={20}/> Salvar</button>
+                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-slate-50 border-slate-100'}`}>
+                        <p className="text-sm font-black uppercase text-[#e6b32a]">{getNomeExibicao(selectedAg)}</p>
+                        <p className="text-[10px] font-black uppercase opacity-50">{selectedAg.tipoCorte}</p>
+                    </div>
+                    <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-slate-50 border-slate-200'}`}>
+                     <label className="text-[9px] font-black uppercase text-[#e6b32a] mb-1 block">valor</label>
+                     <input type="number" value={novoPreco} onChange={(e) => setNovoPreco(e.target.value)} className="w-full bg-transparent font-black text-2xl outline-none" />
+                    </div>
+                    <div className="relative">
+                     <button onClick={() => setIsSelectStatusOpen(!isSelectStatusOpen)} className={`w-full p-4 rounded-2xl border flex items-center justify-between ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-200'}`}><div className="flex items-center gap-3"><currentStatusObj.icon size={18} className={currentStatusObj.color} /><span className="text-xs font-black uppercase">{currentStatusObj.label}</span></div><IoChevronDownOutline size={16} /></button>
+                     {isSelectStatusOpen && (
+                      <div className={`absolute bottom-full mb-2 w-full border rounded-2xl shadow-2xl z-[210] overflow-hidden ${isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'}`}>
+                        {statusOptions.map((opt) => (
+                          <button key={opt.id} onClick={() => { setNovoStatus(opt.id); setIsSelectStatusOpen(false); }} className={`w-full p-4 flex items-center gap-3 hover:bg-black/5 dark:hover:bg-white/5 border-b last:border-none ${isDarkMode ? 'border-white/5' : 'border-slate-50'} text-[11px] font-black uppercase`}><opt.icon size={18} className={opt.color} />{opt.label}</button>
+                        ))}
+                      </div>
+                     )}
+                    </div>
+                    <button onClick={handleSalvarAcoes} className="w-full py-5 rounded-[2rem] bg-[#e6b32a] text-black font-black uppercase text-[11px] tracking-widest shadow-lg flex items-center justify-center gap-3"><IoSaveOutline size={20}/> Salvar</button>
                 </div>
               </div>
             </div>

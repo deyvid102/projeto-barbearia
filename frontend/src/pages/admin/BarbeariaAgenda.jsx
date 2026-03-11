@@ -26,7 +26,6 @@ export default function BarbeariaAgenda() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [alertConfig, setAlertConfig] = useState({ show: false, title: '', message: '', type: 'error' });
   
-  // configBarbeiros armazena quais estão selecionados e seus horários customizados
   const [configBarbeiros, setConfigBarbeiros] = useState({});
   const [barbeariaId, setBarbeariaId] = useState(null);
   const [horariosBase, setHorariosBase] = useState([]);
@@ -37,85 +36,91 @@ export default function BarbeariaAgenda() {
 
   const hojeStr = new Date().toLocaleDateString('en-CA');
 
-  // --- ATUALIZAÇÃO SILENCIOSA (Não reseta a seleção da UI) ---
-  const atualizarAgendasSilencioso = async () => {
+  // --- ATUALIZAÇÃO SILENCIOSA (Filtrada por Barbearia) ---
+  const atualizarAgendasSilencioso = useCallback(async () => {
+    if (!barbeariaId) return;
     try {
-      const listaA = await api.get('/agendas');
+      // Usando query params para o backend filtrar no listar()
+      const listaA = await api.get(`/agendas?fk_barbearia=${barbeariaId}`);
       setAgendas(Array.isArray(listaA) ? listaA : []);
     } catch (err) {
       console.error("Erro ao atualizar agendas:", err);
     }
-  };
+  }, [barbeariaId]);
 
-  // --- CARGA INICIAL COMPLETA ---
+  // --- CARGA INICIAL ---
   const carregarDadosIniciais = useCallback(async () => {
-    try {
-      setLoading(true);
-      const [listaB, listaA] = await Promise.all([
-        api.get('/barbeiros'),
-        api.get('/agendas')
-      ]);
+  try {
+    setLoading(true);
+    console.log("[DEBUG] ID recebido da URL:", id);
 
-      const todosOsBarbeiros = Array.isArray(listaB) ? listaB : [];
-      setAgendas(Array.isArray(listaA) ? listaA : []);
+    // 1. Pegar todos os barbeiros primeiro (Geralmente essa rota é aberta)
+    const todosBarbeiros = await api.get('/barbeiros');
+    const listaCompleta = Array.isArray(todosBarbeiros) ? todosBarbeiros : [];
 
-      // Fallback de ID caso o da URL esteja errado
-      let adminLogado = todosOsBarbeiros.find(b => String(b._id).trim() === String(id).trim());
-      if (!adminLogado && todosOsBarbeiros.length > 0) adminLogado = todosOsBarbeiros[0];
+    // 2. Tentar identificar a barbearia alvo
+    let bIdEncontrado = null;
 
-      if (adminLogado) {
-        const bIdDetectado = adminLogado.fk_barbearia?._id || adminLogado.fk_barbearia || adminLogado.barbearia_id;
-        
-        if (bIdDetectado) {
-          const bIdStr = String(bIdDetectado);
-          setBarbeariaId(bIdStr);
+    // Tenta ver se o ID da URL pertence a algum barbeiro da lista
+    const barbeiroLogado = listaCompleta.find(b => String(b._id) === String(id));
 
-          const barbeirosDaMesmaCasa = todosOsBarbeiros.filter(b => {
-            const idCasa = b.fk_barbearia?._id || b.fk_barbearia || b.barbearia_id;
-            return String(idCasa) === bIdStr;
-          });
-          setBarbeiros(barbeirosDaMesmaCasa);
-
-          // Busca dados da barbearia para setar os horários padrão (08:00 - 22:00)
-          const dadosBarb = await api.get(`/barbearias/${bIdStr}`);
-          
-          if (dadosBarb) {
-            const hAbertura = dadosBarb.abertura || '08:00';
-            const hFechamento = dadosBarb.fechamento || '22:00';
-            
-            setHorariosBase(dadosBarb.horarios_padrao || []);
-            setDiasBloqueados(dadosBarb.horarios_padrao?.filter(h => !h.ativo).map(h => h.dia) || [0]);
-
-            // Inicializa configurações apenas para barbeiros novos na lista, preservando os já selecionados
-            setConfigBarbeiros(prev => {
-              const newConfigs = { ...prev };
-              barbeirosDaMesmaCasa.forEach(b => {
-                if (!newConfigs[b._id]) {
-                  newConfigs[b._id] = {
-                    selecionado: false,
-                    abertura: hAbertura,
-                    fechamento: hFechamento,
-                    hasIntervalo: false,
-                    intervalo_inicio: '12:00',
-                    intervalo_fim: '13:00'
-                  };
-                }
-              });
-              return newConfigs;
-            });
-          }
+    if (barbeiroLogado) {
+      console.log("[DEBUG] ID pertence ao barbeiro:", barbeiroLogado.nome);
+      bIdEncontrado = barbeiroLogado.fk_barbearia?._id || barbeiroLogado.fk_barbearia;
+    } else {
+      // Se não achou o barbeiro, tenta verificar se o ID é da própria barbearia
+      console.log("[DEBUG] ID não encontrado em barbeiros. Testando como ID de barbearia...");
+      try {
+        const dadosB = await api.get(`/barbearias/${id}`);
+        if (dadosB) {
+          bIdEncontrado = id;
+          console.log("[DEBUG] ID confirmado como sendo da Barbearia.");
         }
+      } catch (err) {
+        console.error("[DEBUG] O ID da URL não existe como Barbeiro nem como Barbearia (404).");
       }
-    } catch (err) {
-      console.error("Erro na carga inicial:", err);
-    } finally {
-      setLoading(false);
     }
-  }, [id]);
+
+    if (!bIdEncontrado) {
+      // Se chegamos aqui, os dados estão inconsistentes no banco ou a URL está errada
+      return;
+    }
+
+    const bIdStr = String(bIdEncontrado);
+    setBarbeariaId(bIdStr);
+
+    // 3. Filtrar a equipe (Somente quem pertence a essa barbearia)
+    const equipe = listaCompleta.filter(b => {
+      const casaId = b.fk_barbearia?._id || b.fk_barbearia;
+      return String(casaId) === bIdStr;
+    });
+    
+    setBarbeiros(equipe);
+    console.log(`[DEBUG] Equipe de ${equipe.length} barbeiros carregada.`);
+
+    // 4. Carregar Agendas e Configurações finais
+    const [listaA, infoBarbearia] = await Promise.all([
+      api.get(`/agendas?fk_barbearia=${bIdStr}`),
+      api.get(`/barbearias/${bIdStr}`)
+    ]);
+
+    setAgendas(Array.isArray(listaA) ? listaA : []);
+
+    if (infoBarbearia) {
+      setHorariosBase(infoBarbearia.horarios_padrao || []);
+      // ... resto da sua lógica de horários (abertura/fechamento)
+    }
+
+  } catch (err) {
+    console.error("[DEBUG] Erro na carga de dados:", err.message);
+  } finally {
+    setLoading(false);
+  }
+}, [id]);
 
   useEffect(() => {
     carregarDadosIniciais();
-  }, [carregarDadosIniciais, currentMonth]);
+  }, [carregarDadosIniciais]);
 
   // --- AÇÕES ---
   const selecionarDia = async (dataStr) => {
@@ -141,7 +146,7 @@ export default function BarbeariaAgenda() {
           intervalo_inicio: conf.hasIntervalo ? conf.intervalo_inicio : null,
           intervalo_fim: conf.hasIntervalo ? conf.intervalo_fim : null,
           fk_barbeiro: idB,
-          fk_barbearia: barbeariaId
+          fk_barbearia: barbeariaId // Vínculo essencial aqui
         });
       });
 
@@ -158,7 +163,10 @@ export default function BarbeariaAgenda() {
 
   const aplicarAutomacao = async () => {
     const selecionadosIds = Object.keys(configBarbeiros).filter(idB => configBarbeiros[idB].selecionado);
-    if (selecionadosIds.length === 0 || !autoRange.inicio || !autoRange.fim || !barbeariaId) return;
+    if (selecionadosIds.length === 0 || !autoRange.inicio || !autoRange.fim || !barbeariaId) {
+        setAlertConfig({ show: true, title: 'Atenção', message: 'Selecione barbeiros e o período.', type: 'error' });
+        return;
+    }
 
     try {
       setLoading(true);
@@ -211,7 +219,8 @@ export default function BarbeariaAgenda() {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  // --- AUXILIARES VISUAIS ---
+  // ... (getIniciais, getCorBarbeiro, getDiasCalendario permanecem iguais)
+
   const getIniciais = (n) => (n || "??").substring(0, 2).toUpperCase();
   const getCorBarbeiro = (idB) => {
     const cores = ['bg-blue-600', 'bg-emerald-600', 'bg-purple-600', 'bg-orange-600', 'bg-rose-600', 'bg-cyan-600'];
@@ -279,7 +288,7 @@ export default function BarbeariaAgenda() {
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* BARRA LATERAL - CONFIGURAÇÕES */}
+          {/* BARRA LATERAL */}
           <aside className="lg:col-span-4 space-y-8">
             <section className="space-y-4">
               <div className="flex items-center gap-2 px-2">
@@ -388,6 +397,7 @@ export default function BarbeariaAgenda() {
                     <div 
                       key={i} 
                       onClick={() => !isPassado && selecionarDia(dStr)}
+                      onDoubleClick={() => setDiaSelecionadoHistorico({ data: dStr, escalas: diaEscalas })}
                       className={`min-h-[140px] p-3 rounded-3xl border transition-all cursor-pointer relative flex flex-col group ${
                         isHoje ? 'ring-2 ring-[#e6b32a] ring-offset-4 ' + (isDarkMode ? 'ring-offset-[#0d0d0d]' : 'ring-offset-white') : 
                         isPassado ? 'bg-white/5 border-dashed border-white/5 opacity-40 hover:opacity-100' : 

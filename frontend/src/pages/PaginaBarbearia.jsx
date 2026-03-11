@@ -5,7 +5,7 @@ import { api } from '../services/Api.js';
 import BarbeariasLayout from '../layout/barbeariasLayout';
 
 export default function PaginaBarbearia() {
-  const { nomeBarbearia } = useParams(); // Puxa o 'slug' da URL (ex: vintage-barber)
+  const { nomeBarbearia } = useParams();
   const [data, setData] = useState({ 
     barbearia: null, 
     barbeiros: [], 
@@ -18,9 +18,10 @@ export default function PaginaBarbearia() {
       if (!nomeBarbearia) return;
       
       try {
+        // Iniciamos o loading
         setData(prev => ({ ...prev, loading: true }));
 
-        // 1. Busca a barbearia pelo NOME (slug) vindo da URL
+        // Buscamos os dados da barbearia
         const res = await api.get(`/barbearias/perfil/${nomeBarbearia}`);
         const barbeariaDoc = res.data || res;
 
@@ -28,7 +29,7 @@ export default function PaginaBarbearia() {
           throw new Error("Barbearia não encontrada");
         }
 
-        // 2. Busca todos os barbeiros para filtrar os que pertencem a esta barbearia
+        // Buscamos barbeiros
         const resB = await api.get('/barbeiros');
         const lista = Array.isArray(resB) ? resB : (resB.data || []);
         
@@ -37,7 +38,6 @@ export default function PaginaBarbearia() {
           return String(idVinculo) === String(barbeariaDoc._id);
         });
 
-        // 3. Atualiza o estado com o objeto completo (contendo o layout_key)
         setData({ 
           barbearia: barbeariaDoc, 
           barbeiros: barbeirosFiltrados, 
@@ -59,14 +59,47 @@ export default function PaginaBarbearia() {
     fetchData();
   }, [nomeBarbearia]);
 
-  // O componente BarbeariasLayout vai decidir entre Padrao ou PremiumRetro
-  // baseado no data.barbearia.layout_key
+  // 1. TELA DE CARREGAMENTO (Evita o pulo de layout)
+  if (data.loading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-white">
+        {/* Spinner Premium */}
+        <div className="relative flex items-center justify-center">
+          <div className="w-16 h-16 border-4 border-gray-100 rounded-full" />
+          <div className="absolute w-16 h-16 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
+        </div>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[4px] text-gray-400 animate-pulse">
+          Carregando Barbearia
+        </p>
+      </div>
+    );
+  }
+
+  // 2. TELA DE ERRO
+  if (data.error || !data.barbearia) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6 text-center">
+        <div>
+          <h1 className="text-2xl font-black uppercase italic italic tracking-tighter">Ops!</h1>
+          <p className="text-gray-500 text-sm mt-2">Barbearia não encontrada ou erro na conexão.</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="mt-6 px-8 py-3 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-xl"
+          >
+            Tentar Novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. RENDERIZAÇÃO FINAL (Só acontece quando o layout_key já existe)
   return (
     <BarbeariasLayout 
       barbearia={data.barbearia} 
       barbeiros={data.barbeiros} 
-      loading={data.loading} 
-      error={data.error} 
+      loading={false} 
+      error={false} 
     />
   );
 }

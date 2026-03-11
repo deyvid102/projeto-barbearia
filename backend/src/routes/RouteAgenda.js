@@ -3,16 +3,31 @@ import ControlAgenda from "../controllers/ControlAgenda.js";
 
 const router = express.Router();
 
-// Busca as agendas (já existente)
+// --- LISTAGEM ---
+
+// Busca todas as agendas (Geral)
 router.get("/agendas", ControlAgenda.listar);
 
-// Rota que o seu frontend está chamando (api.post("/agendas"))
+// NOVA ROTA: Busca agendas filtradas por uma barbearia específica
+// Opcional: Você também pode tratar isso dentro do ControlAgenda.listar via query params (?fk_barbearia=ID)
+router.get("/agendas/barbearia/:id", ControlAgenda.listarPorBarbearia);
+
+
+// --- OPERAÇÕES ---
+
+// Cria um novo registro de agenda (O frontend envia data, horários e FKs no body)
 router.post("/agendas", ControlAgenda.criar); 
 
-// Rota para deletar um dia da agenda
+// Deleta um registro específico da agenda pelo ID
 router.delete("/agendas/:id", ControlAgenda.deletar);
 
-// Rota de sincronização em massa (já existente)
+
+// --- SINCRONIZAÇÃO E MASSA ---
+
+// Rota de sincronização em massa (usada para automação de múltiplos dias)
 router.post("/agendas/sincronizar", ControlAgenda.sincronizar);
+
+// Rota para limpar/resetar agenda de uma barbearia em um período (útil para re-processar automação)
+router.delete("/agendas/barbearia/:id/limpar", ControlAgenda.limparPeriodo);
 
 export default router;

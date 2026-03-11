@@ -45,6 +45,9 @@ export default function AdministradorDashboard() {
     { id: 'C', label: 'Cancelado', icon: IoCloseCircleOutline, color: 'text-red-500', bg: 'bg-red-500/10', border: 'border-red-500/20' },
   ];
 
+  /**
+   * BUSCA DE DADOS GLOBAL
+   */
   const fetchGlobalData = useCallback(async (isAutoRefresh = false) => {
     try {
       if (!isAutoRefresh) setLoading(true);
@@ -52,10 +55,10 @@ export default function AdministradorDashboard() {
       const resBeb = await api.get('/barbearias');
       const barbearias = Array.isArray(resBeb.data) ? resBeb.data : (Array.isArray(resBeb) ? resBeb : []);
       
+      const urlId = String(id).trim();
       let minhaBarbearia = barbearias.find(b => {
-        const bId = String(b._id || b.id).trim();
+        const bId = String(b._id || b.id || "").trim();
         const aId = String(b.fk_admin?._id || b.fk_admin || "").trim();
-        const urlId = String(id).trim();
         return bId === urlId || aId === urlId;
       });
 
@@ -64,18 +67,24 @@ export default function AdministradorDashboard() {
       }
 
       if (!minhaBarbearia) {
-        setLoading(false);
+        console.warn("Barbearia não encontrada para o ID:", urlId);
+        if (!isAutoRefresh) setLoading(false);
         return;
       }
 
       const barbeariaIdReal = String(minhaBarbearia._id || minhaBarbearia.id);
+      
+      // LOG 1: Identificação da Barbearia
+      console.log("=== DEBUG BARBEARIA ===");
+      console.log("ID da URL:", urlId);
+      console.log("Barbearia Encontrada:", minhaBarbearia);
+      console.log("ID Real Utilizado:", barbeariaIdReal);
 
       setConfigLimites({
         abertura: minhaBarbearia.abertura || "08:00",
         fechamento: minhaBarbearia.fechamento || "18:00"
       });
 
-      // Removida a rota de clientes - Busca apenas Barbeiros e Agendamentos
       const [resB, resA] = await Promise.all([
         api.get('/barbeiros').catch(() => ({ data: [] })),
         api.get(`/agendamentos/barbearia/${barbeariaIdReal}`).catch(() => api.get('/agendamentos')).catch(() => ({ data: [] }))
@@ -84,8 +93,31 @@ export default function AdministradorDashboard() {
       const todosBarbeiros = resB.data || resB || [];
       const todosAgs = resA.data || resA || [];
 
-      setBarbeiros(todosBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === barbeariaIdReal));
-      setAgendamentos(todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === barbeariaIdReal));
+      // LOG 2: Dados Brutos do Backend
+      console.log("=== DEBUG DADOS BRUTOS ===");
+      console.log("Total Barbeiros Recebidos:", todosBarbeiros.length);
+      console.log("Total Agendamentos Recebidos:", todosAgs.length);
+      if (todosAgs.length > 0) console.log("Exemplo Agendamento (Bruto):", todosAgs[0]);
+
+      // Filtros de segurança
+      const barbeirosFiltrados = todosBarbeiros.filter(b => String(b.fk_barbearia?._id || b.fk_barbearia) === barbeariaIdReal);
+      const agendamentosFiltrados = todosAgs.filter(a => String(a.fk_barbearia?._id || a.fk_barbearia) === barbeariaIdReal);
+
+      // LOG 3: Resultado após Filtro por fk_barbearia
+      console.log("=== DEBUG FILTROS ===");
+      console.log("Barbeiros da Unidade:", barbeirosFiltrados);
+      console.log("Agendamentos da Unidade:", agendamentosFiltrados);
+
+      setBarbeiros(barbeirosFiltrados);
+      setAgendamentos(agendamentosFiltrados);
+      
+      if (todosAgs.length > 0) {
+        console.log("Estrutura para checagem de nome:", {
+          fk_usuario_nome: todosAgs[0].fk_usuario?.nome,
+          usuario_nome: todosAgs[0].usuario?.nome,
+          cliente_nome: todosAgs[0].cliente?.nome
+        });
+      }
       
     } catch (error) {
       console.error("Erro ao carregar dashboard:", error);
@@ -109,19 +141,32 @@ export default function AdministradorDashboard() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Busca o nome diretamente dos campos do agendamento
   const getNomeExibicao = (ag) => {
-    return ag.nome || ag.nomeCliente || "Cliente";
+    if (!ag) return "Cliente";
+    return (
+      ag.fk_usuario?.nome || 
+      ag.usuario?.nome || 
+      ag.cliente?.nome || 
+      ag.nomeCliente || 
+      ag.nome || 
+      "Cliente"
+    );
   };
 
   const handleWhatsApp = (ag) => {
-    // Busca o número diretamente dos campos do agendamento
-    const telefone = ag.numero || ag.telefone || ag.telefoneCliente || "";
+    const telefone = 
+      ag.fk_usuario?.numero || 
+      ag.usuario?.numero || 
+      ag.numero || 
+      ag.telefone || 
+      ag.telefoneCliente || 
+      "";
+
     const foneLimpo = telefone.replace(/\D/g, '');
     if (foneLimpo) {
       window.open(`https://wa.me/55${foneLimpo}`, '_blank');
     } else {
-      setAlertConfig({ show: true, titulo: 'Atenção', mensagem: 'Número não disponível neste agendamento.', tipo: 'error' });
+      setAlertConfig({ show: true, titulo: 'Atenção', mensagem: 'Número não disponível.', tipo: 'error' });
     }
   };
 
@@ -156,8 +201,8 @@ export default function AdministradorDashboard() {
 
   const getEscopoHorarios = () => {
     const escopo = [];
-    const hInicio = parseInt(configLimites.abertura.split(':')[0]);
-    const hFim = parseInt(configLimites.fechamento.split(':')[0]);
+    const hInicio = parseInt(configLimites.abertura.split(':')[0]) || 8;
+    const hFim = parseInt(configLimites.fechamento.split(':')[0]) || 18;
     for (let i = hInicio; i <= hFim; i++) {
       escopo.push(`${i < 10 ? '0' + i : i}:00`);
     }
@@ -175,8 +220,8 @@ export default function AdministradorDashboard() {
     return null;
   };
 
-  const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
-  
+  //const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
+  const agendamentosHoje = agendamentos;
   const stats = {
     total: agendamentosHoje.length,
     abertos: agendamentosHoje.filter(a => a.status === 'A').length,

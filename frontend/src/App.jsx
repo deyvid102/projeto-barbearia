@@ -1,13 +1,14 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
 import { ThemeProvider } from './components/ThemeContext';
 
 // Landing Page Principal
 import PaginaBarbearia from './pages/PaginaBarbearia';
 
-// Único import de cliente mantido (Agendamento sem login)
+// Cliente
 import NovoAgendamento from './pages/cliente/NovoAgendamento';
 
-// Imports barbeiro
+// Barbeiro
 import LoginBarbeiro from './pages/barbeiro/LoginBarbeiro';
 import BarbeiroDashboard from './pages/barbeiro/BarbeiroDashboard';
 import BarbeiroHistorico from './pages/barbeiro/BarbeiroHistorico';
@@ -15,7 +16,7 @@ import BarbeiroEstatisticas from './pages/barbeiro/BarbeiroEstatisticas';
 import BarbeiroConfiguracoes from './pages/barbeiro/BarbeiroConfiguracoes';
 import BarbeiroCalendario from './pages/barbeiro/BarbeiroCalendario';
 
-// Import admin
+// Admin
 import AdministradorDashboard from './pages/admin/AdministradorDashboard';
 import BarbeiroGerenciamento from './pages/admin/BarbeiroGerenciamento';
 import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
@@ -23,12 +24,18 @@ import AdminLogs from './pages/admin/AdminLogs';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import BarbeariaAgenda from './pages/admin/BarbeariaAgenda';
 
-/**
- * Redirecionamento da raiz "/" para o nome amigável da barbearia.
- */
+// Componente para Log de Rotas (Debug)
+function RouteLogger() {
+  const location = useLocation();
+  useEffect(() => {
+    console.log(`[BarberFlow] Navegou para: ${location.pathname}`);
+  }, [location]);
+  return null;
+}
+
 const RootRedirect = () => {
-  // Nome padrão para testes/acesso inicial
   const defaultBarbeariaNome = "barbeariaadmin"; 
+  console.log(`[BarberFlow] Redirecionando raiz para /${defaultBarbeariaNome}`);
   return <Navigate to={`/${defaultBarbeariaNome}`} replace />;
 };
 
@@ -36,24 +43,21 @@ export default function App() {
   return (
     <ThemeProvider>
       <Router>
+        <RouteLogger />
         <Routes>
-          {/* --- ROTAS DE AGENDAMENTO (PÚBLICAS) --- */}
-          {/* O parâmetro :nomeBarbearia é essencial para buscar os dados na API */}
-          <Route path="/agendar/:nomeBarbearia" element={<NovoAgendamento />} />
+          {/* 1. ROTAS FIXAS (Devem vir primeiro para não serem capturadas pelo :nomeBarbearia) */}
           
-          {/* Rota legada mantida para evitar quebras de links antigos */}
-          <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
-
-          {/* --- ROTAS BARBEIRO --- */}
+          {/* --- AREA DO BARBEIRO --- */}
           <Route path="/barbeiro/login/:nomeBarbearia" element={<LoginBarbeiro />} />
           <Route path="/barbeiro/dashboard/:id" element={<BarbeiroDashboard />} />
           <Route path="/barbeiro/historico/:id" element={<BarbeiroHistorico />} />
           <Route path="/barbeiro/estatisticas/:id" element={<BarbeiroEstatisticas />} />
           <Route path="/barbeiro/configuracoes/:id" element={<BarbeiroConfiguracoes />} />
           <Route path="/barbeiro/calendario/:id" element={<BarbeiroCalendario />} />
+          {/* Alias para dashboard */}
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
 
-          {/* --- ROTAS ADMINISTRAÇÃO --- */}
+          {/* --- AREA DO ADMIN --- */}
           <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
           <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
           <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
@@ -61,12 +65,21 @@ export default function App() {
           <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
           <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
 
-          {/* --- VITRINE DA BARBEARIA --- */}
-          {/* Captura o nome da URL (ex: /barbeariaadmin) */}
+          {/* --- AGENDAMENTO PÚBLICO --- */}
+          <Route path="/agendar/:nomeBarbearia" element={<NovoAgendamento />} />
+          
+          {/* Rota legada (Fallback) */}
+          <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
+
+          {/* 2. ROTAS DINÂMICAS (Capturam qualquer coisa após a barra) */}
+          
+          {/* Vitrine da Barbearia (ex: /vintage-barber) */}
           <Route path="/:nomeBarbearia" element={<PaginaBarbearia />} />
 
-          {/* --- REDIRECIONAMENTOS --- */}
+          {/* 3. REDIRECIONAMENTOS E ERROS */}
           <Route path="/" element={<RootRedirect />} />
+          
+          {/* 404 - Se nada acima bater, volta para a home padrão */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
