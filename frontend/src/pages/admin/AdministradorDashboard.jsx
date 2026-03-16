@@ -3,7 +3,9 @@ import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert'; 
-import AdminLayout from '../../layout/AdminLayout.jsx';
+import AdminLayout from '../../layout/AdminLayout';
+import ScheduleGrid from '../../components/agenda/ScheduleGrid';
+// import DateSelector from "../../components/agenda/DateSelector";
 
 import { 
   IoSaveOutline, IoCloseOutline, IoSyncOutline, 
@@ -30,8 +32,15 @@ export default function AdministradorDashboard() {
 
   const [alertConfig, setAlertConfig] = useState({ show: false, titulo: '', mensagem: '', tipo: 'success' });
   const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Controle de seleção de barbeiro no mobile
+  const [selectedProfessionalId, setSelectedProfessionalId] = useState('');
+  const [isSelectProfMobileOpen, setIsSelectProfMobileOpen] = useState(false);
+
+  const [selectedDate, setSelectedDate] = useState(new Date());
   
   const selectRef = useRef();
+  const profSelectRef = useRef();
 
   const ALTURA_LINHA = 20; 
   const ALTURA_CABECALHO = 48;
@@ -109,6 +118,9 @@ export default function AdministradorDashboard() {
       console.log("Agendamentos da Unidade:", agendamentosFiltrados);
 
       setBarbeiros(barbeirosFiltrados);
+      if (!selectedProfessionalId && barbeirosFiltrados.length > 0) {
+        setSelectedProfessionalId(String(barbeirosFiltrados[0]._id));
+      }
       setAgendamentos(agendamentosFiltrados);
       
       if (todosAgs.length > 0) {
@@ -124,7 +136,7 @@ export default function AdministradorDashboard() {
     } finally {
       if (!isAutoRefresh) setLoading(false);
     }
-  }, [id]);
+  }, [id, selectedProfessionalId]);
 
   useEffect(() => {
     fetchGlobalData();
@@ -136,6 +148,7 @@ export default function AdministradorDashboard() {
   useEffect(() => {
     function handleClickOutside(event) {
       if (selectRef.current && !selectRef.current.contains(event.target)) setIsSelectOpen(false);
+      if (profSelectRef.current && !profSelectRef.current.contains(event.target)) setIsSelectProfMobileOpen(false);
     }
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
@@ -229,9 +242,27 @@ export default function AdministradorDashboard() {
     cancelados: agendamentosHoje.filter(a => a.status === 'C').length
   };
 
+  const agendamentosFiltrados = agendamentos.filter((ag) => {
+    const dataAg = new Date(ag.datahora);
+  
+    return (
+      dataAg.toDateString() === selectedDate.toDateString()
+    );
+  });
+
   const dataFormatada = hoje.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
   const diaSemana = hoje.toLocaleDateString('pt-BR', { weekday: 'long' });
   const currentStatusObj = statusOptions.find(s => s.id === novoStatus) || statusOptions[0];
+
+  const configLimitesNumerico = {
+    inicio: parseInt(configLimites.abertura.split(':')[0]) || 8,
+    fim: parseInt(configLimites.fechamento.split(':')[0]) || 18
+  };
+
+  const barbeirosExibidos = barbeiros.filter(b => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return true;
+    return String(b._id) === selectedProfessionalId;
+  });
 
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
@@ -241,8 +272,8 @@ export default function AdministradorDashboard() {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-8 flex flex-col min-h-screen">
-        <header className="mb-8 space-y-6">
+      <div className="p-4 md:p-8 flex flex-col w-full">
+        <header className="mb-6 md:mb-8 space-y-4 md:space-y-6">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
             <div>
               <h1 className="text-3xl font-black italic lowercase tracking-tighter">admin.<span className="text-[#e6b32a]">escala</span></h1>
@@ -254,16 +285,16 @@ export default function AdministradorDashboard() {
               </div>
             </div>
             
-            <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
+            {/* <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
                 <IoSyncOutline className="animate-spin text-[#e6b32a]" size={18} />
                 <div className="text-right">
                   <p className="text-[10px] font-black uppercase opacity-50 leading-none">Status do Sistema</p>
                   <p className="text-xs font-black">Sincronizado</p>
                 </div>
-            </div>
+            </div> */}
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {[
               { label: 'Atendimentos', value: stats.total, icon: IoStatsChartOutline, color: 'text-[#e6b32a]', bg: 'bg-[#e6b32a]/10' },
               { label: 'Agendados', value: stats.abertos, icon: IoTimeOutline, color: 'text-blue-500', bg: 'bg-blue-500/10' },
@@ -283,94 +314,77 @@ export default function AdministradorDashboard() {
           </div>
         </header>
 
-        <div className={`relative flex-1 rounded-[2rem] border overflow-hidden mb-10 ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-          <div className="overflow-x-auto min-h-fit custom-scrollbar">
-            <table className="w-full border-collapse min-w-[1200px] table-fixed">
-              <thead>
-                <tr style={{ height: `${ALTURA_CABECALHO}px` }}>
-                  <th className={`sticky left-0 z-40 w-20 p-2 border-b border-r text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-400' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>Hora</th>
-                  {barbeiros.map(b => (
-                    <th key={b._id} className={`p-2 border-b border-r text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'border-white/5 text-white/80' : 'border-slate-100 text-slate-700'}`}>
-                      {b.nome.split(' ')[0]}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {getEscopoHorarios().map(hora => {
-                  const hInt = parseInt(hora.split(':')[0]);
-                  const posLinha = getTimelinePositionPercentage(hora);
-
-                  return (
-                    <tr key={hora} className="relative group/row" style={{ height: `${ALTURA_LINHA}px` }}>
-                      <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[10px] font-black transition-colors ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500 group-hover/row:text-[#e6b32a]' : 'bg-slate-50 border-slate-100 text-slate-400 group-hover/row:text-black'}`}>
-                        {hora}
-                        {posLinha !== null && (
-                          <div className="absolute left-0 w-[2000px] z-50 pointer-events-auto flex items-center group/line" style={{ top: `${posLinha}%`, transition: 'top 1s linear' }}>
-                            <div className="w-full h-[1.5px] bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.4)]"></div>
-                          </div>
-                        )}
-                      </td>
-                      {barbeiros.map(b => {
-                        const ags = agendamentosHoje.filter(a => {
-                          const hAg = new Date(a.datahora).getHours();
-                          const barbeiroId = String(a.fk_barbeiro?._id || a.fk_barbeiro || "").trim();
-                          return barbeiroId === String(b._id).trim() && hAg === hInt;
-                        });
-
-                        return (
-                          <td key={b._id} className={`p-1 border-b border-r align-top relative ${isDarkMode ? 'border-white/5' : 'border-slate-100'}`}>
-                            <div className={`grid gap-1 h-full ${ags.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                              {ags.map(ag => (
-                                <button 
-                                  key={ag._id} 
-                                  onClick={() => openAcoes(ag)}
-                                  className={`group w-full p-1.5 rounded-lg text-left border shadow-sm transition-all h-fit hover:scale-[1.02] active:scale-95 relative z-10
-                                    ${ag.status === 'F' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' 
-                                    : ag.status === 'C' ? 'bg-red-500/10 border-red-500/20 text-red-500' 
-                                    : 'bg-[#e6b32a] text-black border-[#e6b32a]'}`}
-                                >
-                                  <div className="flex flex-col">
-                                    <div className="flex justify-between items-start">
-                                      <p className="text-[8px] font-black uppercase truncate max-w-[70%]">{getNomeExibicao(ag)}</p>
-                                      <span className="text-[7px] font-black opacity-70">
-                                        {new Date(ag.datahora).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                                      </span>
-                                    </div>
-                                    <div className="mt-1 border-t border-black/5 pt-1">
-                                      <div className="flex justify-between items-end">
-                                        <div className="space-y-0.5">
-                                          <div className="flex items-center gap-1 opacity-80">
-                                            <IoCutOutline size={8}/>
-                                            <p className="text-[7px] font-bold uppercase truncate">{ag.tipoCorte || 'Serviço'}</p>
-                                          </div>
-                                          <div className="flex items-center gap-1">
-                                            <IoCashOutline size={8}/>
-                                            <p className="text-[8px] font-black">R$ {ag.valor || '0,00'}</p>
-                                          </div>
-                                        </div>
-                                        <div className="flex items-center gap-1 text-right">
-                                            <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
-                                              {getNomeBarbeiro(ag)}
-                                            </p>
-                                            <IoPersonOutline size={9} className="opacity-50"/>
-                                        </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+        {/* Seletor de barbeiro exclusivo para mobile */}
+        <div className="md:hidden space-y-2 mb-4">
+          <label className="text-[9px] font-black uppercase opacity-60 tracking-widest ml-1">
+            Exibir profissional
+          </label>
+          <div className="relative" ref={profSelectRef}>
+            <button
+              onClick={() => setIsSelectProfMobileOpen(prev => !prev)}
+              className={`w-full p-4 h-12 rounded-xl border flex items-center justify-between ${
+                isDarkMode ? 'bg-[#111] border-white/10' : 'bg-white border-slate-200 shadow-sm'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <IoPersonOutline size={18} className="text-[#e6b32a]" />
+                <span className="text-[10px] font-black uppercase">
+                  {barbeiros.find(b => String(b._id) === selectedProfessionalId)?.nome || 'Selecionar barbeiro'}
+                </span>
+              </div>
+              <IoChevronDownOutline
+                size={16}
+                className={`transition-transform ${isSelectProfMobileOpen ? 'rotate-180' : ''}`}
+              />
+            </button>
+            {isSelectProfMobileOpen && (
+              <div
+                className={`absolute top-full mt-2 w-full border rounded-xl shadow-2xl z-[130] overflow-hidden ${
+                  isDarkMode ? 'bg-[#1a1a1a] border-white/10' : 'bg-white border-slate-100'
+                }`}
+              >
+                {barbeiros.map(b => (
+                  <button
+                    key={b._id}
+                    onClick={() => {
+                      setSelectedProfessionalId(String(b._id));
+                      setIsSelectProfMobileOpen(false);
+                    }}
+                    className={`w-full p-4 flex items-center gap-3 hover:bg-[#e6b32a] hover:text-black transition-colors border-b last:border-none text-[10px] font-black uppercase ${
+                      isDarkMode ? 'border-white/5' : 'border-slate-50'
+                    }`}
+                  >
+                    <IoPersonOutline size={16} /> {b.nome}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
+
+        {/* <DateSelector
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          isDarkMode={isDarkMode}
+        /> */}
+
+        <ScheduleGrid
+          barbeiros={barbeirosExibidos}
+          agendamentos={agendamentosFiltrados}
+          isDarkMode={isDarkMode}
+          configLimites={configLimitesNumerico}
+          currentTime={currentTime}
+          getNomeExibicao={getNomeExibicao}
+          getHourFromDate={(dataStr) => new Date(dataStr).getHours()}
+          formatHourLabel={(ag) =>
+            new Date(ag.datahora).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          }
+          onCardClick={openAcoes}
+          getNomeBarbeiro={getNomeBarbeiro}
+        />
       </div>
 
       {isAcoesModalOpen && selectedAg && (

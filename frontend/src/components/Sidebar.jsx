@@ -37,9 +37,9 @@ export default function Sidebar() {
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
     { label: 'Barbeiros', icon: <IoPeopleOutline size={22} />, path: `/admin/barbeiros/${id}` },
     { label: 'Serviços', icon: <MdContentCut size={22} />, path: `/admin/valores/${id}` },
-    { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` }, // Novo Item
-    { label: 'Logs', icon: <IoReaderOutline size={22} />, path: `/admin/logs/${id}` },
     { label: 'Analytics', icon: <IoStatsChartOutline size={22} />, path: `/admin/analytics/${id}` },
+    { label: 'Logs', icon: <IoReaderOutline size={22} />, path: `/admin/logs/${id}` },
+    { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` }, // Novo Item
   ];
 
   const handleVoltar = () => {
@@ -117,22 +117,6 @@ export default function Sidebar() {
           isDarkMode ? 'bg-[#0a0a0a] border-white/5' : 'bg-white border-slate-100'
         }`}
       >
-        <div className="w-full px-3 mb-6">
-          <div className="relative group flex justify-center">
-            <button
-              onClick={handleVoltar}
-              className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border shadow-sm active:scale-90 ${
-                isDarkMode 
-                  ? 'bg-white/5 border-white/10 text-gray-400 hover:text-[#e6b32a]' 
-                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-[#e6b32a]'
-              }`}
-            >
-              <IoArrowBack size={20} />
-            </button>
-            <Tooltip text="Painel Barbeiro" />
-          </div>
-        </div>
-
         <div className={`w-8 h-[1px] mb-6 ${isDarkMode ? 'bg-white/10' : 'bg-slate-100'}`} />
 
         <nav className="flex-1 flex flex-col gap-4 w-full px-3">
@@ -158,7 +142,23 @@ export default function Sidebar() {
           })}
         </nav>
 
-        <div className="w-full px-3 mt-auto">
+        <div className="w-full px-3 mb-6">
+          <div className="relative group flex justify-center">
+            <button
+              onClick={handleVoltar}
+              className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border shadow-sm active:scale-90 ${
+                isDarkMode 
+                  ? 'bg-white/5 border-white/10 text-gray-400 hover:text-[#e6b32a]' 
+                  : 'bg-slate-50 border-slate-200 text-slate-500 hover:text-[#e6b32a]'
+              }`}
+            >
+              <IoArrowBack size={20} />
+            </button>
+            <Tooltip text="Painel Barbeiro" />
+          </div>
+        </div>
+
+        {/* <div className="w-full px-3 mt-auto">
           <div className="relative group flex justify-center">
             <button
               onClick={abrirConfig}
@@ -172,7 +172,7 @@ export default function Sidebar() {
             </button>
             <Tooltip text="Configurações" />
           </div>
-        </div>
+        </div> */}
       </aside>
 
       {isModalOpen && (

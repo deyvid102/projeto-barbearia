@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js'; 
 import { useTheme } from '../../components/ThemeContext';
-import AdminLayout from '../../layout/AdminLayout.jsx';
+import AdminLayout from '../../layout/AdminLayout';
 import SelectPersonalizado from '../../components/SelectPersonalizado';
 import SidebarFiltros from '../../components/SideBarFiltros.jsx';
 import Pagination from '../../components/Pagination';
@@ -169,52 +169,52 @@ export default function AdminAnalytics() {
 
   return (
     <AdminLayout>
-      <div className="p-4 md:p-8 flex flex-col h-full print:block print:bg-white print:p-0">
+      <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
         
-        <header className="mb-8 flex justify-between items-end print:hidden">
+        <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
           <div>
-            <h1 className="text-2xl font-black italic lowercase tracking-tighter">
+            <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
               admin.<span className="text-[#e6b32a]">analytics</span>
             </h1>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">Performance em Tempo Real</p>
           </div>
-          <div className="flex gap-3">
-             <button onClick={() => setIsFilterOpen(true)} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl active:scale-95 transition-transform">
+          <div className="flex gap-2 sm:gap-3 flex-shrink-0">
+             <button onClick={() => setIsFilterOpen(true)} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl active:scale-95 transition-transform" aria-label="Filtros">
               <IoFilter size={20} />
             </button>
-            <button onClick={() => window.print()} className="flex items-center gap-2 px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-widest bg-[#e6b32a] text-black hover:scale-105 transition-all shadow-lg shadow-[#e6b32a]/20">
-              <IoPrintOutline size={14}/> Gerar PDF
+            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 md:px-6 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest bg-[#e6b32a] text-black hover:scale-105 transition-all shadow-lg shadow-[#e6b32a]/20">
+              <IoPrintOutline size={14}/> <span className="hidden sm:inline">Gerar PDF</span>
             </button>
           </div>
         </header>
 
         {/* --- CARDS --- */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8 print:hidden">
-          <div className={`p-6 rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="flex items-center gap-3 mb-1 text-gray-400"><IoWalletOutline size={14}/> <span className="text-[8px] font-black uppercase tracking-widest">Bruto Total</span></div>
-            <p className="text-xl font-black text-[#e6b32a]">R$ {stats.faturamentoBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8 print:hidden">
+          <div className={`p-3 md:p-6 rounded-xl md:rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="flex items-center gap-2 md:gap-3 mb-1 text-gray-400"><IoWalletOutline size={12} className="md:w-[14px] md:h-[14px]" /> <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest">Bruto Total</span></div>
+            <p className="text-sm md:text-xl font-black text-[#e6b32a] truncate">R$ {stats.faturamentoBruto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className={`p-6 rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="flex items-center gap-3 mb-1 text-gray-400"><IoBusinessOutline size={14}/> <span className="text-[8px] font-black uppercase tracking-widest">Lucro Barbearia</span></div>
-            <p className="text-xl font-black text-green-500">R$ {stats.lucroLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <div className={`p-3 md:p-6 rounded-xl md:rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="flex items-center gap-2 md:gap-3 mb-1 text-gray-400"><IoBusinessOutline size={12} className="md:w-[14px] md:h-[14px]" /> <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest">Lucro Barbearia</span></div>
+            <p className="text-sm md:text-xl font-black text-green-500 truncate">R$ {stats.lucroLiquido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className={`p-6 rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="flex items-center gap-3 mb-1 text-gray-400"><IoPeopleOutline size={14}/> <span className="text-[8px] font-black uppercase tracking-widest">Comissões</span></div>
-            <p className="text-xl font-black text-blue-500">R$ {stats.comissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
+          <div className={`p-3 md:p-6 rounded-xl md:rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="flex items-center gap-2 md:gap-3 mb-1 text-gray-400"><IoPeopleOutline size={12} className="md:w-[14px] md:h-[14px]" /> <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest">Comissões</span></div>
+            <p className="text-sm md:text-xl font-black text-blue-500 truncate">R$ {stats.comissoes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
           </div>
-          <div className={`p-6 rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <div className="flex items-center gap-3 mb-1 text-gray-400"><IoStatsChartOutline size={14}/> <span className="text-[8px] font-black uppercase tracking-widest">Serviços</span></div>
-            <p className="text-xl font-black">{stats.servicos}</p>
+          <div className={`p-3 md:p-6 rounded-xl md:rounded-[2rem] border ${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="flex items-center gap-2 md:gap-3 mb-1 text-gray-400"><IoStatsChartOutline size={12} className="md:w-[14px] md:h-[14px]" /> <span className="text-[7px] md:text-[8px] font-black uppercase tracking-widest">Serviços</span></div>
+            <p className="text-sm md:text-xl font-black">{stats.servicos}</p>
           </div>
         </div>
 
         {/* --- GRAFICOS --- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 print:hidden">
-          <div className={`lg:col-span-2 p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
-              <IoStatsChartOutline className="text-[#e6b32a]" /> {periodo === 'DIARIO' ? 'Fluxo de Caixa (Horários)' : 'Faturamento Diário'}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8 print:hidden">
+          <div className={`lg:col-span-2 p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <h3 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4 md:mb-8 flex items-center gap-2">
+              <IoStatsChartOutline className="text-[#e6b32a]" size={14} /> {periodo === 'DIARIO' ? 'Fluxo de Caixa (Horários)' : 'Faturamento Diário'}
             </h3>
-            <div className="h-64 w-full">
+            <div className="h-48 md:h-64 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stats.chartData}>
                   <defs>
@@ -232,11 +232,11 @@ export default function AdminAnalytics() {
             </div>
           </div>
 
-          <div className={`p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-500 mb-8 flex items-center gap-2">
-              <IoPieChartOutline className="text-[#e6b32a]" /> Por Barbeiro
+          <div className={`p-4 md:p-8 rounded-xl md:rounded-[2.5rem] border ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <h3 className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-500 mb-4 md:mb-8 flex items-center gap-2">
+              <IoPieChartOutline className="text-[#e6b32a]" size={14} /> Por Barbeiro
             </h3>
-            <div className="h-64 w-full">
+            <div className="h-48 md:h-64 w-full min-w-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={stats.porBarbeiro} dataKey="bruto" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={8} stroke="none">
@@ -248,53 +248,102 @@ export default function AdminAnalytics() {
             </div>
           </div>
         </div>
-
         {/* --- TABELA --- */}
-        <div className={`flex-1 rounded-[3rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-2xl'}`}>
-          <div className="overflow-x-auto min-h-[400px]">
-            <table className="w-full border-collapse">
+        <div className={`flex-1 rounded-xl md:rounded-[3rem] border overflow-hidden min-h-0 ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-2xl'}`}>
+          <div className="overflow-x-auto min-h-[280px] md:min-h-[400px] custom-scrollbar">
+            <div className="md:hidden flex flex-col divide-y divide-white/5">
+            {dadosPaginados.map((item) => (
+              <div key={item._id} className="p-4 flex flex-col gap-3">
+
+                {/* DATA */}
+                <div className="flex justify-between">
+                  <span className="text-[10px] text-gray-400 font-bold">
+                    {new Date(item.createdAt).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span className="text-[10px] text-gray-400 font-bold">
+                    {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+
+                {/* BARBEIRO */}
+                <div className="flex flex-col">
+                  <span className="text-xs font-black uppercase">
+                    {item.fk_barbeiro?.nome || 'Barbeiro'}
+                  </span>
+                  <span className="text-[10px] text-gray-500 uppercase">
+                    {item.fk_agendamento?.nome_cliente || item.fk_agendamento?.fk_cliente?.nome || '---'}
+                  </span>
+                </div>
+
+                {/* VALORES */}
+                <div className="grid grid-cols-2 gap-2 text-[11px] font-bold">
+                  <div>
+                    <span className="text-gray-500 block text-[9px]">Bruto</span>
+                    R$ {item.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+
+                  <div>
+                    <span className="text-gray-500 block text-[9px]">Comissão</span>
+                    {item.porcentagem_aplicada}%
+                  </div>
+
+                  <div className="text-blue-400">
+                    <span className="text-gray-500 block text-[9px]">Pago Barbeiro</span>
+                    R$ {item.valor_barbeiro?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+
+                  <div className="text-[#e6b32a]">
+                    <span className="text-gray-500 block text-[9px]">Líquido</span>
+                    R$ {item.valor_barbearia?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                </div>
+
+              </div>
+            ))}
+          </div>
+            <table className="hidden md:table w-full border-collapse min-w-[640px]">
               <thead>
                 <tr className={`${isDarkMode ? 'bg-white/5' : 'bg-slate-50'}`}>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-left">Horário / Data</th>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-left">Profissional / Cliente</th>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-right">Bruto</th>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-right">Comissão (%)</th>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-right">Pago Barbeiro</th>
-                  <th className="p-6 text-[9px] font-black uppercase text-gray-500 text-right">Líquido</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-left whitespace-nowrap">Horário / Data</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-left whitespace-nowrap">Profissional / Cliente</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-right whitespace-nowrap">Bruto</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-right whitespace-nowrap">Comissão (%)</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-right whitespace-nowrap">Pago Barbeiro</th>
+                  <th className="p-3 md:p-6 text-[8px] md:text-[9px] font-black uppercase text-gray-500 text-right whitespace-nowrap">Líquido</th>
                 </tr>
               </thead>
               <tbody>
                 {dadosPaginados.map((item) => (
                   <tr key={item._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
-                    <td className="p-6">
+                    <td className="p-3 md:p-6">
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-gray-400">
+                        <span className="text-[9px] md:text-[10px] font-bold text-gray-400">
                            {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                         </span>
-                        <span className="text-[8px] text-gray-500 uppercase">{new Date(item.createdAt).toLocaleDateString('pt-BR')}</span>
+                        <span className="text-[7px] md:text-[8px] text-gray-500 uppercase">{new Date(item.createdAt).toLocaleDateString('pt-BR')}</span>
                       </div>
                     </td>
-                    <td className="p-6">
-                      <div className="flex flex-col">
-                        <span className="text-xs font-black uppercase">{item.fk_barbeiro?.nome || 'Barbeiro'}</span>
-                        <span className="text-[8px] text-gray-500 uppercase tracking-tighter">
+                    <td className="p-3 md:p-6">
+                      <div className="flex flex-col min-w-[100px]">
+                        <span className="text-[10px] md:text-xs font-black uppercase truncate">{item.fk_barbeiro?.nome || 'Barbeiro'}</span>
+                        <span className="text-[7px] md:text-[8px] text-gray-500 uppercase tracking-tighter truncate">
                           {item.fk_agendamento?.nome_cliente || item.fk_agendamento?.fk_cliente?.nome || '---'}
                         </span>
                       </div>
                     </td>
-                    <td className="p-6 text-xs font-bold text-right">R$ {item.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-6 text-right">
-                      <span className="bg-white/5 px-2 py-1 rounded-md text-[9px] font-black">{item.porcentagem_aplicada}%</span>
+                    <td className="p-3 md:p-6 text-[10px] md:text-xs font-bold text-right whitespace-nowrap">R$ {item.valor_total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 md:p-6 text-right">
+                      <span className="bg-white/5 px-2 py-1 rounded-md text-[8px] md:text-[9px] font-black">{item.porcentagem_aplicada}%</span>
                     </td>
-                    <td className="p-6 text-xs font-black text-blue-400 text-right">R$ {item.valor_barbeiro?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
-                    <td className="p-6 text-sm font-black text-[#e6b32a] text-right">R$ {item.valor_barbearia?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 md:p-6 text-[10px] md:text-xs font-black text-blue-400 text-right whitespace-nowrap">R$ {item.valor_barbeiro?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    <td className="p-3 md:p-6 text-[10px] md:text-sm font-black text-[#e6b32a] text-right whitespace-nowrap">R$ {item.valor_barbearia?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="p-6 border-t border-white/5 print:hidden">
+            <div className="p-4 md:p-6 border-t border-white/5 print:hidden">
               <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
             </div>
           )}

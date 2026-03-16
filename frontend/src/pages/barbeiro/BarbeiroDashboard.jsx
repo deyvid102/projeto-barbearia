@@ -4,6 +4,8 @@ import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert'; 
 import ModalAgendamentoAvulso from '../../components/modais/ModalAgendamentoAvulso';
+import ScheduleGrid from '../../components/agenda/ScheduleGrid';
+import DateSelector from '../../components/agenda/DateSelector.jsx';
 
 import { 
   IoPersonCircleOutline, IoSettingsOutline, IoLogOutOutline, 
@@ -32,6 +34,7 @@ export default function BarbeiroDashboard() {
   const [isAvulsoModalOpen, setIsAvulsoModalOpen] = useState(false);
   const [isSelectStatusOpen, setIsSelectStatusOpen] = useState(false);
   const [isSelectProfMobileOpen, setIsSelectProfMobileOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   
   const [selectedAg, setSelectedAg] = useState(null);
   const [novoPreco, setNovoPreco] = useState('');
@@ -177,6 +180,14 @@ export default function BarbeiroDashboard() {
   };
 
   const getNomeExibicao = (ag) => ag.cliente?.nome || ag.nomeCliente || 'Cliente';
+
+  const agendamentosFiltrados = agendamentos.filter((ag) => {
+    const dataAg = new Date(ag.datahora);
+  
+    return (
+      dataAg.toDateString() === selectedDate.toDateString()
+    );
+  });
   
   // CORREÇÃO: Filtragem hoje também deve considerar a string da data UTC
   const agendamentosHoje = agendamentos.filter(a => a.datahora && a.datahora.startsWith(hojeStr));
@@ -208,7 +219,7 @@ export default function BarbeiroDashboard() {
   );
 
   const barbeirosExibidos = barbeiros.filter(b => {
-    if (window.innerWidth >= 768) return true;
+    if (typeof window !== 'undefined' && window.innerWidth >= 768) return true;
     return String(b._id) === selectedProfessionalId;
   });
 
@@ -222,7 +233,7 @@ export default function BarbeiroDashboard() {
           <div className="flex flex-col md:flex-row justify-between items-stretch md:items-center gap-4">
             <div className="flex justify-between items-center md:items-start gap-4">
               <div>
-                <h1 className="text-xl md:text-3xl font-black italic lowercase tracking-tighter leading-none">barber.<span className="text-[#e6b32a]">flow</span></h1>
+                <h1 className="text-xl md:text-3xl font-black italic uppercase tracking-tighter leading-none">barber <span className="text-[#e6b32a]">max</span></h1>
                 <div className="flex items-center gap-2 mt-1 md:mt-2">
                   <p className="text-[8px] md:text-[10px] font-bold uppercase tracking-widest opacity-60">{diaSemana}, {dataFormatada}</p>
                 </div>
@@ -332,72 +343,30 @@ export default function BarbeiroDashboard() {
           </div>
         </div>
 
-        <div className={`relative rounded-[1.5rem] md:rounded-[2.5rem] border overflow-hidden ${isDarkMode ? 'bg-[#111] border-white/5' : 'bg-white border-slate-200 shadow-xl'}`}>
-          <div className="overflow-x-auto min-h-fit custom-scrollbar">
-            <table className="w-full border-collapse md:min-w-[1200px] table-fixed">
-              <thead>
-                <tr style={{ height: `${ALTURA_CABECALHO}px` }}>
-                  <th className={`sticky left-0 z-40 w-16 md:w-24 p-2 border-b border-r text-[8px] md:text-[9px] font-black uppercase tracking-widest ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-400' : 'bg-slate-50 border-slate-100 text-slate-500'}`}>Hora</th>
-                  {barbeirosExibidos.map(b => (
-                    <th key={b._id} className={`p-2 border-b border-r text-[9px] md:text-[10px] font-black uppercase tracking-wider ${isDarkMode ? 'border-white/5 text-white/80' : 'border-slate-100 text-slate-700'}`}>{b.nome.split(' ')[0]}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {getEscopoHorarios().map(({ hora, hInt }) => {
-                  const posLinha = getTimelinePositionPercentage(hora);
-                  
-                  // CORREÇÃO: Usar getUTCHours() para comparar com hInt
-                  const temAlgumAgendamentoNaLinha = agendamentosHoje.some(a => new Date(a.datahora).getUTCHours() === hInt);
-                  
-                  return (
-                    <tr key={hora} className="relative group/row" style={{ height: temAlgumAgendamentoNaLinha ? 'auto' : ALTURA_LINHA_VAZIA }}>
-                      <td className={`sticky left-0 z-20 p-2 border-b border-r text-center font-mono text-[9px] md:text-[10px] font-black ${isDarkMode ? 'bg-[#111] border-white/5 text-gray-500' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                        {hora}
-                        {posLinha !== null && (
-                            <div className="absolute left-0 w-[2000px] z-50 pointer-events-none flex items-center" style={{ top: `${posLinha}%` }}>
-                                <div className="w-full h-[1.5px] bg-red-600"></div>
-                            </div>
-                        )}
-                      </td>
-                      {barbeirosExibidos.map(b => {
-                        // CORREÇÃO: Usar getUTCHours() aqui também
-                        const ags = agendamentosHoje.filter(a => String(a.fk_barbeiro?._id || a.fk_barbeiro) === String(b._id) && new Date(a.datahora).getUTCHours() === hInt);
-                        const isMeu = String(b._id) === String(getSafeId());
-                        const temAgendamento = ags.length > 0;
-                        return (
-                          <td key={b._id} className={`p-1 border-r align-top relative border-b ${temAgendamento ? (isDarkMode ? 'border-white/10' : 'border-slate-200') : (isDarkMode ? 'border-white/5' : 'border-slate-100 opacity-30')}`}>
-                            <div className={`grid gap-1 h-full ${ags.length > 1 ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                              {ags.map(ag => (
-                                <button key={ag._id} onClick={() => isMeu && openAcoes(ag)} className={`group w-full p-1.5 md:p-2 rounded-lg md:rounded-xl text-left border shadow-sm h-fit relative z-10 ${!isMeu ? 'opacity-40 grayscale pointer-events-none' : 'hover:scale-[1.02]'} ${ag.status === 'F' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : ag.status === 'C' ? 'bg-red-500/10 border-red-500/20 text-red-500' : 'bg-[#e6b32a] text-black border-[#e6b32a]'}`}>
-                                  <div className="flex flex-col">
-                                    <div className="flex justify-between items-start gap-1">
-                                      <p className="text-[8px] md:text-[9px] font-black uppercase truncate leading-tight">{getNomeExibicao(ag)}</p>
-                                      {/* CORREÇÃO: Mostrar horário formatado como UTC para bater com a grade */}
-                                      <span className="text-[7px] md:text-[8px] font-black opacity-70">
-                                        {new Date(ag.datahora).getUTCHours().toString().padStart(2, '0')}:
-                                        {new Date(ag.datahora).getUTCMinutes().toString().padStart(2, '0')}
-                                      </span>
-                                    </div>
-                                    <div className="mt-1 border-t border-black/5 pt-1">
-                                        <p className="text-[7px] md:text-[8px] font-black uppercase truncate">{ag.tipoCorte || 'serviço'}</p>
-                                        <p className="text-[8px] md:text-[9px] font-black">R${ag.valor || '0'}</p>
-                                    </div>
-                                  </div>
-                                </button>
-                              ))}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+        <DateSelector
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          isDarkMode={isDarkMode}
+        />
+
+        <ScheduleGrid
+          barbeiros={barbeirosExibidos}
+          agendamentos={agendamentosFiltrados}
+          isDarkMode={isDarkMode}
+          configLimites={configLimites}
+          currentTime={currentTime}
+          getNomeExibicao={getNomeExibicao}
+          getHourFromDate={(dataStr) => new Date(dataStr).getHours()}
+          formatHourLabel={(ag) =>
+            new Date(ag.datahora).toLocaleTimeString('pt-BR', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })
+          }
+          onCardClick={openAcoes}
+          disableOthersForId={String(getSafeId())}
+        />
+    </div>
 
       <ModalAgendamentoAvulso isOpen={isAvulsoModalOpen} onClose={() => setIsAvulsoModalOpen(false)} onSave={handleSalvarAvulso} isDarkMode={isDarkMode} />
 
