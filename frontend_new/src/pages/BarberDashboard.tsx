@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { DollarSign, CalendarCheck, CheckCircle, TrendingUp } from 'lucide-react';
 import { appointments, services, barbers, weeklyRevenue, serviceDistribution } from '@/data/mockData';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import ScheduleGrid from "../components/ScheduleGrid";
 
 const barberId = '1'; // Simulated logged-in barber
 const barber = barbers.find(b => b.id === barberId)!;
@@ -109,41 +110,15 @@ const BarberDashboard = () => {
             </div>
           </div>
         </div>
-
-        {/* Timeline Agenda */}
+        {/* Agenda em formato de planilha */}
         <div className="glass-card p-6 mt-6">
-          <h3 className="font-display font-semibold mb-6">Agenda de Hoje</h3>
-          <div className="space-y-3">
-            {myAppointments
-              .sort((a, b) => a.time.localeCompare(b.time))
-              .map((apt) => {
-                const svc = services.find(s => s.id === apt.serviceId);
-                return (
-                  <motion.div
-                    key={apt.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className={`flex items-center gap-4 p-4 rounded-xl bg-secondary/30 border-l-4 ${statusColors[apt.status]}`}
-                  >
-                    <div className="font-display font-bold text-lg w-14 text-center">{apt.time}</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{apt.clientName}</p>
-                      <p className="text-sm text-muted-foreground">{svc?.name} • {svc?.duration} min</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-display font-bold text-primary">R$ {apt.totalPrice}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        apt.status === 'completed' ? 'bg-success/20 text-success' :
-                        apt.status === 'in-progress' ? 'bg-primary/20 text-primary' :
-                        'bg-info/20 text-info'
-                      }`}>
-                        {statusLabels[apt.status]}
-                      </span>
-                    </div>
-                  </motion.div>
-                );
-              })}
-          </div>
+
+          <h3 className="font-display font-semibold mb-6">
+            Agenda de Hoje
+          </h3>
+
+          <ScheduleGrid />
+
         </div>
       </div>
     </div>
