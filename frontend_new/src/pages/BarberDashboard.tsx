@@ -112,13 +112,10 @@ const BarberDashboard = () => {
         </div>
         {/* Agenda em formato de planilha */}
         <div className="glass-card p-6 mt-6">
-
           <h3 className="font-display font-semibold mb-6">
             Agenda de Hoje
           </h3>
-
           <ScheduleGrid />
-
         </div>
       </div>
     </div>

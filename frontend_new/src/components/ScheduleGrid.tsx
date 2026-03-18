@@ -4,6 +4,7 @@ export default function ScheduleGrid() {
 
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const [barbeiroSelecionado, setBarbeiroSelecionado] = useState(1);
+    const [dataSelecionada, setDataSelecionada] = useState(new Date());
 
     useEffect(() => {
 
@@ -25,22 +26,84 @@ export default function ScheduleGrid() {
     ];
 
     const agendamentos = [
-    { id: 1, cliente: "Gabriel", barbeiroId: 1, hora: "09:00", servico: "Corte", valor: 30 },
-    { id: 2, cliente: "Lucas", barbeiroId: 2, hora: "10:00", servico: "Barba", valor: 20 },
-    { id: 3, cliente: "Rafael", barbeiroId: 3, hora: "11:00", servico: "Corte + Barba", valor: 50 },
+      { id: 1, cliente: "Gabriel", barbeiroId: 1, hora: "09:00", data: "2026-03-18", servico: "Corte", valor: 30 },
     ];
 
     const horarios = [];
     for (let i = 8; i <= 18; i++) {
-    horarios.push(`${i < 10 ? "0" + i : i}:00`);
+      const hora = i < 10 ? `0${i}` : i;
+    
+      horarios.push(`${hora}:00`);
+    
+      if (i !== 18) {
+        horarios.push(`${hora}:30`);
+      }
     }
 
     const barbeirosVisiveis = isMobile
     ? barbeiros.filter(b => b.id === barbeiroSelecionado)
     : barbeiros;
 
+    const handleNovoAgendamento = (barbeiroId, hora) => {
+      console.log("Novo agendamento:", barbeiroId, hora);
+    
+      // futuro:
+      // abrir modal
+    };
+    
+    const handleAbrirModal = (agendamento) => {
+      console.log("Abrir modal:", agendamento);
+    
+      // futuro:
+      // setModalOpen(true)
+      // setAgendamentoSelecionado(agendamento)
+    };
+
+    const diasParaMostrar = 15;
+
+    const datas = [];
+
+    for (let i = 0; i < diasParaMostrar; i++) {
+      const data = new Date();
+      data.setDate(data.getDate() + i);
+
+      datas.push(data);
+    }
+
+    const formatarData = (data) => {
+      return data.toLocaleDateString("pt-BR", {
+        weekday: "short",
+        day: "2-digit",
+        month: "2-digit",
+      });
+    };
+        
     return (
         <div className="w-full">
+
+          <div className="flex gap-2 overflow-x-auto mb-4 pb-2 snap-x snap-mandatory">
+            {datas.map((data, index) => {
+
+              const isSelected =
+                data.toDateString() === dataSelecionada.toDateString();
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => setDataSelecionada(data)}
+                  className={`
+                    min-w-[80px] px-3 py-2 rounded-lg text-xs text-center
+                    border transition
+                    ${isSelected
+                      ? "bg-primary text-white border-primary"
+                      : "bg-background border-border hover:bg-muted"}
+                  `}
+                >
+                  {index === 0 ? "Hoje" : formatarData(data)}
+                </button>
+              );
+            })}
+          </div>
       
           {/* SELECT MOBILE */}
           {isMobile && (
@@ -99,10 +162,13 @@ export default function ScheduleGrid() {
       
                     {barbeirosVisiveis.map((barbeiro) => {
       
+                      const dataFormatada = dataSelecionada.toISOString().split("T")[0];
+
                       const agendamento = agendamentos.find(
                         (a) =>
                           a.barbeiroId === barbeiro.id &&
-                          a.hora === hora
+                          a.hora === hora &&
+                          a.data === dataFormatada
                       );
       
                       return (
@@ -112,7 +178,16 @@ export default function ScheduleGrid() {
                         >
       
                           {agendamento ? (
-                            <div className="bg-primary/15 border border-primary/20 text-foreground rounded-lg p-2 text-xs">
+                            <button
+                              onClick={() => handleAbrirModal(agendamento)}
+                              className="
+                                w-full text-left
+                                bg-primary/15 border border-primary/20 text-foreground
+                                rounded-lg p-2 text-xs space-y-1
+                                hover:bg-primary/25
+                                transition
+                                active:scale-[0.98]
+                              ">
       
                               <p className="font-semibold truncate">
                                 {agendamento.cliente}
@@ -125,12 +200,13 @@ export default function ScheduleGrid() {
                               <p className="text-[11px] font-bold text-primary">
                                 R$ {agendamento.valor}
                               </p>
-      
-                            </div>
+                            </button>
                           ) : (
-                            <div className="text-[10px] text-muted-foreground text-center opacity-40">
-                              Livre
-                            </div>
+                            <button
+                              onClick={() => handleNovoAgendamento(barbeiro.id, hora)}
+                              className="w-full text-[10px] py-2 rounded-lg border border-dashed border-border hover:bg-muted transition"
+                            > + Agendar
+                            </button>
                           )}
       
                         </td>

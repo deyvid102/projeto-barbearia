@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import Navbar from '@/components/Navbar';
 import { motion } from 'framer-motion';
-import { DollarSign, TrendingUp, Users, Settings, BarChart3, CalendarCog, FileText, Palette } from 'lucide-react';
+import { CalendarCheck, CheckCircle, Clock, DollarSign, TrendingUp, Users, Settings, BarChart3, CalendarCog, FileText, Palette } from 'lucide-react';
 import { barbers, services, appointments, weeklyRevenue, barberPerformance, financialLogs } from '@/data/mockData';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import ScheduleGrid from "../components/ScheduleGrid";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -16,9 +17,17 @@ const totalCommissions = weeklyRevenue.reduce((s, d) => s + d.commission, 0);
 const netProfit = totalGross - totalCommissions;
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('schedule');
   const [selectedBarber, setSelectedBarber] = useState('all');
   const [scheduleBarber, setScheduleBarber] = useState(barbers[0].id);
+
+  const barberId = '1'; // Simulated logged-in barber
+  const barber = barbers.find(b => b.id === barberId)!;
+  const myAppointments = appointments.filter(a => a.barberId === barberId);
+  const completedToday = myAppointments.filter(a => a.status === 'completed');
+  const agendadosHoje = myAppointments.filter(a => a.status === 'confirmed');
+  const pendingToday = myAppointments.filter(a => a.status === 'in-progress');
+  const rendaDiaria = completedToday.reduce((sum, a) => sum + (a.totalPrice * barber.commission / 100), 0);
 
   // Schedule state
   const [schedule, setSchedule] = useState(
@@ -50,8 +59,8 @@ const AdminDashboard = () => {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="bg-secondary/50 mb-8 flex-wrap h-auto gap-1">
             {[
-              { value: 'overview', label: 'Visão Geral', icon: BarChart3 },
-              { value: 'schedule', label: 'Horários', icon: CalendarCog },
+              { value: 'schedule', label: 'Agenda', icon: CalendarCog },
+              { value: 'overview', label: 'Dashboard', icon: BarChart3 },
               { value: 'resources', label: 'Recursos', icon: Users },
               { value: 'financial', label: 'Financeiro', icon: FileText },
               { value: 'settings', label: 'Configurações', icon: Settings },
@@ -62,6 +71,41 @@ const AdminDashboard = () => {
               </TabsTrigger>
             ))}
           </TabsList>
+          
+          {/* SCHEDULE */}
+          <TabsContent value="schedule" className="space-y-6">
+            {/* KPIs */}
+            <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-8">
+              {[
+                { label: 'Faturamento Diário', value: `R$ ${rendaDiaria.toFixed(0)}`, icon: DollarSign, color: 'text-primary' },
+                { label: 'Total Agendamentos', value: agendadosHoje.length.toString(), icon: CalendarCheck, color: 'text-info' },
+                { label: 'Pendentes', value: pendingToday.length.toString(), icon: Clock, color: 'text-yellow-600' },
+                { label: 'Concluídos', value: completedToday.length.toString(), icon: CheckCircle, color: 'text-success' },
+              ].map((kpi, i) => (
+                <motion.div
+                  key={kpi.label}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="glass-card p-6"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-muted-foreground">{kpi.label}</span>
+                    <kpi.icon className={`h-5 w-5 ${kpi.color}`} />
+                  </div>
+                  <p className="font-display text-3xl font-bold">{kpi.value}</p>
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Agenda em formato de planilha */}
+            <div className="glass-card p-6 mt-6">
+              <h3 className="font-display font-semibold mb-6">
+                Agenda
+              </h3>
+              <ScheduleGrid />
+            </div>
+          </TabsContent>
 
           {/* OVERVIEW */}
           <TabsContent value="overview" className="space-y-6">
@@ -121,8 +165,56 @@ const AdminDashboard = () => {
             </div>
           </TabsContent>
 
-          {/* SCHEDULE */}
-          <TabsContent value="schedule" className="space-y-6">
+          {/* RESOURCES */}
+          <TabsContent value="resources" className="space-y-6">
+            {/* Services CRUD */}
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display font-semibold">Serviços</h3>
+                <Button size="sm" className="amber-gradient text-primary-foreground" onClick={() => toast.info('Modal de criação (em desenvolvimento)')}>
+                  + Adicionar
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {services.map(s => (
+                  <div key={s.id} className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30">
+                    <span className="text-2xl">{s.icon}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{s.name}</p>
+                      <p className="text-sm text-muted-foreground">R$ {s.price} • {s.duration} min</p>
+                    </div>
+                    <Button size="sm" variant="outline" className="border-border/50 text-xs">Editar</Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Barbers CRUD */}
+            <div className="glass-card p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="font-display font-semibold">Barbeiros</h3>
+                <Button size="sm" className="amber-gradient text-primary-foreground" onClick={() => toast.info('Modal de criação (em desenvolvimento)')}>
+                  + Adicionar
+                </Button>
+              </div>
+              <div className="space-y-3">
+                {barbers.map(b => (
+                  <div key={b.id} className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-display font-bold text-primary">
+                      {b.name[0]}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold truncate">{b.name}</p>
+                      <p className="text-sm text-muted-foreground">{b.specialty} • {b.commission}% comissão</p>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="border-border/50 text-xs">Editar</Button>
+                      <Button size="sm" variant="outline" className="border-destructive/50 text-destructive text-xs">Excluir</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
             <div className="glass-card p-6">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                 <h3 className="font-display font-semibold">Configurar Grade de Horários</h3>
@@ -169,58 +261,6 @@ const AdminDashboard = () => {
               <Button className="amber-gradient text-primary-foreground mt-6" onClick={() => toast.success('Horários salvos com sucesso!')}>
                 Salvar Horários
               </Button>
-            </div>
-          </TabsContent>
-
-          {/* RESOURCES */}
-          <TabsContent value="resources" className="space-y-6">
-            {/* Barbers CRUD */}
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display font-semibold">Barbeiros</h3>
-                <Button size="sm" className="amber-gradient text-primary-foreground" onClick={() => toast.info('Modal de criação (em desenvolvimento)')}>
-                  + Adicionar
-                </Button>
-              </div>
-              <div className="space-y-3">
-                {barbers.map(b => (
-                  <div key={b.id} className="flex items-center gap-4 p-4 rounded-xl bg-secondary/30">
-                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center font-display font-bold text-primary">
-                      {b.name[0]}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{b.name}</p>
-                      <p className="text-sm text-muted-foreground">{b.specialty} • {b.commission}% comissão</p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" variant="outline" className="border-border/50 text-xs">Editar</Button>
-                      <Button size="sm" variant="outline" className="border-destructive/50 text-destructive text-xs">Excluir</Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Services CRUD */}
-            <div className="glass-card p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-display font-semibold">Serviços</h3>
-                <Button size="sm" className="amber-gradient text-primary-foreground" onClick={() => toast.info('Modal de criação (em desenvolvimento)')}>
-                  + Adicionar
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {services.map(s => (
-                  <div key={s.id} className="flex items-center gap-3 p-4 rounded-xl bg-secondary/30">
-                    <span className="text-2xl">{s.icon}</span>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold truncate">{s.name}</p>
-                      <p className="text-sm text-muted-foreground">R$ {s.price} • {s.duration} min</p>
-                    </div>
-                    <Button size="sm" variant="outline" className="border-border/50 text-xs">Editar</Button>
-                  </div>
-                ))}
-              </div>
             </div>
           </TabsContent>
 
