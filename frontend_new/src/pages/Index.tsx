@@ -1,9 +1,9 @@
 import Navbar from '@/components/Navbar';
-import HeroSection from '@/components/landing/HeroSection';
-import ServicesSection from '@/components/landing/ServicesSection';
-import TeamSection from '@/components/landing/TeamSection';
-import BookingSection from '@/components/landing/BookingSection';
-import InfoSection from '@/components/landing/InfoSection';
+import HeroSection from '@/components/cliente/HeroSection';
+import ServicesSection from '@/components/cliente/ServicesSection';
+import TeamSection from '@/components/cliente/TeamSection';
+import BookingSection from '@/components/cliente/BookingSection';
+import InfoSection from '@/components/cliente/InfoSection';
 
 const Index = () => {
   const scrollToBooking = () => {

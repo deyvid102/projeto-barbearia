@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { Scissors, Menu, X } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
+import { Menu, X, LogIn } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ThemeToggle from './ThemeToggle';
+import logo from '@/assets/logo_nome.png';
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
@@ -12,11 +14,10 @@ const Navbar = () => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-xl border-b border-border/50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2">
-          <Scissors className="h-6 w-6 text-primary" />
-          <span className="font-display font-bold text-lg">BarberSaaS <span className="text-primary">Elite</span></span>
+          <img src={logo} alt="BarberMAX" className="h-9 w-auto" />
+          <span className="font-display font-bold text-lg">Barber<span className="text-primary">MAX</span></span>
         </Link>
 
-        {/* Desktop */}
         {isLanding && (
           <div className="hidden md:flex items-center gap-8">
             <a href="#servicos" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Serviços</a>
@@ -26,26 +27,23 @@ const Navbar = () => {
         )}
 
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/barbeiro">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Barbeiro</Button>
+          <ThemeToggle />
+          <Link to="/login">
+            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground gap-1.5">
+              <LogIn className="h-4 w-4" />
+              Entrar
+            </Button>
           </Link>
-          <Link to="/admin">
-            <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">Admin</Button>
-          </Link>
-          {isLanding && (
-            <a href="#agendar">
-              <Button size="sm" className="amber-gradient text-primary-foreground">Agendar</Button>
-            </a>
-          )}
         </div>
 
-        {/* Mobile toggle */}
-        <button className="md:hidden text-foreground" onClick={() => setOpen(!open)}>
-          {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-        </button>
+        <div className="flex md:hidden items-center gap-2">
+          <ThemeToggle />
+          <button className="text-foreground" onClick={() => setOpen(!open)}>
+            {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
+        </div>
       </div>
 
-      {/* Mobile menu */}
       {open && (
         <div className="md:hidden bg-background/95 backdrop-blur-xl border-b border-border/50 px-4 py-4 space-y-3">
           {isLanding && (
@@ -55,8 +53,9 @@ const Navbar = () => {
               <a href="#info" onClick={() => setOpen(false)} className="block text-sm py-2 text-muted-foreground">Contato</a>
             </>
           )}
-          <Link to="/barbeiro" onClick={() => setOpen(false)} className="block text-sm py-2 text-muted-foreground">Dashboard Barbeiro</Link>
-          <Link to="/admin" onClick={() => setOpen(false)} className="block text-sm py-2 text-muted-foreground">Dashboard Admin</Link>
+          <Link to="/login" onClick={() => setOpen(false)} className="flex items-center gap-2 text-sm py-2 text-muted-foreground">
+            <LogIn className="h-4 w-4" /> Entrar como Profissional
+          </Link>
         </div>
       )}
     </nav>

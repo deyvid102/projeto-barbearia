@@ -50,7 +50,7 @@ export const timeSlots = [
 ];
 
 export const appointments: Appointment[] = [
-  { id: '1', clientName: 'João Pedro', clientPhone: '(11) 99999-0001', barberId: '1', serviceId: '1', date: '2026-03-16', time: '09:00', status: 'completed', totalPrice: 45 },
+  { id: '1', clientName: 'João Pedro', clientPhone: '(11) 99999-0001', barberId: '1', serviceId: '1', date: '2026-03-25', time: '09:00', status: 'completed', totalPrice: 45 },
   { id: '2', clientName: 'Marcos Vieira', clientPhone: '(11) 99999-0002', barberId: '1', serviceId: '3', date: '2026-03-16', time: '10:00', status: 'completed', totalPrice: 70 },
   { id: '3', clientName: 'André Lima', clientPhone: '(11) 99999-0003', barberId: '2', serviceId: '4', date: '2026-03-16', time: '09:30', status: 'in-progress', totalPrice: 55 },
   { id: '4', clientName: 'Fernando Costa', clientPhone: '(11) 99999-0004', barberId: '1', serviceId: '2', date: '2026-03-16', time: '14:00', status: 'confirmed', totalPrice: 35 },
