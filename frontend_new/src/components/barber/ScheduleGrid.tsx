@@ -30,13 +30,13 @@ export default function ScheduleGrid() {
     ];
 
     const agendamentos = [
-      { id: 1, cliente: "Gabriel", barbeiroId: 1, hora: "09:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "concluido"},
-      { id: 1, cliente: "José", barbeiroId: 2, hora: "10:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "concluido"},
-      { id: 1, cliente: "Deyvid", barbeiroId: 3, hora: "11:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "pendente"},
-      { id: 1, cliente: "Miguel", barbeiroId: 1, hora: "12:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "futuro"},
-      { id: 1, cliente: "Pedro", barbeiroId: 2, hora: "13:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "futuro"},
-      { id: 1, cliente: "Ruan", barbeiroId: 3, hora: "14:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "futuro"},
-      { id: 1, cliente: "Helder", barbeiroId: 2, hora: "15:00", data: "2026-03-25", servico: "Corte", valor: 30, status: "futuro"},
+      { id: 1, cliente: "Gabriel", barbeiroId: 1, hora: "09:00", data: "2026-03-27", servico: "Corte", valor: 30, status: "concluido"},
+      { id: 1, cliente: "José", barbeiroId: 2, hora: "10:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "concluido"},
+      { id: 1, cliente: "Deyvid", barbeiroId: 3, hora: "11:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "pendente"},
+      { id: 1, cliente: "Miguel", barbeiroId: 1, hora: "12:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "futuro"},
+      { id: 1, cliente: "Pedro", barbeiroId: 2, hora: "13:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "futuro"},
+      { id: 1, cliente: "Ruan", barbeiroId: 3, hora: "14:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "futuro"},
+      { id: 1, cliente: "Helder", barbeiroId: 2, hora: "15:00", data: "2026-03-26", servico: "Corte", valor: 30, status: "futuro"},
     ];
 
     const statusStyles = {
