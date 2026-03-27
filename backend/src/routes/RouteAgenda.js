@@ -3,31 +3,28 @@ import ControlAgenda from "../controllers/ControlAgenda.js";
 
 const router = express.Router();
 
+// --- GESTÃO DA ESCALA SEMANAL ---
+
+// Salva ou atualiza um dia específico na escala (segunda, terça, etc.)
+router.post("/agendas", ControlAgenda.salvarDia);
+
+// Sincroniza a escala semanal completa de um barbeiro (substitui todos os dias de uma vez)
+router.post("/agendas/sincronizar", ControlAgenda.sincronizarEscala);
+
 // --- LISTAGEM ---
 
-// Busca todas as agendas (Geral)
+// Lista a escala (aceita query params ?fk_barbearia=ID&fk_barbeiro=ID)
 router.get("/agendas", ControlAgenda.listar);
 
-// NOVA ROTA: Busca agendas filtradas por uma barbearia específica
-// Opcional: Você também pode tratar isso dentro do ControlAgenda.listar via query params (?fk_barbearia=ID)
+// Busca toda a escala de uma barbearia específica (todos os barbeiros)
 router.get("/agendas/barbearia/:id", ControlAgenda.listarPorBarbearia);
 
+// --- REMOÇÃO ---
 
-// --- OPERAÇÕES ---
-
-// Cria um novo registro de agenda (O frontend envia data, horários e FKs no body)
-router.post("/agendas", ControlAgenda.criar); 
-
-// Deleta um registro específico da agenda pelo ID
+// Remove um dia específico da escala pelo ID do registro
 router.delete("/agendas/:id", ControlAgenda.deletar);
 
-
-// --- SINCRONIZAÇÃO E MASSA ---
-
-// Rota de sincronização em massa (usada para automação de múltiplos dias)
-router.post("/agendas/sincronizar", ControlAgenda.sincronizar);
-
-// Rota para limpar/resetar agenda de uma barbearia em um período (útil para re-processar automação)
-router.delete("/agendas/barbearia/:id/limpar", ControlAgenda.limparPeriodo);
+// Limpa toda a escala semanal de um barbeiro específico
+router.delete("/agendas/limpar", ControlAgenda.limparEscalaBarbeiro);
 
 export default router;

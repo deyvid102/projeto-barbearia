@@ -1,13 +1,12 @@
 import mongoose from "mongoose";
-import ModelBarbeiro from "./ModelBarbeiro.js";
-import ModelFinanceiro from "./ModelFinanceiro.js";
+// Certifique-se de que o ModelAgenda está importado corretamente para a validação
+import "./ModelAgenda.js"; 
 
 const ModelAgendamento = new mongoose.Schema({
     tipoCorte: { type: String, required: true },
-
     cliente: {
         nome: { type: String, required: true },
-        numero: { type: String}
+        numero: { type: String }
     },
     datahora: { type: Date, required: true, index: true },
     datahora_fim: { type: Date, required: true },
@@ -24,17 +23,51 @@ const ModelAgendamento = new mongoose.Schema({
     },
     fk_barbeiro: { type: mongoose.Schema.Types.ObjectId, ref: "barbeiro", required: true },
     fk_barbearia: { type: mongoose.Schema.Types.ObjectId, ref: 'barbearia', required: true }
-
-}, {  timestamps: true,
+}, { 
+    timestamps: true,
     collection: 'agendamentos'
 });
 
-// MIDDLEWARE POST-SAVE: Dispara quando o agendamento é atualizado
+// --- NOVO MIDDLEWARE PRE-SAVE: Valida se o horário está dentro da escala semanal ---
+ModelAgendamento.pre('save', async function (next) {
+    if (this.isNew || this.isModified('datahora')) {
+        const data = new Date(this.datahora);
+        const diaSemana = data.getDay(); // 0 (Dom) a 6 (Sab)
+        const horaMinutos = data.toTimeString().slice(0, 5); // Ex: "14:30"
+
+        try {
+            const agendaBarbeiro = await mongoose.model('agenda').findOne({
+                fk_barbeiro: this.fk_barbeiro,
+                dia_semana: diaSemana,
+                status: 'A'
+            });
+
+            if (!agendaBarbeiro) {
+                return next(new Error('O barbeiro não atende neste dia da semana.'));
+            }
+
+            // Validação de horário (Abertura/Fechamento)
+            if (horaMinutos < agendaBarbeiro.abertura || horaMinutos > agendaBarbeiro.fechamento) {
+                return next(new Error(`Fora do horário de atendimento (${agendaBarbeiro.abertura} - ${agendaBarbeiro.fechamento})`));
+            }
+
+            // Validação de intervalo
+            if (agendaBarbeiro.tem_intervalo) {
+                if (horaMinutos >= agendaBarbeiro.intervalo_inicio && horaMinutos < agendaBarbeiro.intervalo_fim) {
+                    return next(new Error('Horário selecionado coincide com o intervalo do barbeiro.'));
+                }
+            }
+        } catch (error) {
+            return next(error);
+        }
+    }
+    next();
+});
+
+// --- MIDDLEWARE POST-SAVE: Financeiro (Mantido conforme original) ---
 ModelAgendamento.post('save', async function (doc) {
-    // Só cria o financeiro se o status for 'F' (Finalizado)
     if (doc.status === 'F') {
         try {
-            // 1. Busca os dados do barbeiro para pegar a porcentagem
             const barbeiro = await mongoose.model('barbeiro').findById(doc.fk_barbeiro);
             
             if (barbeiro) {
@@ -42,7 +75,6 @@ ModelAgendamento.post('save', async function (doc) {
                 const valorBarbeiro = parseFloat((doc.valor * (porcentagem / 100)).toFixed(2));
                 const valorBarbearia = parseFloat((doc.valor - valorBarbeiro).toFixed(2));
 
-                // 2. Verifica se já não existe um registro financeiro para este agendamento (evita duplicidade)
                 const jaExiste = await mongoose.model('financeiro').findOne({ fk_agendamento: doc._id });
 
                 if (!jaExiste) {
