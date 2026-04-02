@@ -35,8 +35,9 @@ export default function Sidebar() {
   const menuItems = [
     { label: 'Painel Admin', icon: <IoGridOutline size={22} />, path: `/admin/dashboard/${id}` },
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
-    { label: 'Barbeiros', icon: <IoPeopleOutline size={22} />, path: `/admin/barbeiros/${id}` },
-    { label: 'Serviços', icon: <MdContentCut size={22} />, path: `/admin/valores/${id}` },
+    // { label: 'Barbeiros', icon: <IoPeopleOutline size={22} />, path: `/admin/barbeiros/${id}` },
+    { label: 'Gestão', icon: <IoPeopleOutline size={22} />, path: `/admin/gestao/${id}` },
+    // { label: 'Serviços', icon: <MdContentCut size={22} />, path: `/admin/valores/${id}` },
     { label: 'Analytics', icon: <IoStatsChartOutline size={22} />, path: `/admin/analytics/${id}` },
     { label: 'Logs', icon: <IoReaderOutline size={22} />, path: `/admin/logs/${id}` },
     { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` }, // Novo Item

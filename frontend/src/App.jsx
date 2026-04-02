@@ -17,7 +17,9 @@ import BarbeiroConfiguracoes from './pages/barbeiro/BarbeiroConfiguracoes';
 import BarbeiroCalendario from './pages/barbeiro/BarbeiroCalendario';
 
 // Admin
-import AdministradorDashboard from './pages/admin/AdministradorDashboard';
+import AdminLayout from './layout/AdminLayout';
+import AdministradorDashboard from './pages/admin/AdminDashboard';
+import GestaoUnificada from './pages/admin/Gestao';
 import BarbeiroGerenciamento from './pages/admin/BarbeiroGerenciamento';
 import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
 import AdminLogs from './pages/admin/AdminLogs';
@@ -35,7 +37,7 @@ function RouteLogger() {
 }
 
 const RootRedirect = () => {
-  const defaultBarbeariaNome = "barbeariaadmin"; 
+  const defaultBarbeariaNome = "barbermax"; 
   console.log(`[BarberFlow] Redirecionando raiz para /${defaultBarbeariaNome}`);
   return <Navigate to={`/${defaultBarbeariaNome}`} replace />;
 };
@@ -58,13 +60,16 @@ export default function App() {
           <Route path="/barbeiro/:id" element={<BarbeiroDashboard />} />
 
           {/* --- AREA DO ADMIN --- */}
-          <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
-          <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
-          <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
-          <Route path="/admin/logs/:id" element={<AdminLogs />} />
-          <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
-          <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
-          <Route path="/admin/personalizacao/:id" element={<Personalizacao />} /> {/* Nova Rota */}
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
+            <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
+            <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
+            <Route path="/admin/gestao/:id" element={<GestaoUnificada />} />
+            <Route path="/admin/logs/:id" element={<AdminLogs />} />
+            <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
+            <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
+            <Route path="/admin/personalizacao/:id" element={<Personalizacao />} /> 
+          </Route>
 
           {/* --- AGENDAMENTO PÚBLICO --- */}
           <Route path="/agendar/:nomeBarbearia" element={<NovoAgendamento />} />

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
-import AdminLayout from '../../layout/AdminLayout';
+// import AdminLayout from '../../layout/AdminLayout';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert';
 
@@ -123,7 +123,8 @@ export default function Personalizacao() {
     ];
 
     return (
-        <AdminLayout>
+        // <AdminLayout>
+        <>
             <div className="max-w-4xl mx-auto p-4 md:p-8 pb-32">
                 <header className="mb-10">
                     <h1 className="text-3xl font-black italic lowercase tracking-tighter leading-none">
@@ -218,6 +219,7 @@ export default function Personalizacao() {
                     </form>
                 )}
             </div>
-        </AdminLayout>
+        </>
+        // </AdminLayout>
     );
 }

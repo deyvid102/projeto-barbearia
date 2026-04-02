@@ -68,7 +68,15 @@ export default function LoginBarbeiro() {
 
       localStorage.setItem('barbeiroId', user._id || user.id);
       localStorage.setItem('barbeiroNome', user.nome);
-      navigate(`/barbeiro/dashboard/${user._id || user.id}`);
+      localStorage.setItem('isAdmin', user.admin); // opcional (bom pra usar depois)
+
+      if (user.admin) {
+        // 👉 vai para o painel admin
+        navigate(`/admin/dashboard/${barbeariaDoBarbeiro}`);
+      } else {
+        // 👉 vai para o painel normal do barbeiro
+        navigate(`/barbeiro/dashboard/${user._id || user.id}`);
+      }
 
     } catch (error) {
       setAlertConfig({ 

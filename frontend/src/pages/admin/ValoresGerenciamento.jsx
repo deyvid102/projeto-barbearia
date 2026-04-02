@@ -2,11 +2,27 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import ModalConfirmacao from '../../components/modais/ModalConfirmacao';
+import ModalFoto from '../../components/modais/ModalFoto'; 
 import CustomAlert from '../../components/CustomAlert';
 import AdminLayout from '../../layout/AdminLayout';
 import { useTheme } from '../../components/ThemeContext';
-import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoTimeOutline } from 'react-icons/io5';
+import { IoAdd, IoTrashOutline, IoClose, IoPricetagOutline, IoCameraOutline, IoPersonOutline, IoPieChartOutline, IoTimeOutline } from 'react-icons/io5';
 import { FaEdit } from 'react-icons/fa';
+
+const getCroppedImg = (imageSrc, pixelCrop) => {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.src = imageSrc;
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = 400;
+      canvas.height = 400;
+      ctx.drawImage(image, pixelCrop.x, pixelCrop.y, pixelCrop.width, pixelCrop.height, 0, 0, 400, 400);
+      resolve(canvas.toDataURL('image/jpeg', 0.8));
+    };
+  });
+};
 
 export default function ValoresGerenciamento() {
   const { id } = useParams(); // Assumindo que este ID é o da barbearia (fk_barbearia)

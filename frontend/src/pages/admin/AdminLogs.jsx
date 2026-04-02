@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js'; 
 import { useTheme } from '../../components/ThemeContext';
-import AdminLayout from '../../layout/AdminLayout';
+// import AdminLayout from '../../layout/AdminLayout';
 import SelectPersonalizado from '../../components/SelectPersonalizado';
 import Pagination from '../../components/Pagination'; 
 import { IoPrintOutline } from 'react-icons/io5';
@@ -109,21 +109,25 @@ export default function AdminLogs() {
   };
 
   if (loading) return (
-    <AdminLayout>
-      <div className={`min-h-[60vh] flex flex-col items-center justify-center gap-4 transition-colors duration-300 ${isDarkMode ? 'bg-[#0d0d0d]' : 'bg-transparent'}`}>
-        <div className="relative flex items-center justify-center">
-          <div className="w-12 h-12 border-4 border-[#e6b32a]/20 rounded-full" />
-          <div className="absolute w-12 h-12 border-4 border-[#e6b32a] border-t-transparent rounded-full animate-spin" />
-        </div>
-        <p className={`text-[10px] font-black uppercase tracking-[3px] animate-pulse ${isDarkMode ? 'text-white/40' : 'text-slate-400'}`}>
-          Carregando Logs...
-        </p>
+    // <AdminLayout>
+    <>
+      <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
+        <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
+          <div>
+            <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
+              histórico.<span className="text-[#e6b32a]">atividades</span>
+            </h1>
+            <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">Auditoria de Registros</p>
+          </div>
+        </header>
       </div>
-    </AdminLayout>
+    </>
+    // </AdminLayout>
   );
 
   return (
-    <AdminLayout>
+    // <AdminLayout>
+    <>
       <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
         
         <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
@@ -250,6 +254,7 @@ export default function AdminLogs() {
           )}
         </div>
       </div>
-    </AdminLayout>
+    </>
+    // </AdminLayout>
   );
 }

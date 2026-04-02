@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js';
 import { useTheme } from '../../components/ThemeContext';
 import CustomAlert from '../../components/CustomAlert';
-import AdminLayout from '../../layout/AdminLayout';
+// import AdminLayout from '../../layout/AdminLayout';
 
 import { 
   IoTrashOutline,
@@ -237,7 +237,8 @@ export default function BarbeariaAgenda() {
   };
 
   return (
-    <AdminLayout>
+    // <AdminLayout>
+    <>
       <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
         {loading && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-md">
@@ -439,6 +440,7 @@ export default function BarbeariaAgenda() {
           </main>
         </div>
       </div>
-    </AdminLayout>
+    </>
+    // </AdminLayout>
   );
 }

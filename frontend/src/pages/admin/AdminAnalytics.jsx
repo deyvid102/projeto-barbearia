@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { api } from '../../services/Api.js'; 
 import { useTheme } from '../../components/ThemeContext';
-import AdminLayout from '../../layout/AdminLayout';
+// import AdminLayout from '../../layout/AdminLayout';
 import SelectPersonalizado from '../../components/SelectPersonalizado';
 import SidebarFiltros from '../../components/SideBarFiltros.jsx';
 import Pagination from '../../components/Pagination';
@@ -168,7 +168,8 @@ export default function AdminAnalytics() {
   );
 
   return (
-    <AdminLayout>
+    // <AdminLayout>
+    <>
       <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
         
         <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
@@ -368,6 +369,7 @@ export default function AdminAnalytics() {
           </div>
         </SidebarFiltros>
       </div>
-    </AdminLayout>
+    </>
+    // </AdminLayout>
   );
 }

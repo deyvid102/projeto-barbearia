@@ -1,23 +1,24 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { api } from '../../services/Api.js';
-import { useTheme } from '../../components/ThemeContext';
-import CustomAlert from '../../components/CustomAlert'; 
-import AdminLayout from '../../layout/AdminLayout';
-import ScheduleGrid from '../../components/agenda/ScheduleGrid';
-// import DateSelector from "../../components/agenda/DateSelector";
+import { useTheme } from '../../components/ThemeContext.jsx';
+import CustomAlert from '../../components/CustomAlert.jsx'; 
+// import AdminLayout from '../../layout/AdminLayout.jsx';
+import ScheduleGrid from '../../components/agenda/ScheduleGrid.jsx';
+import DateSelector from "../../components/agenda/DateSelector";
 
 import { 
   IoSaveOutline, IoCloseOutline, IoSyncOutline, 
   IoPersonOutline, IoCheckmarkCircleOutline, IoTimeOutline, 
   IoCloseCircleOutline, IoChevronDownOutline, IoOptionsOutline,
-  IoCutOutline, IoCashOutline, IoCalendarOutline, IoStatsChartOutline
+  IoCutOutline, IoCashOutline, IoCalendarOutline, IoStatsChartOutline, IoAddOutline, IoFileTrayFullOutline, IoPeopleOutline
 } from 'react-icons/io5';
 import { FaWhatsapp } from 'react-icons/fa';
 
 export default function AdministradorDashboard() {
   const { id } = useParams(); 
   const { isDarkMode } = useTheme(); 
+  const navigate = useNavigate();
   
   const [barbeiros, setBarbeiros] = useState([]);
   const [agendamentos, setAgendamentos] = useState([]);
@@ -270,13 +271,31 @@ export default function AdministradorDashboard() {
     </div>
   );
 
+  const NavButton = ({ icon: Icon, onClick, label, variant = 'default', colorClass, className = "" }) => (
+    <div className={`relative group flex flex-col items-center flex-1 md:flex-none ${className}`}>
+      <button 
+        onClick={onClick}
+        className={`w-full h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl flex items-center justify-center transition-all active:scale-95 border
+        ${variant === 'primary' 
+          ? 'bg-[#e6b32a] text-black shadow-lg shadow-[#e6b32a]/20 border-[#e6b32a] hover:scale-105' 
+          : colorClass ? colorClass : isDarkMode ? 'bg-white/5 border-white/10 text-gray-400 hover:text-[#e6b32a]' : 'bg-white border-slate-200 text-slate-500 hover:text-black'}`}
+      >
+        <Icon size={variant === 'primary' ? 22 : 18} className="md:w-[26px] md:h-[26px]" />
+      </button>
+      <span className="hidden md:block absolute -bottom-8 scale-0 group-hover:scale-100 transition-all duration-200 bg-black text-white text-[9px] font-black uppercase px-2 py-1 rounded opacity-0 group-hover:opacity-100 whitespace-nowrap z-50 pointer-events-none">
+        {label}
+      </span>
+    </div>
+  );
+
   return (
-    <AdminLayout>
+    // <AdminLayout>
+    <>
       <div className="p-4 md:p-8 flex flex-col w-full">
         <header className="mb-6 md:mb-8 space-y-4 md:space-y-6">
-          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
-            <div>
-              <h1 className="text-3xl font-black italic lowercase tracking-tighter">admin.<span className="text-[#e6b32a]">escala</span></h1>
+          {/* <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4"> */}
+            {/* <div>
+              <h1 className="text-3xl font-black italic tracking-tighter">Painel <span className="text-[#e6b32a]">Administrativo</span></h1>
               <div className="flex items-center gap-2 mt-1">
                 <IoCalendarOutline className="text-[#e6b32a]" size={14} />
                 <p className="text-[10px] font-bold uppercase tracking-widest opacity-60">
@@ -284,6 +303,16 @@ export default function AdministradorDashboard() {
                 </p>
               </div>
             </div>
+            <div className="flex items-center gap-2 md:gap-3">
+              <div className="flex flex-1 items-center gap-2 md:gap-3 md:border-r border-black/5 dark:border-white/5 md:pr-4">
+                <div className="hidden md:block">
+                    <NavButton icon={IoAddOutline} label="Novo Agendamento" variant="primary" onClick={() => setIsAvulsoModalOpen(true)} />
+                </div> */}
+                {/* <NavButton icon={IoCalendarOutline} label="Calendário" onClick={() => navigate(`/barbeiro/calendario/${getSafeId()}`)} /> */}
+                {/* <NavButton icon={IoPeopleOutline} label="Gestão" onClick={() => navigate(`/admin/gestao/${id}`)} />
+                <NavButton icon={IoStatsChartOutline} label="Estatísticas" onClick={() => navigate(`/barbeiro/estatisticas/${getSafeId()}`)} />
+              </div>
+            </div> */}
             
             {/* <div className={`flex items-center gap-4 px-4 py-2 rounded-2xl border ${isDarkMode ? 'bg-white/5 border-white/10 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
                 <IoSyncOutline className="animate-spin text-[#e6b32a]" size={18} />
@@ -292,7 +321,7 @@ export default function AdministradorDashboard() {
                   <p className="text-xs font-black">Sincronizado</p>
                 </div>
             </div> */}
-          </div>
+          {/* </div> */}
 
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {[
@@ -362,11 +391,11 @@ export default function AdministradorDashboard() {
           </div>
         </div>
 
-        {/* <DateSelector
+        <DateSelector
           selectedDate={selectedDate}
           setSelectedDate={setSelectedDate}
           isDarkMode={isDarkMode}
-        /> */}
+        />
 
         <ScheduleGrid
           barbeiros={barbeirosExibidos}
@@ -459,6 +488,7 @@ export default function AdministradorDashboard() {
       {alertConfig.show && (
         <CustomAlert titulo={alertConfig.titulo} message={alertConfig.mensagem} type={alertConfig.tipo} onClose={() => setAlertConfig({ ...alertConfig, show: false })} />
       )}
-    </AdminLayout>
+    </>
+    // </AdminLayout>
   );
 }
