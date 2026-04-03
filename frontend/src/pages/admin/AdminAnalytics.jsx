@@ -173,12 +173,12 @@ export default function AdminAnalytics() {
       <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
         
         <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
-          <div>
+          {/* <div>
             <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
               admin.<span className="text-[#e6b32a]">analytics</span>
             </h1>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">Performance em Tempo Real</p>
-          </div>
+          </div> */}
           <div className="flex gap-2 sm:gap-3 flex-shrink-0">
              <button onClick={() => setIsFilterOpen(true)} className="w-10 h-10 flex items-center justify-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl active:scale-95 transition-transform" aria-label="Filtros">
               <IoFilter size={20} />

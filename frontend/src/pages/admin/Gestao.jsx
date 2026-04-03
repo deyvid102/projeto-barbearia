@@ -162,14 +162,6 @@ export default function GestaoUnificada() {
     // <AdminLayout>
     <>
       <div className="max-w-7xl mx-auto p-4 md:p-8 pb-20">
-        
-        {/* HEADER PRINCIPAL */}
-        <header className="mb-12">
-          <h1 className="text-4xl font-black italic lowercase tracking-tighter leading-none">
-            gestão.<span className="text-[#e6b32a]">unificada</span>
-          </h1>
-          <p className="text-[10px] uppercase tracking-[3px] font-bold opacity-40 mt-2">Equipe e Tabela de Preços</p>
-        </header>
 
         {alertConfig.show && (
           <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[90%] md:w-auto">

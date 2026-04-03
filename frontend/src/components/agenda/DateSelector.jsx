@@ -1,31 +1,33 @@
-import React, { useRef } from "react";
+import React, { useRef, useMemo } from "react";
 // Se estiver usando Lucide Icons (comum em projetos React modernos)
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DateSelector({ selectedDate, setSelectedDate, isDarkMode }) {
   const scrollRef = useRef(null);
 
-  const getNextDays = () => {
-    const days = [];
+  // useMemo evita que a lista seja recalculada a cada render desnecessariamente
+  const days = useMemo(() => {
+    const list = [];
     const today = new Date();
     for (let i = 0; i < 30; i++) {
       const d = new Date();
       d.setDate(today.getDate() + i);
-      days.push(d);
+      list.push(d);
     }
-    return days;
-  };
+    return list;
+  }, []);
 
   const getLabel = (date, index) => {
     if (index === 0) return "Hoje";
     if (index === 1) return "Amanhã";
-    return date.toLocaleDateString("pt-BR", { weekday: "short" });
+    // Abreviação de 3 letras sem o ponto
+    return date.toLocaleDateString("pt-BR", { weekday: "short" }).slice(0, 3);
   };
 
   // Função para scroll manual via botões
   const scroll = (direction) => {
     if (scrollRef.current) {
-      const scrollAmount = 200; // Ajuste a velocidade/distância aqui
+      const scrollAmount = 150; // Ajustado para o novo tamanho compacto
       scrollRef.current.scrollBy({
         left: direction === "left" ? -scrollAmount : scrollAmount,
         behavior: "smooth",
@@ -34,20 +36,20 @@ export default function DateSelector({ selectedDate, setSelectedDate, isDarkMode
   };
 
   return (
-    <div className="relative flex items-center group">
-      {/* Seta Esquerda */}
+    <div className="relative flex items-center group w-full">
+      {/* Seta Esquerda - Mantida menor e nas bordas */}
       <button
         onClick={() => scroll("left")}
-        className={`absolute left-0 z-10 p-1 m-1 rounded-full shadow-lg transition-all opacity-0 group-hover:opacity-100 
-          ${isDarkMode ? "bg-zinc-800 text-white" : "bg-white text-slate-600"}`}
+        className={`absolute left-[-10px] z-10 p-1 rounded-full shadow-md transition-all opacity-0 group-hover:opacity-100 
+          ${isDarkMode ? "bg-zinc-800 text-white border border-white/10" : "bg-white text-slate-600 border border-slate-200"}`}
       >
-        <ChevronLeft size={20} />
+        <ChevronLeft size={16} />
       </button>
 
-      {/* Container de Datas */}
+      {/* Container de Datas - Fundo e padding originais restaurados, altura compacta mantida */}
       <div
         ref={scrollRef}
-        className={`w-full flex gap-2 mb-4 p-2 rounded-2xl border overflow-x-auto whitespace-nowrap no-scrollbar
+        className={`w-full flex gap-0.5 mb-4 p-2 rounded-2xl border overflow-x-auto whitespace-nowrap no-scrollbar
           ${isDarkMode 
             ? "bg-[#111] border-white/5" 
             : "bg-white border-slate-200 shadow-sm"}
@@ -59,35 +61,41 @@ export default function DateSelector({ selectedDate, setSelectedDate, isDarkMode
           .no-scrollbar::-webkit-scrollbar { display: none; }
         `}</style>
 
-        {getNextDays().map((date, index) => {
+        {days.map((date, index) => {
           const isSelected = date.toDateString() === selectedDate.toDateString();
+          // Lógica para mostrar o divisor: não mostra no último item, nem antes/depois do selecionado
+          const showDivider = index < days.length - 1 && !isSelected && 
+                              (days[index + 1].toDateString() !== selectedDate.toDateString());
 
           return (
-            <button
-              key={date.toISOString()}
-              onClick={() => setSelectedDate(date)}
-              className={`
-                min-w-[50px] md:min-w-[70px]
-                flex flex-col items-center justify-center
-                px-3 py-2 md:px-4 md:py-1
-                rounded-lg transition-all border
-                flex-shrink-0
-                ${isSelected
-                    ? "bg-[#e6b32a] text-black border-[#e6b32a]"
-                    : isDarkMode
-                    ? "bg-transparent border-white/10 text-gray-400 hover:bg-white/5"
-                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
-                }
-              `}
-            >
-              <span className="text-xs font-semibold uppercase tracking-wide">
-                {getLabel(date, index)}
-              </span>
-              <span className="text-xl font-black">{date.getDate()}</span>
-              <span className="text-[10px] opacity-70">
-                {date.toLocaleDateString("pt-BR", { month: "short" })}
-              </span>
-            </button>
+            <React.Fragment key={date.toISOString()}>
+              <button
+                onClick={() => setSelectedDate(date)}
+                className={`
+                  min-w-[45px] md:min-w-[55px]
+                  flex flex-col items-center justify-center
+                  py-1.5 px-2
+                  rounded-lg transition-all border
+                  flex-shrink-0
+                  ${isSelected
+                      ? "bg-[#e6b32a] text-black border-[#e6b32a] scale-[0.98]"
+                      : isDarkMode
+                      ? "bg-transparent border-transparent text-gray-500 hover:text-gray-300"
+                      : "bg-transparent border-transparent text-slate-500 hover:bg-slate-200/50"
+                  }
+                `}
+              >
+                <span className="text-[10px] font-medium uppercase tracking-tighter">
+                  {getLabel(date, index)}
+                </span>
+                <span className="text-base font-bold leading-none mt-0.5">{date.getDate()}</span>
+              </button>
+              
+              {/* Linha Divisória Vertical */}
+              {showDivider && (
+                <div className={`w-[1px] h-6 self-center flex-shrink-0 ${isDarkMode ? 'bg-white/5' : 'bg-slate-100'}`} />
+              )}
+            </React.Fragment>
           );
         })}
       </div>
@@ -95,10 +103,10 @@ export default function DateSelector({ selectedDate, setSelectedDate, isDarkMode
       {/* Seta Direita */}
       <button
         onClick={() => scroll("right")}
-        className={`absolute right-0 z-10 p-1 m-1 rounded-full shadow-lg transition-all opacity-0 group-hover:opacity-100 
-          ${isDarkMode ? "bg-zinc-800 text-white" : "bg-white text-slate-600"}`}
+        className={`absolute right-[-10px] z-10 p-1 rounded-full shadow-md transition-all opacity-0 group-hover:opacity-100 
+          ${isDarkMode ? "bg-zinc-800 text-white border border-white/10" : "bg-white text-slate-600 border border-slate-200"}`}
       >
-        <ChevronRight size={20} />
+        <ChevronRight size={16} />
       </button>
     </div>
   );

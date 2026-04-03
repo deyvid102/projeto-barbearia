@@ -131,12 +131,12 @@ export default function AdminLogs() {
       <div className="p-4 md:p-8 flex flex-col min-h-screen md:h-full print:block print:bg-white print:p-0">
         
         <header className="mb-6 md:mb-8 flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 print:hidden">
-          <div>
+          {/* <div>
             <h1 className="text-xl md:text-2xl font-black italic lowercase tracking-tighter">
               histórico.<span className="text-[#e6b32a]">atividades</span>
             </h1>
             <p className="text-[10px] font-bold text-gray-500 uppercase tracking-[2px]">Auditoria de Registros</p>
-          </div>
+          </div> */}
           <button onClick={() => window.print()} className="flex items-center gap-2 px-4 md:px-6 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest bg-[#e6b32a] text-black hover:scale-105 transition-all shadow-lg shadow-[#e6b32a]/20 w-fit">
             <IoPrintOutline size={14}/> <span className="hidden sm:inline">Gerar PDF</span>
           </button>
@@ -180,6 +180,7 @@ export default function AdminLogs() {
               options={[{ label: 'Todos', value: 'TODOS' }, ...listaBarbeiros]}
             />
           </div>
+          
         </div>
 
         {/* Tabela */}
@@ -196,7 +197,6 @@ export default function AdminLogs() {
                   <th className="p-3 md:p-5 text-[9px] md:text-[10px] font-black uppercase text-gray-500 text-center whitespace-nowrap">Comissão</th>
                   <th className="p-3 md:p-5 text-[9px] md:text-[10px] font-black uppercase text-gray-500 text-center whitespace-nowrap">Pago Barbeiro</th>
                   <th className="p-3 md:p-5 text-[9px] md:text-[10px] font-black uppercase text-gray-500 text-center whitespace-nowrap">Líquido</th>
-                  <th className="p-3 md:p-5 text-[9px] md:text-[10px] font-black uppercase text-gray-500 text-center whitespace-nowrap">Status</th>
                 </tr>
               </thead>
               <tbody>

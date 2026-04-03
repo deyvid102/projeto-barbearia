@@ -6,6 +6,7 @@ import CustomAlert from '../../components/CustomAlert.jsx';
 // import AdminLayout from '../../layout/AdminLayout.jsx';
 import ScheduleGrid from '../../components/agenda/ScheduleGrid.jsx';
 import DateSelector from "../../components/agenda/DateSelector";
+import ModalAgendamentoDireto from '../../components/modais/ModalAgendamentoDireto.jsx';
 
 import { 
   IoSaveOutline, IoCloseOutline, IoSyncOutline, 
@@ -14,6 +15,7 @@ import {
   IoCutOutline, IoCashOutline, IoCalendarOutline, IoStatsChartOutline, IoAddOutline, IoFileTrayFullOutline, IoPeopleOutline
 } from 'react-icons/io5';
 import { FaWhatsapp } from 'react-icons/fa';
+
 
 export default function AdministradorDashboard() {
   const { id } = useParams(); 
@@ -30,6 +32,9 @@ export default function AdministradorDashboard() {
   const [selectedAg, setSelectedAg] = useState(null);
   const [novoPreco, setNovoPreco] = useState('');
   const [novoStatus, setNovoStatus] = useState('A');
+
+  const [isModalAddOpen, setIsModalAddOpen] = useState(false);
+  const [selectedDataAdd, setSelectedDataAdd] = useState(null);
 
   const [alertConfig, setAlertConfig] = useState({ show: false, titulo: '', mensagem: '', tipo: 'success' });
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -223,6 +228,17 @@ export default function AdministradorDashboard() {
     return escopo;
   };
 
+  const handleSaveAgendamento = async (payload) => {
+    try {
+      await api.post('/agendamentos', payload);
+      setIsModalDiretoOpen(false);
+      fetchGlobalData(true);
+      setAlertConfig({ show: true, titulo: 'Sucesso', mensagem: 'Agendado com sucesso!', tipo: 'success' });
+    } catch (error) {
+      setAlertConfig({ show: true, titulo: 'Erro', mensagem: 'Falha ao agendar.', tipo: 'error' });
+    }
+  };
+
   const getTimelinePositionPercentage = (horaCard) => {
     const currentHour = currentTime.getHours();
     const [cardHour] = horaCard.split(':');
@@ -412,6 +428,10 @@ export default function AdministradorDashboard() {
             })
           }
           onCardClick={openAcoes}
+          onAddClick={(hora, barbeiro) => {
+            setSelectedDataAdd({ hora, barbeiro });
+            setIsModalAddOpen(true);
+          }}
           getNomeBarbeiro={getNomeBarbeiro}
         />
       </div>
@@ -483,6 +503,16 @@ export default function AdministradorDashboard() {
             </div>
           </div>
         </div>
+      )}
+      {isModalAddOpen && (
+        <ModalAgendamentoDireto 
+          isOpen={isModalAddOpen}
+          onClose={() => setIsModalAddOpen(false)}
+          onSave={handleSaveAgendamento}
+          dataAgendamento={selectedDataAdd}
+          selectedDate={selectedDate} // A data que o administrador está visualizando
+          isDarkMode={isDarkMode}
+        />
       )}
 
       {alertConfig.show && (

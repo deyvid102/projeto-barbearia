@@ -126,11 +126,11 @@ export default function Personalizacao() {
         // <AdminLayout>
         <>
             <div className="max-w-4xl mx-auto p-4 md:p-8 pb-32">
-                <header className="mb-10">
+                {/* <header className="mb-10">
                     <h1 className="text-3xl font-black italic lowercase tracking-tighter leading-none">
                         visual.<span className="text-[#e6b32a]">setup</span>
                     </h1>
-                </header>
+                </header> */}
 
                 {alertConfig.show && (
                     <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[90%] md:w-auto">
@@ -141,9 +141,9 @@ export default function Personalizacao() {
                 {!loading && (
                     <form onSubmit={handleSubmit} className="space-y-8">
                         {/* SEÇÃO: ESCOLHA DO TEMA (Com Imagens Reais) */}
-                        <div className={`p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100 shadow-sm'}`}>
-                            <div className="flex items-center gap-3 mb-6">
-                                <IoColorPaletteOutline className="text-[#e6b32a]" size={24} />
+                        {/* <div className={`p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100 shadow-sm'}`}>
+                            <div className="flex items-center gap-3 mb-6"> */}
+                                {/* <IoColorPaletteOutline className="text-[#e6b32a]" size={24} />
                                 <h2 className="text-xl font-black lowercase tracking-tighter">Selecione o Visual</h2>
                             </div>
                             
@@ -158,16 +158,16 @@ export default function Personalizacao() {
                                             ? 'border-[#e6b32a] bg-[#e6b32a]/5 shadow-2xl scale-[1.02]' 
                                             : isDarkMode ? 'border-white/5 opacity-40 hover:opacity-100' : 'border-slate-100 opacity-40 hover:opacity-100'
                                         }`}
-                                    >
+                                    > */}
                                         {/* CONTAINER DA IMAGEM DE PREVIEW */}
-                                        <div className="w-full h-40 rounded-2xl mb-4 overflow-hidden border border-black/5 z-0 relative">
+                                        {/* <div className="w-full h-40 rounded-2xl mb-4 overflow-hidden border border-black/5 z-0 relative">
                                             <img 
                                                 src={tema.image} 
                                                 alt={`Preview do tema ${tema.label}`} 
                                                 className="w-full h-full object-cover object-top transition-transform duration-500 group-hover:scale-110"
-                                            />
+                                            /> */}
                                             {/* Overlay sutil para destacar o texto */}
-                                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                                            {/* <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                                         </div>
                                         
                                         <div className="flex items-center justify-between px-2 pb-1 relative z-10">
@@ -184,7 +184,7 @@ export default function Personalizacao() {
                                     </button>
                                 ))}
                             </div>
-                        </div>
+                        </div> */}
 
                         {/* SEÇÃO: CONTATOS (Inalterada) */}
                         <div className={`p-8 rounded-[2.5rem] border ${isDarkMode ? 'bg-white/5 border-white/10' : 'bg-white border-slate-100 shadow-sm'}`}>

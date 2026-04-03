@@ -14,6 +14,7 @@ export default function ScheduleGrid({
   getHourFromDate,
   formatHourLabel,
   onCardClick,
+  onAddClick,
   getNomeBarbeiro, // opcional: se passado, mostra nome do barbeiro no card
   disableOthersForId = null, // opcional: id do barbeiro "ativo" (outros ficam bloqueados)
 }) {
@@ -125,65 +126,80 @@ export default function ScheduleGrid({
                             ags.length > 1 ? 'grid-cols-2' : 'grid-cols-1'
                           }`}
                         >
-                          {ags.map((ag) => (
-                            <button
-                              key={ag._id}
-                              onClick={() => !isDisabled && onCardClick(ag)}
-                              className={`group w-full p-1.5 rounded-lg text-left border shadow-sm transition-all h-fit relative z-10
-                                ${
-                                  isDisabled
-                                    ? 'opacity-40 grayscale pointer-events-none'
-                                    : 'hover:scale-[1.02] active:scale-95'
-                                }
-                                ${
-                                  ag.status === 'F'
-                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
-                                    : ag.status === 'C'
-                                    ? 'bg-red-500/10 border-red-500/20 text-red-500'
-                                    : 'bg-[#e6b32a] text-black border-[#e6b32a]'
-                                }`}
-                            >
-                              <div className="flex flex-col">
-                                <div className="flex justify-between items-start gap-1">
-                                  <p className="text-[8px] font-black uppercase truncate max-w-[70%]">
-                                    {getNomeExibicao(ag)}
-                                  </p>
-                                  <span className="text-[7px] font-black opacity-70">
-                                    {formatHourLabel(ag)}
-                                  </span>
-                                </div>
-                                <div className="mt-1 border-t border-black/5 pt-1">
-                                  <div className="flex justify-between items-end">
-                                    <div className="space-y-0.5">
-                                      <div className="flex items-center gap-1 opacity-80">
-                                        <IoCutOutline size={8} />
-                                        <p className="text-[7px] font-bold uppercase truncate">
-                                          {ag.tipoCorte || 'Serviço'}
-                                        </p>
+                          {ags.length > 0 ? (
+                            ags.map((ag) => (
+                              <button
+                                key={ag._id}
+                                onClick={() => !isDisabled && onCardClick(ag)}
+                                className={`group w-full p-1.5 rounded-lg text-left border shadow-sm transition-all h-fit relative z-10
+                                  ${
+                                    isDisabled
+                                      ? 'opacity-40 grayscale pointer-events-none'
+                                      : 'hover:scale-[1.02] active:scale-95'
+                                  }
+                                  ${
+                                    ag.status === 'F'
+                                      ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500'
+                                      : ag.status === 'C'
+                                      ? 'bg-red-500/10 border-red-500/20 text-red-500'
+                                      : 'bg-[#e6b32a] text-black border-[#e6b32a]'
+                                  }`}
+                              >
+                                <div className="flex flex-col">
+                                  <div className="flex justify-between items-start gap-1">
+                                    <p className="text-[8px] font-black uppercase truncate max-w-[70%]">
+                                      {getNomeExibicao(ag)}
+                                    </p>
+                                    <span className="text-[7px] font-black opacity-70">
+                                      {formatHourLabel(ag)}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1 border-t border-black/5 pt-1">
+                                    <div className="flex justify-between items-end">
+                                      <div className="space-y-0.5">
+                                        <div className="flex items-center gap-1 opacity-80">
+                                          <IoCutOutline size={8} />
+                                          <p className="text-[7px] font-bold uppercase truncate">
+                                            {ag.tipoCorte || 'Serviço'}
+                                          </p>
+                                        </div>
+                                        <div className="flex items-center gap-1">
+                                          <IoCashOutline size={8} />
+                                          <p className="text-[8px] font-black">
+                                            R$ {ag.valor || '0,00'}
+                                          </p>
+                                        </div>
                                       </div>
-                                      <div className="flex items-center gap-1">
-                                        <IoCashOutline size={8} />
-                                        <p className="text-[8px] font-black">
-                                          R$ {ag.valor || '0,00'}
-                                        </p>
-                                      </div>
+                                      {getNomeBarbeiro && (
+                                        <div className="flex items-center gap-1 text-right">
+                                          <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
+                                            {getNomeBarbeiro(ag)}
+                                          </p>
+                                          <IoPersonOutline
+                                            size={9}
+                                            className="opacity-50"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
-                                    {getNomeBarbeiro && (
-                                      <div className="flex items-center gap-1 text-right">
-                                        <p className="text-[9px] font-black uppercase truncate text-black/60 dark:text-black/80">
-                                          {getNomeBarbeiro(ag)}
-                                        </p>
-                                        <IoPersonOutline
-                                          size={9}
-                                          className="opacity-50"
-                                        />
-                                      </div>
-                                    )}
                                   </div>
                                 </div>
-                              </div>
+                              </button>
+                            ))
+                          ) : (
+                            /* BOTÃO DE ADICIONAR QUANDO ESTIVER VAZIO */
+                            <button
+                              disabled={isDisabled}
+                              onClick={() => onAddClick && onAddClick(hora, b)}
+                              className={`w-full h-8 flex items-center justify-center rounded-lg border-2 border-dashed transition-all
+                                ${isDarkMode 
+                                  ? 'border-white/5 hover:border-[#e6b32a]/50 text-white/20 hover:text-[#e6b32a]' 
+                                  : 'border-slate-100 hover:border-slate-300 text-slate-300 hover:text-slate-600'
+                                } ${isDisabled ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+                            >
+                              <span className="text-lg font-light">+</span>
                             </button>
-                          ))}
+                          )}                    
                         </div>
                       </td>
                     );
