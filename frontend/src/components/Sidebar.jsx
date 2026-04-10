@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useTheme } from '../components/ThemeContext';
 import { api } from '../services/Api.js';
@@ -12,12 +12,12 @@ import {
   IoArrowBack,
   IoSettingsOutline,
   IoCloseOutline,
-  IoBrushOutline, // Ícone para Personalização
+  IoBrushOutline,
+  IoAddOutline 
 } from 'react-icons/io5';
-import { MdContentCut } from 'react-icons/md';
 
 export default function Sidebar() {
-  const { id } = useParams(); // ID do admin vindo da URL
+  const { id } = useParams(); 
   const navigate = useNavigate();
   const location = useLocation();
   const { isDarkMode } = useTheme();
@@ -25,6 +25,7 @@ export default function Sidebar() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
+  const [slugBarbearia, setSlugBarbearia] = useState('');
   
   const [config, setConfig] = useState({
     barbeariaId: null,
@@ -32,16 +33,55 @@ export default function Sidebar() {
     fechamento: '18:00'
   });
 
+  useEffect(() => {
+    const carregarDadosIniciais = async () => {
+      try {
+        // Tenta buscar como barbeiro primeiro
+        const res = await api.get(`/barbeiros/${id}`);
+        const barbeiro = res.data || res;
+        
+        // Se não encontrar fk_barbearia, tenta tratar o ID como sendo da própria barbearia (Admin direto)
+        const bId = barbeiro?.fk_barbearia?._id || barbeiro?.fk_barbearia || id;
+        
+        if (bId) {
+          const resBarb = await api.get(`/barbearias/${bId}`);
+          const dadosBarb = resBarb.data || resBarb;
+          
+          // Define o slug para a rota de agendamento
+          const slug = dadosBarb.nome_url || dadosBarb.slug;
+          setSlugBarbearia(slug);
+          
+          setConfig({
+            barbeariaId: bId,
+            abertura: dadosBarb.abertura || '08:00',
+            fechamento: dadosBarb.fechamento || '18:00'
+          });
+        }
+      } catch (e) {
+        console.error("Erro ao carregar contexto da sidebar:", e);
+      }
+    };
+
+    if (id) carregarDadosIniciais();
+  }, [id]);
+
   const menuItems = [
     { label: 'Painel Admin', icon: <IoGridOutline size={22} />, path: `/admin/dashboard/${id}` },
     { label: 'Agenda', icon: <IoCalendarOutline size={22} />, path: `/admin/agenda/${id}` },
-    // { label: 'Barbeiros', icon: <IoPeopleOutline size={22} />, path: `/admin/barbeiros/${id}` },
     { label: 'Gestão', icon: <IoPeopleOutline size={22} />, path: `/admin/gestao/${id}` },
-    // { label: 'Serviços', icon: <MdContentCut size={22} />, path: `/admin/valores/${id}` },
     { label: 'Analytics', icon: <IoStatsChartOutline size={22} />, path: `/admin/analytics/${id}` },
     { label: 'Logs', icon: <IoReaderOutline size={22} />, path: `/admin/logs/${id}` },
-    { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` }, // Novo Item
+    { label: 'Personalizar', icon: <IoBrushOutline size={22} />, path: `/admin/personalizacao/${id}` },
   ];
+
+  const handleNovoAgendamento = () => {
+    if (slugBarbearia) {
+      // Agora aponta para a rota que corrigimos no App.jsx
+      navigate(`/${slugBarbearia}/novo-agendamento`);
+    } else {
+      setAlert({ show: true, message: 'Identificador da barbearia não encontrado.', type: 'error' });
+    }
+  };
 
   const handleVoltar = () => {
     const barbeiroId = localStorage.getItem('barbeiroId');
@@ -52,52 +92,19 @@ export default function Sidebar() {
     }
   };
 
-  const abrirConfig = async () => {
-    if (!id) return;
-    setIsModalOpen(true);
-    
-    try {
-      const res = await api.get(`/barbeiros/${id}`);
-      const admin = res.data || res;
-      
-      const bId = admin?.fk_barbearia?._id || admin?.fk_barbearia || admin?.barbearia_id || admin?.barbearia;
-      
-      if (!bId) {
-        console.error("ID da barbearia não encontrado.");
-        return;
-      }
-
-      const resBarb = await api.get(`/barbearias/${bId}`);
-      const dadosBarb = resBarb.data || resBarb;
-
-      setConfig({
-        barbeariaId: bId,
-        abertura: dadosBarb.abertura || '08:00',
-        fechamento: dadosBarb.fechamento || '18:00'
-      });
-
-    } catch (e) {
-      console.error("Erro ao carregar dados:", e);
-    }
-  };
-
   const salvarHorarioFixo = async () => {
     if (!config.barbeariaId) return;
     setLoading(true);
-    
     try {
       await api.put(`/barbearias/${config.barbeariaId}`, {
         abertura: config.abertura,
         fechamento: config.fechamento
       });
-
       setAlert({ show: true, message: 'Horário padrão atualizado!', type: 'success' });
-      
       setTimeout(() => {
         setIsModalOpen(false);
         setAlert({ show: false, message: '', type: '' });
       }, 1500);
-
     } catch (e) {
       setAlert({ show: true, message: 'Erro ao salvar alterações.', type: 'error' });
     } finally {
@@ -143,6 +150,23 @@ export default function Sidebar() {
           })}
         </nav>
 
+        {/* Botão de Novo Agendamento (+) */}
+        <div className="w-full px-3 mb-4">
+          <div className="relative group flex justify-center">
+            <button
+              onClick={handleNovoAgendamento}
+              className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border-2 border-dashed shadow-sm active:scale-95 ${
+                isDarkMode 
+                  ? 'bg-[#e6b32a]/10 border-[#e6b32a]/40 text-[#e6b32a] hover:bg-[#e6b32a] hover:text-black' 
+                  : 'bg-amber-50 border-amber-200 text-[#e6b32a] hover:bg-[#e6b32a] hover:text-white'
+              }`}
+            >
+              <IoAddOutline size={26} />
+            </button>
+            <Tooltip text="Novo Agendamento" />
+          </div>
+        </div>
+
         <div className="w-full px-3 mb-6">
           <div className="relative group flex justify-center">
             <button
@@ -159,10 +183,10 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* <div className="w-full px-3 mt-auto">
+        <div className="w-full px-3 mt-auto">
           <div className="relative group flex justify-center">
             <button
-              onClick={abrirConfig}
+              onClick={() => setIsModalOpen(true)}
               className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all border group-hover:rotate-90 duration-500 ${
                 isDarkMode 
                   ? 'bg-white/5 border-white/10 text-gray-400 hover:text-[#e6b32a]' 
@@ -171,18 +195,19 @@ export default function Sidebar() {
             >
               <IoSettingsOutline size={22} />
             </button>
-            <Tooltip text="Configurações" />
+            <Tooltip text="Horário Padrão" />
           </div>
-        </div> */}
+        </div>
       </aside>
 
+      {/* Modal de Configuração de Horário */}
       {isModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className={`w-full max-w-sm rounded-[2.5rem] p-8 border shadow-2xl ${isDarkMode ? 'bg-[#0d0d0d] border-white/10 text-white' : 'bg-white border-slate-200 text-slate-900'}`}>
             <div className="flex justify-between items-center mb-8">
               <div>
-                <h3 className="text-xl font-black italic tracking-tighter lowercase">horario.<span className="text-[#e6b32a]">casa</span></h3>
-                <p className="text-[9px] font-bold uppercase opacity-40 tracking-widest mt-1">Definir horário fixo</p>
+                <h3 className="text-xl font-black italic tracking-tighter lowercase">config.<span className="text-[#e6b32a]">geral</span></h3>
+                <p className="text-[9px] font-bold uppercase opacity-40 tracking-widest mt-1">Horário de funcionamento</p>
               </div>
               <button onClick={() => setIsModalOpen(false)} className="text-red-500 p-2 hover:bg-red-500/10 rounded-full transition-colors"><IoCloseOutline size={24} /></button>
             </div>

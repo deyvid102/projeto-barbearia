@@ -1,4 +1,5 @@
 import ModelBarbearia from "../model/ModelBarbearia.js";
+import ModelBarbeiro from "../model/ModelBarbeiro.js"; // Importe o model de barbeiros aqui
 
 class ControlBarbearia {
     // Criar nova barbearia
@@ -19,8 +20,6 @@ class ControlBarbearia {
     async listarPorPerfil(req, res) {
         try {
             const { perfil } = req.params;
-            
-            // O segredo está aqui: busca o nome ignorando maiúsculas/minúsculas
             const barbearia = await ModelBarbearia.findOne({ 
                 nome: { $regex: new RegExp("^" + perfil + "$", "i") } 
             });
@@ -54,6 +53,20 @@ class ControlBarbearia {
             return res.status(200).json(barbearia);
         } catch (error) {
             return res.status(500).json({ mensagem: "erro ao buscar id", erro: error.message });
+        }
+    }
+
+    // LISTAR BARBEIROS DE UMA BARBEARIA ESPECÍFICA
+    async listarBarbeiros(req, res) {
+        try {
+            const { id } = req.params; // ID da barbearia
+            
+            // Busca na coleção de Barbeiros todos que possuem o fk_barbearia igual ao ID
+            const barbeiros = await ModelBarbeiro.find({ fk_barbearia: id });
+            
+            return res.status(200).json(barbeiros);
+        } catch (error) {
+            return res.status(500).json({ mensagem: "erro ao buscar barbeiros da unidade", erro: error.message });
         }
     }
 

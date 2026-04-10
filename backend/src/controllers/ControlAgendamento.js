@@ -1,159 +1,167 @@
 import Agendamento from "../model/ModelAgendamento.js";
-import ModelLogs from "../model/ModelLogs.js";
+import Agenda from "../model/ModelAgenda.js";
 import mongoose from "mongoose";
 
-// CREATE
-export const criarAgendamento = async (req, res) => {
-    try {
-        const { datahora, datahora_fim, fk_barbeiro, fk_barbearia, cliente } = req.body;
-
-        if (!mongoose.Types.ObjectId.isValid(fk_barbeiro) || !mongoose.Types.ObjectId.isValid(fk_barbearia)) {
-            return res.status(400).json({ message: "ID de barbeiro ou barbearia inválido." });
-        }
-
-        if (!cliente || !cliente.nome) {
-            return res.status(400).json({ message: "O nome do cliente é obrigatório." });
-        }
-
-        const inicioSolicitado = new Date(datahora);
-        const fimSolicitado = new Date(datahora_fim);
-
-        const conflito = await Agendamento.findOne({ 
-            fk_barbeiro: fk_barbeiro, 
-            status: 'A',
-            $or: [
-                { 
-                    datahora: { $lt: fimSolicitado }, 
-                    datahora_fim: { $gt: inicioSolicitado } 
-                }
-            ]
-        });
-
-        if (conflito) {
-            return res.status(400).json({ 
-                message: `Conflito de horário: O barbeiro já possui um agendamento das ${conflito.datahora.toLocaleTimeString()} às ${conflito.datahora_fim.toLocaleTimeString()}` 
-            });
-        }
-
-        const novo = await Agendamento.create(req.body);
-
+const ControlAgendamento = {
+    /**
+     * 1. CRIAR AGENDAMENTO
+     */
+    async criar(req, res) {
         try {
-            await ModelLogs.create({
-                fk_barbearia: novo.fk_barbearia,
-                fk_barbeiro: novo.fk_barbeiro,
-                fk_agendamento: novo._id,
-                cliente_nome: novo.cliente.nome,
-                status_acao: novo.status 
+            const novoAgendamento = new Agendamento(req.body);
+            await novoAgendamento.save();
+            return res.status(201).json({
+                message: "Agendado com sucesso!",
+                agendamento: novoAgendamento
             });
-        } catch (logErr) {
-            console.error("Erro ao gerar log:", logErr.message);
+        } catch (error) {
+            console.error("Erro ao criar agendamento:", error.message);
+            return res.status(400).json({ error: error.message });
         }
+    },
 
-        res.status(201).json(novo);
-    } catch (error) {
-        console.error("ERRO NO CREATE:", error);
-        res.status(400).json({ error: error.message });
-    }
-};
+    /**
+     * 2. BUSCAR DISPONIBILIDADE (Ajustado para 15min)
+     */
+    async obterDisponibilidade(req, res) {
+        try {
+            const { barbeiro, data } = req.query; // data: "YYYY-MM-DD"
 
-// READ - Listar com filtros
-export const listarAgendamento = async (req, res) => {
-    try {
-        const { fk_barbeiro, fk_barbearia, data } = req.query;
-        const filtro = {};
-        
-        if (fk_barbearia && mongoose.Types.ObjectId.isValid(fk_barbearia)) filtro.fk_barbearia = fk_barbearia;
-        if (fk_barbeiro && mongoose.Types.ObjectId.isValid(fk_barbeiro)) filtro.fk_barbeiro = fk_barbeiro;
+            if (!barbeiro || !data) {
+                return res.status(400).json({ error: "Barbeiro e data são obrigatórios." });
+            }
 
-        if (data) {
-            const inicio = new Date(data); inicio.setHours(0,0,0,0);
-            const fim = new Date(data); fim.setHours(23,59,59,999);
-            filtro.datahora = { $gte: inicio, $lte: fim };
-        }
+            if (!mongoose.Types.ObjectId.isValid(barbeiro)) {
+                return res.status(400).json({ error: "ID do barbeiro inválido." });
+            }
 
-        const agendamentos = await Agendamento.find(filtro)
-            .populate('fk_barbeiro', 'nome')
-            .sort({ datahora: 1 });
+            // Descobrir dia da semana sem erro de fuso
+            const partes = data.split('-');
+            const dataLocal = new Date(partes[0], partes[1] - 1, partes[2]);
+            const diaSemana = dataLocal.getDay();
 
-        res.status(200).json(agendamentos);
-    } catch (error) {
-        res.status(500).json({ error: "Erro interno ao buscar agendamentos." });
-    }
-};
+            const agendaDoc = await Agenda.findOne({ fk_barbeiro: barbeiro });
+            if (!agendaDoc) return res.status(200).json([]);
 
-// READ - Por ID (A função que estava faltando o export)
-export const listarAgendamentoPorId = async (req, res) => {
-    try {
-        if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-            return res.status(400).json({ message: "ID inválido" });
-        }
-        const agendamento = await Agendamento.findById(req.params.id).populate('fk_barbeiro', 'nome');
-        if (!agendamento) return res.status(404).json({ message: "Agendamento não encontrado" });
-        res.status(200).json(agendamento);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+            const configDia = agendaDoc.grade.find(d => d.dia_semana === diaSemana);
+            if (!configDia || configDia.status === 'fechado') return res.status(200).json([]);
 
-// READ - Por Barbearia
-export const listarAgendamentoPorBarbearia = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) {
-            return res.status(400).json({ message: "ID da barbearia inválido" });
-        }
-        const agendamentos = await Agendamento.find({ fk_barbearia: id }).populate('fk_barbeiro', 'nome').sort({ datahora: 1 });
-        res.status(200).json(agendamentos);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+            // Buscar ocupados do dia
+            const inicioDia = new Date(dataLocal);
+            inicioDia.setHours(0, 0, 0, 0);
+            const fimDia = new Date(dataLocal);
+            fimDia.setHours(23, 59, 59, 999);
 
-// UPDATE
-export const atualizarAgendamento = async (req, res) => {
-    try {
-        const { id } = req.params;
-        if (!mongoose.Types.ObjectId.isValid(id)) return res.status(400).json({ message: "ID inválido" });
-
-        const agendamento = await Agendamento.findById(id);
-        if (!agendamento) return res.status(404).json({ message: "Agendamento não encontrado" });
-
-        Object.assign(agendamento, req.body);
-        await agendamento.save();
-
-        if (req.body.status) {
-            await ModelLogs.create({
-                fk_barbearia: agendamento.fk_barbearia,
-                fk_barbeiro: agendamento.fk_barbeiro,
-                fk_agendamento: agendamento._id,
-                cliente_nome: agendamento.cliente.nome,
-                status_acao: agendamento.status
+            const ocupados = await Agendamento.find({
+                fk_barbeiro: barbeiro,
+                datahora: { $gte: inicioDia, $lte: fimDia },
+                status: { $ne: 'cancelado' }
             });
-        }
 
-        res.status(200).json(agendamento);
-    } catch (error) {
-        res.status(400).json({ error: error.message });
+            const horariosDisponiveis = [];
+            let [hAbertura, mAbertura] = configDia.abertura.split(':').map(Number);
+            let [hFechamento, mFechamento] = configDia.fechamento.split(':').map(Number);
+
+            let atual = new Date(dataLocal);
+            atual.setHours(hAbertura, mAbertura, 0, 0);
+            
+            let limite = new Date(dataLocal);
+            limite.setHours(hFechamento, mFechamento, 0, 0);
+
+            while (atual < limite) {
+                const horaString = String(atual.getHours()).padStart(2, '0') + ":" + 
+                                 String(atual.getMinutes()).padStart(2, '0');
+                
+                const noIntervalo = configDia.tem_intervalo && configDia.intervalos.some(i => 
+                    horaString >= i.inicio && horaString < i.fim
+                );
+
+                const estaOcupado = ocupados.some(ag => {
+                    const agH = new Date(ag.datahora);
+                    const agHoraStr = String(agH.getHours()).padStart(2, '0') + ":" + 
+                                    String(agH.getMinutes()).padStart(2, '0');
+                    return agHoraStr === horaString;
+                });
+
+                if (!noIntervalo && !estaOcupado) {
+                    horariosDisponiveis.push(horaString);
+                }
+
+                atual.setMinutes(atual.getMinutes() + 15); // Incremento de 15 em 15
+            }
+
+            return res.status(200).json(horariosDisponiveis);
+        } catch (error) {
+            console.error("Erro disponibilidade:", error);
+            return res.status(500).json({ error: "Erro interno no servidor." });
+        }
+    },
+
+    /**
+     * 3. LER / LISTAR AGENDAMENTOS POR DATA
+     */
+    async listarPorData(req, res) {
+        try {
+            const { fk_barbeiro, data } = req.query;
+
+            if (!fk_barbeiro || !data) {
+                return res.status(400).json({ error: "Barbeiro e data são obrigatórios." });
+            }
+
+            const partes = data.split('-');
+            const inicioDia = new Date(partes[0], partes[1] - 1, partes[2], 0, 0, 0);
+            const fimDia = new Date(partes[0], partes[1] - 1, partes[2], 23, 59, 59);
+
+            const agendamentos = await Agendamento.find({
+                fk_barbeiro,
+                datahora: { $gte: inicioDia, $lte: fimDia },
+                status: { $ne: 'cancelado' }
+            }).sort({ datahora: 1 });
+
+            return res.status(200).json(agendamentos);
+        } catch (error) {
+            return res.status(500).json({ error: "Erro ao buscar agendamentos." });
+        }
+    },
+
+    async buscarPorId(req, res) {
+        try {
+            const agendamento = await Agendamento.findById(req.params.id)
+                .populate('fk_barbeiro', 'nome')
+                .populate('fk_barbearia', 'nome');
+            if (!agendamento) return res.status(404).json({ error: "Não encontrado." });
+            return res.status(200).json(agendamento);
+        } catch (error) {
+            return res.status(500).json({ error: "Erro ao buscar detalhes." });
+        }
+    },
+
+    async atualizar(req, res) {
+        try {
+            const agendamento = await Agendamento.findByIdAndUpdate(req.params.id, req.body, { new: true });
+            return res.status(200).json({ message: "Atualizado!", agendamento });
+        } catch (error) {
+            return res.status(400).json({ error: error.message });
+        }
+    },
+
+    async alterarStatus(req, res) {
+        try {
+            const agendamento = await Agendamento.findByIdAndUpdate(req.params.id, { status: req.body.status }, { new: true });
+            return res.status(200).json({ message: "Status alterado", agendamento });
+        } catch (error) {
+            return res.status(400).json({ error: "Erro ao atualizar status." });
+        }
+    },
+
+    async deletar(req, res) {
+        try {
+            await Agendamento.findByIdAndDelete(req.params.id);
+            return res.status(200).json({ message: "Excluído." });
+        } catch (error) {
+            return res.status(500).json({ error: "Erro ao excluir." });
+        }
     }
 };
 
-// DELETE
-export const excluirAgendamento = async (req, res) => {
-    try {
-        const agendamento = await Agendamento.findById(req.params.id);
-        if (agendamento) {
-            await ModelLogs.create({
-                fk_barbearia: agendamento.fk_barbearia,
-                fk_barbeiro: agendamento.fk_barbeiro,
-                fk_agendamento: agendamento._id,
-                cliente_nome: agendamento.cliente.nome,
-                status_acao: 'C', 
-                canceladoPor: 'Sistema (Exclusão)'
-            });
-        }
-        await Agendamento.findByIdAndDelete(req.params.id);
-        res.status(200).json({ message: "Excluído com sucesso" });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+export default ControlAgendamento;

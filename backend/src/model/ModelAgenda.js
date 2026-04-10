@@ -1,61 +1,56 @@
 import mongoose from "mongoose";
 
-const ModelAgenda = new mongoose.Schema({
-    // FK da barbearia
+// Sub-schema para intervalos
+const IntervaloSchema = new mongoose.Schema({
+    inicio: { type: String, required: true },
+    fim: { type: String, required: true }
+}, { _id: false });
+
+// Sub-schema para cada dia da semana
+const DiaConfigSchema = new mongoose.Schema({
+    dia_semana: { 
+        type: Number, 
+        required: true, 
+        min: 0, 
+        max: 6 
+    },
+    nome_dia: { type: String },
+    status: { 
+        type: String, 
+        enum: ['ativo', 'fechado'], 
+        default: 'ativo' 
+    },
+    abertura: { type: String, default: "08:00" },
+    fechamento: { type: String, default: "18:00" },
+    tem_intervalo: { type: Boolean, default: false },
+    intervalos: { type: [IntervaloSchema], default: [] } // Inicializa como array vazio por padrão
+}, { _id: false });
+
+const AgendaSchema = new mongoose.Schema({
     fk_barbearia: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: 'barbearia', 
         required: true 
     },
-    // FK do barbeiro
     fk_barbeiro: { 
         type: mongoose.Schema.Types.ObjectId, 
-        ref: 'barbeiro', 
-        required: true 
+        ref: 'barbeiro',
+        default: null // Permite agenda mestre da barbearia
     },
-    // Dia da semana (0 = Domingo, 1 = Segunda, etc.)
-    dia_semana: { 
-        type: Number, 
+    grade: {
+        type: [DiaConfigSchema],
         required: true,
-        min: 0,
-        max: 6
-    },
-    // Horário de funcionamento do barbeiro no dia
-    abertura: { 
-        type: String, 
-        required: true, 
-        default: "08:00" 
-    },
-    fechamento: { 
-        type: String, 
-        required: true, 
-        default: "18:00" 
-    },
-    // Configuração de intervalo
-    tem_intervalo: {
-        type: Boolean,
-        default: true
-    },
-    intervalo_inicio: {
-        type: String,
-        default: "12:00"
-    },
-    intervalo_fim: {
-        type: String,
-        default: "13:00"
-    },
-    // Status para permitir desativar um dia específico da escala
-    status: {
-        type: String,
-        enum: ['A', 'F'], // A = Ativo, F = Folga/Inativo
-        default: 'A'
+        validate: [v => Array.isArray(v) && v.length > 0, 'A grade não pode estar vazia.']
     }
 }, { 
     timestamps: true,
-    collection: 'agendas' 
+    collection: 'agendas'
 });
 
-// Índice único: Um barbeiro só pode ter UMA configuração de horário para cada dia da semana naquela barbearia
-ModelAgenda.index({ fk_barbearia: 1, fk_barbeiro: 1, dia_semana: 1 }, { unique: true });
+// Index para evitar duplicidade de agenda por barbeiro na mesma barbearia
+// AgendaSchema.index({ fk_barbearia: 1, fk_barbeiro: 1 }, { unique: true });
 
-export default mongoose.model('agenda', ModelAgenda);
+// Correção para evitar erro de "OverwriteModelError" em desenvolvimento (HMR do Vite/Node)
+const Agenda = mongoose.models.agenda || mongoose.model('agenda', AgendaSchema);
+
+export default Agenda;

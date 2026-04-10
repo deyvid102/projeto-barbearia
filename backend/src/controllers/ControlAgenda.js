@@ -1,110 +1,157 @@
+import mongoose from "mongoose";
 import Agenda from "../model/ModelAgenda.js";
 
 const ControlAgenda = {
-    // 1. Criar ou Atualizar um dia da semana (Upsert)
-    // Agora faz mais sentido usar um "save" que atualiza se o dia já existir
-    async salvarDia(req, res) {
+    /**
+     * GERA DISPONIBILIDADE (15 em 15 min)
+     */
+    async obterDisponibilidade(req, res) {
         try {
-            const { fk_barbearia, fk_barbeiro, dia_semana } = req.body;
+            const { barbeiro, data } = req.query; 
 
-            // Busca e atualiza ou cria um novo (upsert)
+            if (!barbeiro || !data) {
+                return res.status(400).json({ error: "Barbeiro e data são necessários." });
+            }
+
+            if (!mongoose.Types.ObjectId.isValid(barbeiro)) {
+                return res.status(400).json({ error: "ID do barbeiro inválido." });
+            }
+
+            // Descobrir dia da semana (Corrigindo fuso horário)
+            const partesData = data.split('-'); 
+            const dataLocal = new Date(partesData[0], partesData[1] - 1, partesData[2]);
+            const diaSemana = dataLocal.getDay(); 
+
+            const agendaDoc = await Agenda.findOne({ fk_barbeiro: barbeiro });
+
+            if (!agendaDoc || !agendaDoc.grade) {
+                return res.status(200).json([]); 
+            }
+
+            const configDia = agendaDoc.grade.find(d => d.dia_semana === diaSemana);
+            
+            if (!configDia || configDia.status !== 'ativo') {
+                return res.status(200).json([]);
+            }
+
+            const horarios = [];
+            let [hAbertura, mAbertura] = configDia.abertura.split(':').map(Number);
+            let [hFechamento, mFechamento] = configDia.fechamento.split(':').map(Number);
+
+            let inicio = new Date();
+            inicio.setHours(hAbertura, mAbertura, 0, 0);
+
+            let fim = new Date();
+            fim.setHours(hFechamento, mFechamento, 0, 0);
+
+            while (inicio < fim) {
+                const h = String(inicio.getHours()).padStart(2, '0');
+                const m = String(inicio.getMinutes()).padStart(2, '0');
+                const horaFormatada = `${h}:${m}`;
+
+                const noIntervalo = configDia.tem_intervalo && configDia.intervalos.some(i => {
+                    return horaFormatada >= i.inicio && horaFormatada < i.fim;
+                });
+
+                if (!noIntervalo) {
+                    horarios.push(horaFormatada);
+                }
+
+                inicio.setMinutes(inicio.getMinutes() + 15);
+            }
+
+            return res.status(200).json(horarios);
+
+        } catch (error) {
+            console.error("❌ ERRO AO GERAR HORÁRIOS:", error);
+            return res.status(500).json({ error: "Erro interno no servidor", details: error.message });
+        }
+    },
+
+    async salvarGrade(req, res) {
+        try {
+            const { fk_barbearia, fk_barbeiro, grade } = req.body;
+            
+            const gradeLimpa = grade.map(dia => ({
+                dia_semana: Number(dia.dia_semana),
+                nome_dia: dia.nome_dia,
+                status: dia.status === 'ativo' ? 'ativo' : 'fechado',
+                abertura: dia.abertura || "08:00",
+                fechamento: dia.fechamento || "19:00",
+                tem_intervalo: Boolean(dia.tem_intervalo),
+                intervalos: dia.tem_intervalo ? (dia.intervalos || []) : []
+            }));
+
             const agenda = await Agenda.findOneAndUpdate(
-                { fk_barbearia, fk_barbeiro, dia_semana },
-                req.body,
-                { new: true, upsert: true }
+                { fk_barbeiro }, 
+                { $set: { fk_barbearia, fk_barbeiro, grade: gradeLimpa } },
+                { new: true, upsert: true, runValidators: true }
             );
-
             return res.status(200).json(agenda);
         } catch (error) {
-            console.error("Erro ao salvar dia na escala:", error);
-            return res.status(500).json({ error: "Erro ao salvar o dia na escala semanal." });
+            return res.status(500).json({ error: error.message });
         }
     },
 
-    // 2. Deletar uma configuração de dia específico
-    async deletar(req, res) {
+    async buscarPorBarbeiro(req, res) {
         try {
-            const { id } = req.params;
-            const deletado = await Agenda.findByIdAndDelete(id);
-            
-            if (!deletado) {
-                return res.status(404).json({ error: "Configuração não encontrada." });
-            }
-            
-            return res.status(200).json({ message: "Dia removido da escala com sucesso!" });
+            const { idBarbeiro } = req.params;
+            if (!mongoose.Types.ObjectId.isValid(idBarbeiro)) return res.status(400).json({ error: "ID inválido" });
+
+            const agenda = await Agenda.findOne({ fk_barbeiro: idBarbeiro });
+            if (!agenda) return res.status(200).json({ message: "Vazio", grade: [] });
+            return res.status(200).json(agenda);
         } catch (error) {
-            console.error("Erro ao deletar agenda:", error);
-            return res.status(500).json({ error: "Erro ao remover o dia da escala." });
+            return res.status(500).json({ error: "Erro ao buscar." });
         }
     },
 
-    // 3. Sincroniza a escala semanal completa de um barbeiro
-    // Útil quando o barbeiro salva a tela de "Configurações de Horário" de uma vez
-    async sincronizarEscala(req, res) {
-        try {
-            const { fk_barbearia, fk_barbeiro, dados } = req.body;
-
-            if (!fk_barbearia || !fk_barbeiro || !Array.isArray(dados)) {
-                return res.status(400).json({ error: "Dados incompletos para sincronização." });
-            }
-
-            // Remove a escala antiga desse barbeiro para inserir a nova
-            await Agenda.deleteMany({ fk_barbearia, fk_barbeiro });
-
-            const novaEscala = await Agenda.insertMany(dados);
-
-            return res.status(200).json({ message: "Escala semanal atualizada!", novaEscala });
-        } catch (error) {
-            console.error("Erro na sincronização da escala:", error);
-            return res.status(500).json({ error: "Erro ao sincronizar escala semanal." });
-        }
-    },
-
-    // 4. Lista a escala semanal (Filtra por barbeiro ou barbearia)
-    async listar(req, res) {
-        try {
-            const { fk_barbearia, fk_barbeiro } = req.query;
-            let filtro = {};
-
-            if (fk_barbearia) filtro.fk_barbearia = fk_barbearia;
-            if (fk_barbeiro) filtro.fk_barbeiro = fk_barbeiro;
-
-            // Ordena pelo dia da semana (0 a 6)
-            const agendas = await Agenda.find(filtro).sort({ dia_semana: 1 });
-            return res.json(agendas);
-        } catch (error) {
-            console.error("Erro ao listar escala:", error);
-            return res.status(500).json({ error: "Erro ao listar escala semanal." });
-        }
-    },
-
-    // 5. Busca escala completa de uma barbearia (Todos os barbeiros)
     async listarPorBarbearia(req, res) {
         try {
-            const { id } = req.params;
-            const agendas = await Agenda.find({ fk_barbearia: id }).sort({ dia_semana: 1 });
-            return res.json(agendas);
+            const { idBarbearia } = req.params;
+            const agendas = await Agenda.find({ fk_barbearia: idBarbearia });
+            return res.status(200).json(agendas);
         } catch (error) {
-            console.error("Erro ao listar por barbearia:", error);
-            return res.status(500).json({ error: "Erro ao buscar dados da barbearia." });
+            return res.status(500).json({ error: "Erro ao listar agendas da barbearia." });
         }
     },
 
-    // 6. Resetar escala de um barbeiro (Limpar tudo)
-    async limparEscalaBarbeiro(req, res) {
+    async alternarStatusDia(req, res) {
         try {
-            const { fk_barbearia, fk_barbeiro } = req.query;
-
-            if (!fk_barbearia || !fk_barbeiro) {
-                return res.status(400).json({ error: "Barbearia e Barbeiro são obrigatórios." });
-            }
-
-            await Agenda.deleteMany({ fk_barbearia, fk_barbeiro });
-
-            return res.status(200).json({ message: "Toda a escala semanal foi removida." });
+            const { fk_barbeiro, dia_semana, status } = req.body;
+            const agenda = await Agenda.findOneAndUpdate(
+                { fk_barbeiro, "grade.dia_semana": dia_semana },
+                { $set: { "grade.$.status": status } },
+                { new: true }
+            );
+            return res.status(200).json(agenda);
         } catch (error) {
-            console.error("Erro ao limpar escala:", error);
-            return res.status(500).json({ error: "Erro interno ao limpar escala." });
+            return res.status(500).json({ error: "Erro ao atualizar status do dia." });
+        }
+    },
+
+    async excluirAgenda(req, res) {
+        try {
+            await Agenda.findByIdAndDelete(req.params.id);
+            return res.status(200).json({ message: "Agenda removida com sucesso." });
+        } catch (error) {
+            return res.status(500).json({ error: "Erro ao excluir agenda." });
+        }
+    },
+
+    async replicarGradeGeral(req, res) {
+        try {
+            const { fk_barbearia, grade } = req.body;
+            // Busca todos os barbeiros daquela barbearia (assumindo que você tem essa lógica)
+            // Aqui fazemos um updateMany ou loop para criar agendas para todos
+            // Exemplo simplificado:
+            const resultado = await Agenda.updateMany(
+                { fk_barbearia },
+                { $set: { grade } }
+            );
+            return res.status(200).json({ message: "Grade replicada para todos os barbeiros.", resultado });
+        } catch (error) {
+            return res.status(500).json({ error: "Erro ao replicar grade." });
         }
     }
 };

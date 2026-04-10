@@ -1,31 +1,31 @@
 import express from "express";
-import { 
-    criarAgendamento, 
-    listarAgendamento, 
-    listarAgendamentoPorId, 
-    listarAgendamentoPorBarbearia, 
-    atualizarAgendamento, 
-    excluirAgendamento 
-} from "../controllers/ControlAgendamento.js";
+import ControlAgendamento from "../controllers/ControlAgendamento.js";
 
 const router = express.Router();
 
-// Cria novo agendamento (Valida automaticamente conflitos e escala semanal)
-router.post("/agendamentos", criarAgendamento);
+// --- 1. CONSULTAS ESPECÍFICAS (Sempre antes das rotas com :id) ---
 
-// Lista com filtros (Ex: ?fk_barbeiro=ID&data=2026-03-27)
-router.get("/agendamentos", listarAgendamento); 
+// Busca horários livres (15 em 15 min)
+router.get("/agendamentos/disponibilidade", ControlAgendamento.obterDisponibilidade);
 
-// Busca detalhes de um agendamento específico
-router.get("/agendamentos/:id", listarAgendamentoPorId);
+// Lista agendamentos do dia para o calendário
+router.get("/agendamentos/:id", ControlAgendamento.listarPorData); 
 
-// Lista todos os agendamentos de uma barbearia (Visão do dono)
-router.get("/agendamentos/barbearia/:id", listarAgendamentoPorBarbearia);
+// --- 2. OPERAÇÕES CRUD ---
 
-// Atualiza agendamento (Se mudar status para 'F', gera comissão automaticamente)
-router.put("/agendamentos/:id", atualizarAgendamento);
+// Cria novo agendamento
+router.post("/agendamentos", ControlAgendamento.criar);
 
-// Remove agendamento e gera log de cancelamento
-router.delete("/agendamentos/:id", excluirAgendamento);
+// Busca detalhes de um ID específico
+router.get("/agendamentos/:id", ControlAgendamento.buscarPorId);
+
+// Atualiza dados completos
+router.put("/agendamentos/:id", ControlAgendamento.atualizar);
+
+// Altera apenas status (Patch é mais semântico para isso)
+router.patch("/agendamentos/:id/status", ControlAgendamento.alterarStatus);
+
+// Remove do banco
+router.delete("/agendamentos/:id", ControlAgendamento.deletar);
 
 export default router;

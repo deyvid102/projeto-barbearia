@@ -3,28 +3,33 @@ import ControlAgenda from "../controllers/ControlAgenda.js";
 
 const router = express.Router();
 
-// --- GESTÃO DA ESCALA SEMANAL ---
+// --- 1. CONSULTAS DE DISPONIBILIDADE (Prioridade Alta) ---
 
-// Salva ou atualiza um dia específico na escala (segunda, terça, etc.)
-router.post("/agendas", ControlAgenda.salvarDia);
+// Esta rota deve vir antes de rotas com :id para evitar conflitos de nomenclatura
+router.get("/agendas/disponibilidade", ControlAgenda.obterDisponibilidade);
 
-// Sincroniza a escala semanal completa de um barbeiro (substitui todos os dias de uma vez)
-router.post("/agendas/sincronizar", ControlAgenda.sincronizarEscala);
+// --- 2. GESTÃO DA GRADE (Criação e Replicação) ---
 
-// --- LISTAGEM ---
+// Salva ou atualiza a grade completa (UPSERT)
+router.post("/agendas", ControlAgenda.salvarGrade);
 
-// Lista a escala (aceita query params ?fk_barbearia=ID&fk_barbeiro=ID)
-router.get("/agendas", ControlAgenda.listar);
+// Replicar uma grade para a barbearia toda
+router.post("/agendas/replicar", ControlAgenda.replicarGradeGeral);
 
-// Busca toda a escala de uma barbearia específica (todos os barbeiros)
-router.get("/agendas/barbearia/:id", ControlAgenda.listarPorBarbearia);
+// --- 3. LISTAGEM E BUSCA ---
 
-// --- REMOÇÃO ---
+// Busca a grade de um barbeiro específico
+router.get("/agendas/barbeiro/:idBarbeiro", ControlAgenda.buscarPorBarbeiro);
 
-// Remove um dia específico da escala pelo ID do registro
-router.delete("/agendas/:id", ControlAgenda.deletar);
+// Busca todas as grades de uma barbearia
+router.get("/agendas/barbearia/:idBarbearia", ControlAgenda.listarPorBarbearia);
 
-// Limpa toda a escala semanal de um barbeiro específico
-router.delete("/agendas/limpar", ControlAgenda.limparEscalaBarbeiro);
+// --- 4. ATUALIZAÇÕES PONTUAIS E REMOÇÃO ---
+
+// Alterna apenas o status (ativo/fechado) de um dia
+router.patch("/agendas/status-dia", ControlAgenda.alternarStatusDia);
+
+// Remove a configuração de agenda completa por ID do documento
+router.delete("/agendas/:id", ControlAgenda.excluirAgenda);
 
 export default router;

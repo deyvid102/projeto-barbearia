@@ -25,9 +25,8 @@ import ValoresGerenciamento from './pages/admin/ValoresGerenciamento';
 import AdminLogs from './pages/admin/AdminLogs';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import BarbeariaAgenda from './pages/admin/BarbeariaAgenda';
-import Personalizacao from './pages/admin/Personalizacao'; // Importação da nova página
+import Personalizacao from './pages/admin/Personalizacao';
 
-// Componente para Log de Rotas (Debug)
 function RouteLogger() {
   const location = useLocation();
   useEffect(() => {
@@ -38,7 +37,6 @@ function RouteLogger() {
 
 const RootRedirect = () => {
   const defaultBarbeariaNome = "barbermax"; 
-  console.log(`[BarberFlow] Redirecionando raiz para /${defaultBarbeariaNome}`);
   return <Navigate to={`/${defaultBarbeariaNome}`} replace />;
 };
 
@@ -48,8 +46,6 @@ export default function App() {
       <Router>
         <RouteLogger />
         <Routes>
-          {/* 1. ROTAS FIXAS */}
-          
           {/* --- AREA DO BARBEIRO --- */}
           <Route path="/barbeiro/login/:nomeBarbearia" element={<LoginBarbeiro />} />
           <Route path="/barbeiro/dashboard/:id" element={<BarbeiroDashboard />} />
@@ -61,24 +57,26 @@ export default function App() {
 
           {/* --- AREA DO ADMIN --- */}
           <Route path="/admin" element={<AdminLayout />}>
-            <Route path="/admin/dashboard/:id" element={<AdministradorDashboard />} />
-            <Route path="/admin/barbeiros/:id" element={<BarbeiroGerenciamento />} />
-            <Route path="/admin/valores/:id" element={<ValoresGerenciamento />} />
-            <Route path="/admin/gestao/:id" element={<GestaoUnificada />} />
-            <Route path="/admin/logs/:id" element={<AdminLogs />} />
-            <Route path="/admin/analytics/:id" element={<AdminAnalytics />} />
-            <Route path="/admin/agenda/:id" element={<BarbeariaAgenda />} />
-            <Route path="/admin/personalizacao/:id" element={<Personalizacao />} /> 
+            <Route path="dashboard/:id" element={<AdministradorDashboard />} />
+            <Route path="barbeiros/:id" element={<BarbeiroGerenciamento />} />
+            <Route path="valores/:id" element={<ValoresGerenciamento />} />
+            <Route path="gestao/:id" element={<GestaoUnificada />} />
+            <Route path="logs/:id" element={<AdminLogs />} />
+            <Route path="analytics/:id" element={<AdminAnalytics />} />
+            <Route path="agenda/:id" element={<BarbeariaAgenda />} />
+            <Route path="personalizacao/:id" element={<Personalizacao />} /> 
           </Route>
 
-          {/* --- AGENDAMENTO PÚBLICO --- */}
+          {/* --- AGENDAMENTO PÚBLICO (PRIORIDADE ALTA) --- */}
+          {/* Esta rota deve vir ANTES da rota dinâmica /:nomeBarbearia */}
+          <Route path="/:nomeBarbearia/novo-agendamento" element={<NovoAgendamento />} />
           <Route path="/agendar/:nomeBarbearia" element={<NovoAgendamento />} />
           <Route path="/cliente/novo-agendamento/:id" element={<NovoAgendamento />} />
 
-          {/* 2. ROTAS DINÂMICAS */}
+          {/* --- PAGINA DA BARBEARIA (ROTA DINÂMICA) --- */}
           <Route path="/:nomeBarbearia" element={<PaginaBarbearia />} />
 
-          {/* 3. REDIRECIONAMENTOS E ERROS */}
+          {/* --- REDIRECIONAMENTOS --- */}
           <Route path="/" element={<RootRedirect />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
